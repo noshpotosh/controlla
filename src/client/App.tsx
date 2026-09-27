@@ -22,7 +22,9 @@ import {
   Trophy,
 } from 'lucide-react';
 import { Runtime, type JoinOptions } from './runtime.ts';
-import { WidgetControl } from './Widgets.tsx';
+import { LegacyWidget } from './Widgets.tsx';
+import { ControllerSurface } from '../controls/ControllerSurface.tsx';
+import { Gallery } from '../controls/gallery/Gallery.tsx';
 import { MotionLab } from './MotionLab.tsx';
 import { GameCanvas } from './GameCanvas.tsx';
 import type { Identity, Role } from '../core/types.ts';
@@ -53,13 +55,15 @@ export default function App() {
     [name, setName] = useState(''),
     [endpoint, setEndpoint] = useState(''),
     [error, setError] = useState(''),
-    [resume, setResume] = useState(true);
+    [resume, setResume] = useState(true),
+    [gallery, setGallery] = useState(false);
   const runtimeRef = useRef<Runtime | null>(null);
   useEffect(() => {
     queueMicrotask(() => {
       const params = new URLSearchParams(location.search);
       const r = params.get('role');
       if (r === 'display' || r === 'controller') setRole(r);
+      if (r === 'gallery') setGallery(true);
       setRoom(params.get('room') ?? '');
       setVenue(params.get('venue') ?? '');
       setEndpoint(
@@ -107,6 +111,7 @@ export default function App() {
     runtimeRef.current = null;
     setRuntime(null);
   }
+  if (gallery) return <Gallery />;
   if (runtime) return <Connected runtime={runtime} leave={leave} />;
   return (
     <main className="shell">
@@ -513,18 +518,23 @@ function Connected({
               Done
             </Button>
           </div>
+        ) : !v.config ? (
+          <p className="note controller-waiting">
+            Waiting for your controller layout…
+          </p>
         ) : (
-          <div
-            className="controller-surface"
-            key={`${v.config?.configId}:${v.config?.generation}`}
-          >
-            {v.config?.widgets.map((w) => (
-              <WidgetControl key={w.id} widget={w} runtime={runtime} />
-            ))}
-            {!v.config && (
-              <p className="note">Waiting for your controller layout…</p>
-            )}
-          </div>
+          <ControllerSurface
+            key={`${v.config.configId}:${v.config.generation}`}
+            layout={v.config.layout ?? 'stack'}
+            widgets={v.config.widgets}
+            accent={v.roster.players.find((p) => p.id === me.id)?.color}
+            portFor={(w) => ({
+              value: (value) => runtime.action(w.action, value),
+              press: (down) => runtime.press(w.action, down),
+              haptic: (ms) => runtime.haptic(ms),
+            })}
+            fallback={(w) => <LegacyWidget widget={w} runtime={runtime} />}
+          />
         )}
         <div className="controller-bottom">
           {v.controllerPath === 'direct-to-session'

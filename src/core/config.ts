@@ -4,14 +4,22 @@ import type {
   Manifest,
   WidgetType,
 } from './types.ts';
+import { defaultLayout, resolveLayout } from '../controls/layouts.ts';
+import { PRESS_SLOTS, usesPressSlot } from '../controls/registry.ts';
 export const labManifest: Manifest = {
   id: 'latency-lab',
   name: 'Latency Lab',
   players: { min: 2, max: 8 },
   inputs: {
-    aim: { required: true, prefer: 'pointer', fallback: 'stick' },
-    fire: { required: true, prefer: 'button' },
+    aim: { required: true, prefer: 'pointer', fallback: 'stick', label: 'Aim' },
+    fire: {
+      required: true,
+      prefer: 'button',
+      label: 'Fire',
+      props: { icon: 'fire' },
+    },
   },
+  layout: 'stack',
   expectedDurationSec: 30,
   scoring: 'time',
   onPlayerDropped: 'freeze',
@@ -24,9 +32,20 @@ export const raceManifest: Manifest = {
   name: 'Tilt Rally',
   players: { min: 2, max: 8 },
   inputs: {
-    steer: { required: true, prefer: 'tilt', fallback: 'stick' },
-    boost: { required: true, prefer: 'swipe-pad' },
+    steer: {
+      required: true,
+      prefer: 'tilt',
+      fallback: 'stick',
+      label: 'Steer',
+    },
+    boost: {
+      required: true,
+      prefer: 'swipe-pad',
+      label: 'Boost',
+      props: { hint: 'Swipe for a burst of speed' },
+    },
   },
+  layout: 'stack',
   expectedDurationSec: 30,
   scoring: 'points',
   onPlayerDropped: 'freeze',
@@ -65,39 +84,46 @@ export function resolveConfig(
       );
   }
   const entries = Object.entries(resolved),
-    pointer = Object.values(resolved).includes('pointer');
+    types = Object.values(resolved),
+    pointer = types.includes('pointer');
+  if (types.filter(usesPressSlot).length > PRESS_SLOTS)
+    throw new Error(
+      `${manifest.name} needs more than ${PRESS_SLOTS} press controls.`,
+    );
+  const layout = manifest.layout ?? defaultLayout(entries.length);
   return {
     schemaVersion: 1,
     configId: manifest.id + '-v1',
     generation,
-    orientation: 'portrait',
+    orientation: layout === 'gamepad' ? 'any' : 'portrait',
+    layout,
     sensors: {
       pointer: { enabled: pointer, rateHz: 60 },
-      tilt: { enabled: Object.values(resolved).includes('tilt') },
+      tilt: { enabled: types.includes('tilt') },
       shake: {
-        enabled: Object.values(resolved).includes('shake'),
+        enabled: types.includes('shake'),
         thresholdG: 1.8,
       },
       accel: { enabled: false },
     },
     haptics: { enabled: c.vibration },
     substitutions,
-    widgets: entries.map(([action, type], i) => ({
-      id: action,
-      action,
-      type,
-      label: action.toUpperCase(),
-      rect:
-        entries.length === 1
-          ? [0.05, 0.1, 0.9, 0.8]
-          : i === 0
-            ? [0.05, 0.05, 0.9, 0.52]
-            : [0.05, 0.64, 0.9, 0.3],
-      holdMs: 800,
-      deadzone: 0.08,
-      space:
-        manifest.inputs[action].prefer === 'pointer' ? 'normalized' : 'signed',
-    })),
+    widgets: resolveLayout(
+      layout,
+      entries.map(([action, type]) => {
+        const input = manifest.inputs[action];
+        return {
+          id: action,
+          action,
+          type,
+          label: input.label ?? action,
+          ...(input.slot && { slot: input.slot }),
+          ...(input.variant && { variant: input.variant }),
+          ...(input.props && { props: input.props }),
+          space: input.prefer === 'pointer' ? 'normalized' : 'signed',
+        };
+      }),
+    ),
   };
 }
 export function defaultCapabilities(): Capabilities {

@@ -1,0 +1,62 @@
+/*
+ * Stick: a recessed gate with a knob. --ctl-stick-travel must match TRAVEL in
+ * Stick.tsx (0.3 × the frame's shorter side).
+ */
+.ctl-stick {
+  --ctl-stick-travel: 30cqmin;
+  --knob: 30cqmin;
+}
+.ctl-stick__base {
+  position: absolute;
+  width: calc(var(--ctl-stick-travel) * 2);
+  height: calc(var(--ctl-stick-travel) * 2);
+  translate: -50% -50%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ctl-well);
+  box-shadow:
+    var(--ctl-well-shadow),
+    0 0 0 2px var(--ctl-line);
+  opacity: 0.85;
+}
+.ctl-stick__base::before {
+  /* Dead-zone ring. */
+  content: '';
+  position: absolute;
+  inset: 38%;
+  border-radius: 50%;
+  border: 2px dashed var(--ctl-line);
+}
+.ctl-stick__knob {
+  width: var(--knob);
+  height: var(--knob);
+  border-radius: 50%;
+  background: var(--ctl-surface-raised);
+  box-shadow:
+    inset 0 2px 0 var(--ctl-highlight),
+    inset 0 0 0 3px var(--ctl-accent),
+    0 var(--ctl-depth) 0 var(--ctl-surface-lip);
+}
+.ctl-stick:not([data-active]) .ctl-stick__base {
+  transition:
+    left var(--ctl-spring-ms) var(--ctl-ease-spring),
+    top var(--ctl-spring-ms) var(--ctl-ease-spring),
+    opacity var(--ctl-spring-ms) ease;
+}
+.ctl-stick:not([data-active]) .ctl-stick__knob {
+  transition: transform var(--ctl-spring-ms) var(--ctl-ease-spring);
+}
+.ctl-stick[data-active] .ctl-stick__base {
+  opacity: 1;
+  box-shadow:
+    var(--ctl-well-shadow),
+    0 0 0 2px var(--ctl-accent-glow);
+}
+.ctl-stick[data-active] .ctl-stick__knob {
+  background: var(--ctl-accent);
+  box-shadow:
+    inset 0 2px 0 var(--ctl-cap-highlight),
+    0 0 28px var(--ctl-accent-glow),
+    0 var(--ctl-depth) 0 var(--ctl-accent-lip);
+}

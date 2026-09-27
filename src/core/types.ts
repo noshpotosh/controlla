@@ -1,3 +1,4 @@
+import type { LayoutPreset } from '../controls/layouts.ts';
 export type Role = 'host' | 'display' | 'controller';
 export type Point = { x: number; y: number };
 export type Quaternion = [number, number, number, number];
@@ -30,12 +31,16 @@ export type WidgetType =
 export interface Widget {
   id: string;
   type: WidgetType;
-  rect: [number, number, number, number];
   label: string;
   action: string;
-  style?: string;
-  holdMs?: number;
-  deadzone?: number;
+  /** Named slot in the config's layout preset (see src/controls/layouts.ts). */
+  slot?: string;
+  /** Normalized [x, y, w, h]; only used by the `custom` layout. */
+  rect?: [number, number, number, number];
+  /** Visual variant from the control's definition (e.g. button tone). */
+  variant?: string;
+  /** Control-specific props; defaults come from the control's definition. */
+  props?: Record<string, unknown>;
   space?: 'normalized' | 'signed';
 }
 export interface ControllerConfig {
@@ -43,6 +48,7 @@ export interface ControllerConfig {
   configId: string;
   generation: number;
   orientation: 'portrait' | 'landscape' | 'any';
+  layout: LayoutPreset;
   sensors: {
     pointer: { enabled: boolean; rateHz: number };
     tilt: { enabled: boolean };
@@ -57,12 +63,19 @@ export interface InputRequirement {
   required: boolean;
   prefer: WidgetType;
   fallback?: WidgetType | null;
+  /** Caption shown on the phone; defaults to the action name. */
+  label?: string;
+  slot?: string;
+  variant?: string;
+  props?: Record<string, unknown>;
 }
 export interface Manifest {
   id: string;
   name: string;
   players: { min: number; max: number };
   inputs: Record<string, InputRequirement>;
+  /** Controller layout preset; picked from the input count when omitted. */
+  layout?: LayoutPreset;
   expectedDurationSec: number;
   scoring: 'points' | 'time';
   onPlayerDropped: 'pause' | 'substitute' | 'freeze';

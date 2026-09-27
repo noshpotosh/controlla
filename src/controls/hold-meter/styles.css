@@ -1,0 +1,83 @@
+/* Hold meter: a round cap wrapped in a charge ring. */
+.ctl-hold-meter {
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.ctl-hold-meter__dial {
+  position: relative;
+  width: 76cqmin;
+  height: 76cqmin;
+  display: grid;
+  place-items: center;
+}
+.ctl-hold-meter__dial svg {
+  position: absolute;
+  inset: 0;
+  rotate: -90deg;
+  overflow: visible;
+}
+.ctl-hold-meter__track,
+.ctl-hold-meter__fill {
+  fill: none;
+  stroke-width: 7;
+}
+.ctl-hold-meter__track {
+  stroke: var(--ctl-well);
+}
+.ctl-hold-meter__fill {
+  stroke: var(--ctl-accent);
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px var(--ctl-accent-glow));
+}
+.ctl-hold-meter:not([data-active]) .ctl-hold-meter__fill {
+  transition: stroke-dashoffset var(--ctl-spring-ms) ease-out;
+}
+.ctl-hold-meter__cap {
+  width: 74%;
+  height: 74%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ctl-surface-raised);
+  box-shadow:
+    inset 0 2px 0 var(--ctl-highlight),
+    0 var(--ctl-depth) 0 var(--ctl-surface-lip);
+  transition:
+    transform var(--ctl-spring-ms) var(--ctl-ease-spring),
+    background var(--ctl-press-ms) linear;
+}
+.ctl-hold-meter__value {
+  font-size: calc(var(--ctl-font-glyph) * 0.7);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--ctl-ink-muted);
+}
+.ctl-hold-meter__value::after {
+  content: '%';
+  font-size: 0.45em;
+  margin-left: 0.05em;
+}
+.ctl-hold-meter[data-active] .ctl-hold-meter__cap {
+  transform: translateY(calc(var(--ctl-depth) - 2px));
+  box-shadow:
+    inset 0 2px 0 var(--ctl-highlight),
+    0 2px 0 var(--ctl-surface-lip);
+}
+.ctl-hold-meter[data-active] .ctl-hold-meter__value {
+  color: var(--ctl-ink);
+}
+.ctl-hold-meter[data-full] .ctl-hold-meter__cap {
+  background: var(--ctl-accent);
+  animation: ctl-hold-full 360ms ease-in-out infinite alternate;
+}
+.ctl-hold-meter[data-full] .ctl-hold-meter__value {
+  color: var(--ctl-accent-ink);
+}
+@keyframes ctl-hold-full {
+  to {
+    box-shadow:
+      0 0 0 8px var(--ctl-accent-soft),
+      0 0 36px var(--ctl-accent-glow);
+  }
+}

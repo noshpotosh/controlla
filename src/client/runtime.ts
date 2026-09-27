@@ -4,6 +4,7 @@ import { SnapshotBuffer } from '../core/snapshots.ts';
 import { SessionAuthority } from '../core/session.ts';
 import { encodeInput, decodeInput } from '../core/protocol.ts';
 import { Motion } from './motion.ts';
+import { channelOf, PRESS_SLOTS, usesPressSlot } from '../controls/registry.ts';
 import {
   clampGain,
   DEFAULT_GAIN,
@@ -56,6 +57,7 @@ export interface JoinOptions {
   endpoint: string;
   token?: string;
 }
+const WIDGET_THROTTLE_MS = 30;
 export class Runtime {
   network: Network;
   clock = new ClockSync();
@@ -99,6 +101,12 @@ export class Runtime {
   private joinedAt = now();
   private lastShake = 0;
   private widgetLastSent = new Map<string, number>();
+  // Throttled values that arrived inside the window; sent when it closes so
+  // the last value (e.g. a stick returning to centre) is never dropped.
+  private widgetPending = new Map<
+    string,
+    { value: unknown; timer: ReturnType<typeof setTimeout> }
+  >();
   view: RuntimeView = {
     identity: null,
     roster: { players: [], venues: [] },
@@ -583,37 +591,52 @@ export class Runtime {
   action(action: string, value: unknown) {
     const widget = this.view.config?.widgets.find((w) => w.action === action);
     if (!widget) return;
-    const at = now();
-    if (
-      at - (this.widgetLastSent.get(action) ?? 0) > 30 ||
-      ['swipe-pad', 'shake', 'hold-meter', 'text'].includes(widget.type)
-    ) {
-      this.widgetLastSent.set(action, at);
-      this.sendUp({ type: 'widget', action, value });
+    const { throttle, drivesPointer } = channelOf(widget.type),
+      at = now(),
+      wait = WIDGET_THROTTLE_MS - (at - (this.widgetLastSent.get(action) ?? 0));
+    if (!throttle || wait <= 0) this.sendWidget(action, value);
+    else {
+      const pending = this.widgetPending.get(action);
+      if (pending) pending.value = value;
+      else
+        this.widgetPending.set(action, {
+          value,
+          timer: setTimeout(() => this.flushWidget(action), wait),
+        });
     }
-    if (widget.type === 'stick' || widget.type === 'dpad') {
+    if (drivesPointer) {
       const p = value as Point;
       this.setPoint(
         widget.space === 'normalized'
           ? { x: (p.x + 1) / 2, y: (p.y + 1) / 2 }
           : p,
       );
-    } else if (
-      ['swipe-pad', 'shake', 'hold-meter'].includes(widget.type) &&
-      (widget.type !== 'hold-meter' || value === 1)
-    ) {
+    } else if (widget.type === 'shake') {
+      // Shake is detected by the runtime itself, so it fires its own edge.
       this.press(action, true);
       this.press(action, false);
     }
   }
+  private sendWidget(action: string, value: unknown) {
+    const pending = this.widgetPending.get(action);
+    if (pending) clearTimeout(pending.timer);
+    this.widgetPending.delete(action);
+    this.widgetLastSent.set(action, now());
+    this.sendUp({ type: 'widget', action, value });
+  }
+  private flushWidget(action: string) {
+    const pending = this.widgetPending.get(action);
+    if (pending) this.sendWidget(action, pending.value);
+  }
   press(action: string, down: boolean) {
     const config = this.view.config;
     if (!config) return;
-    const buttons = config.widgets.filter((w) =>
-      ['button', 'swipe-pad', 'shake', 'hold-meter'].includes(w.type),
-    );
+    const buttons = config.widgets.filter((w) => usesPressSlot(w.type));
     const button = buttons.findIndex((w) => w.action === action);
-    if (button < 0 || button > 3) return;
+    if (button < 0 || button >= PRESS_SLOTS) return;
+    // A press may carry meaning in its value (swipe vector, hold charge):
+    // make sure that value leaves before the edge does.
+    this.flushWidget(action);
     const mask = 1 << button;
     if (down && !(this.buttonState & mask)) {
       if (config.sensors.pointer.enabled) {
@@ -634,11 +657,13 @@ export class Runtime {
           ...this.latestPoint,
         },
       });
-      if (config.haptics.enabled) navigator.vibrate?.(12);
     }
     this.buttonState = down
       ? this.buttonState | mask
       : this.buttonState & ~mask;
+  }
+  haptic(ms = 10) {
+    if (this.view.config?.haptics.enabled) navigator.vibrate?.(ms);
   }
   beginAdjustAim() {
     if (!this.view.motionEnabled) {
@@ -839,6 +864,8 @@ export class Runtime {
     if (this.loop) clearInterval(this.loop);
     if (this.syncTimer) clearInterval(this.syncTimer);
     if (this.diagnosticsTimer) clearInterval(this.diagnosticsTimer);
+    for (const { timer } of this.widgetPending.values()) clearTimeout(timer);
+    this.widgetPending.clear();
     void this.wake?.release();
     // close() can run twice (React strict mode, hot reload); closing again throws.
     if (this.audio && this.audio.state !== 'closed')

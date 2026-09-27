@@ -1,4 +1,7 @@
 'use client';
+// Legacy widgets that have not been ported to the controls library
+// (src/controls) yet. ControllerSurface places each one in its layout cell;
+// port a type by adding it to the library and deleting its branch here.
 import {
   useEffect,
   useRef,
@@ -10,39 +13,19 @@ import { Slider } from '@/components/ui/slider';
 import type { Widget } from '../core/types.ts';
 import type { Runtime } from './runtime.ts';
 const clamp = (x: number) => Math.max(-1, Math.min(1, x));
-export function WidgetControl({
+export function LegacyWidget({
   widget: w,
   runtime,
 }: {
   widget: Widget;
   runtime: Runtime;
 }) {
-  const [value, setValue] = useState({ x: 0, y: 0 }),
-    [progress, setProgress] = useState(0),
+  const [progress, setProgress] = useState(0),
     [text, setText] = useState(''),
     [angle, setAngle] = useState(0);
-  const start = useRef({ x: 0, y: 0, time: 0 }),
-    holding = useRef<ReturnType<typeof setInterval> | null>(null),
-    canvas = useRef<HTMLCanvasElement>(null),
+  const canvas = useRef<HTMLCanvasElement>(null),
     dial = useRef({ last: 0, angle: 0 }),
     active = useRef<number | null>(null);
-  const style = {
-    left: `${w.rect[0] * 100}%`,
-    top: `${w.rect[1] * 100}%`,
-    width: `${w.rect[2] * 100}%`,
-    height: `${w.rect[3] * 100}%`,
-  };
-  const clearHold = () => {
-    if (holding.current) clearInterval(holding.current);
-    holding.current = null;
-  };
-  useEffect(
-    () => () => {
-      clearHold();
-      runtime.press(w.action, false);
-    },
-    [runtime, w.action],
-  );
   const point = (e: ReactPointerEvent<HTMLElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     return {
@@ -53,12 +36,6 @@ export function WidgetControl({
   const move = (e: ReactPointerEvent<HTMLElement>) => {
     if (active.current !== e.pointerId) return;
     const p = point(e);
-    setValue(p);
-    if (w.type === 'stick') {
-      const mag = Math.hypot(p.x, p.y),
-        deadzone = w.deadzone ?? 0.08;
-      runtime.action(w.action, mag < deadzone ? { x: 0, y: 0 } : p);
-    }
     if (w.type === 'dial') {
       const a = Math.atan2(p.y, p.x),
         delta = Math.atan2(
@@ -98,76 +75,18 @@ export function WidgetControl({
     if (active.current !== null) return;
     active.current = e.pointerId;
     e.currentTarget.setPointerCapture(e.pointerId);
-    start.current = { x: e.clientX, y: e.clientY, time: performance.now() };
     if (w.type === 'dial') {
       const p = point(e);
       dial.current.last = Math.atan2(p.y, p.x);
     }
-    if (w.type === 'button') runtime.press(w.action, true);
-    if (w.type === 'hold-meter') {
-      clearHold();
-      holding.current = setInterval(() => {
-        const p = Math.min(
-          1,
-          (performance.now() - start.current.time) / (w.holdMs ?? 800),
-        );
-        setProgress(p);
-        runtime.action(w.action, p);
-        if (p >= 1) {
-          clearHold();
-        }
-      }, 16);
-    }
     move(e);
   };
-  const up = (e: ReactPointerEvent<HTMLElement>, cancelled = false) => {
-    if (active.current !== e.pointerId) return;
-    active.current = null;
-    clearHold();
-    setProgress(0);
-    if (w.type === 'button') runtime.press(w.action, false);
-    if (w.type === 'stick') {
-      setValue({ x: 0, y: 0 });
-      runtime.action(w.action, { x: 0, y: 0 });
-    }
-    if (w.type === 'swipe-pad' && !cancelled) {
-      const dt = Math.max(1, performance.now() - start.current.time),
-        rect = e.currentTarget.getBoundingClientRect(),
-        dx = (e.clientX - start.current.x) / rect.width,
-        dy = (e.clientY - start.current.y) / rect.height;
-      if (Math.hypot(dx, dy) > 0.08)
-        runtime.action(w.action, {
-          x: dx,
-          y: dy,
-          distance: Math.hypot(dx, dy),
-          velocity: (Math.hypot(dx, dy) * 1000) / dt,
-        });
-    }
+  const up = (e: ReactPointerEvent<HTMLElement>) => {
+    if (active.current === e.pointerId) active.current = null;
   };
-  if (w.type === 'button')
-    return (
-      <Button
-        className="widget widget-button"
-        style={style}
-        onPointerDown={down}
-        onPointerUp={(e) => up(e)}
-        onPointerCancel={(e) => up(e, true)}
-        onLostPointerCapture={(e) => up(e, true)}
-        onKeyDown={(e) => {
-          if (e.key === ' ' || e.key === 'Enter') {
-            e.preventDefault();
-            runtime.press(w.action, true);
-          }
-        }}
-        onKeyUp={() => runtime.press(w.action, false)}
-      >
-        {w.label}
-        <small>Press to {w.action}</small>
-      </Button>
-    );
   if (w.type === 'slider')
     return (
-      <div className="widget" style={style}>
+      <div className="widget">
         <label id={w.id}>{w.label}</label>
         <div style={{ width: '80%' }}>
           <Slider
@@ -189,7 +108,6 @@ export function WidgetControl({
     return (
       <form
         className="widget"
-        style={style}
         onSubmit={(e) => {
           e.preventDefault();
           runtime.action(w.action, text.slice(0, 120));
@@ -205,34 +123,10 @@ export function WidgetControl({
         <Button type="submit">Send</Button>
       </form>
     );
-  if (w.type === 'dpad')
-    return (
-      <div className="widget" style={style}>
-        <span>{w.label}</span>
-        <div className="dpad">
-          {[
-            { label: '↑', x: 0, y: -1 },
-            { label: '←', x: -1, y: 0 },
-            { label: '↓', x: 0, y: 1 },
-            { label: '→', x: 1, y: 0 },
-          ].map((p) => (
-            <Button
-              key={p.label}
-              aria-label={`${w.label} ${p.label}`}
-              onPointerDown={() => runtime.action(w.action, p)}
-              onPointerUp={() => runtime.action(w.action, { x: 0, y: 0 })}
-              onPointerCancel={() => runtime.action(w.action, { x: 0, y: 0 })}
-            >
-              {p.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-    );
   if (w.type === 'pointer' || w.type === 'tilt' || w.type === 'shake')
     return (
-      <div className="widget" style={style}>
-        <span style={{ fontSize: 56, color: 'var(--primary)' }}>
+      <div className="widget">
+        <span className="widget-glyph">
           {w.type === 'pointer' ? '⊕' : w.type === 'tilt' ? '↔' : '↯'}
         </span>
         {w.type === 'pointer' ? <PointerPreview runtime={runtime} /> : null}
@@ -251,13 +145,12 @@ export function WidgetControl({
   return (
     <fieldset
       className="widget"
-      style={style}
       aria-label={w.label}
       onPointerDown={down}
       onPointerMove={move}
-      onPointerUp={(e) => up(e)}
-      onPointerCancel={(e) => up(e, true)}
-      onLostPointerCapture={(e) => up(e, true)}
+      onPointerUp={up}
+      onPointerCancel={up}
+      onLostPointerCapture={up}
     >
       {w.type === 'draw-canvas' ? (
         <canvas
@@ -272,26 +165,10 @@ export function WidgetControl({
           }}
         />
       ) : null}
-      <span>{w.type === 'swipe-pad' ? '↑ SWIPE TO BOOST' : w.label}</span>
-      {w.type === 'stick' ? (
-        <span
-          className="stick-knob"
-          style={{
-            transform: `translate(${value.x * 45}px,${value.y * 45}px)`,
-          }}
-        />
-      ) : null}
-      {w.type === 'hold-meter' ? <progress max={1} value={progress} /> : null}
+      <span>{w.label}</span>
       {w.type === 'dial' ? (
         <span style={{ transform: `rotate(${angle}rad)` }}>↑</span>
       ) : null}
-      <small>
-        {w.type === 'stick'
-          ? 'Drag to control'
-          : w.type === 'swipe-pad'
-            ? 'A quick swipe gives you a burst of speed'
-            : ''}
-      </small>
     </fieldset>
   );
 }
