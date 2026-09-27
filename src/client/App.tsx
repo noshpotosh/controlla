@@ -475,9 +475,10 @@ function Connected({
             <span className="eyebrow lime">AIM SETTINGS</span>
             <h1>Adjust your aim.</h1>
             <p className="note">
-              Hold your phone like a remote and turn it to move your cursor on
-              the TV. Slow turns are precise; quick flicks go further. Push past
-              an edge to re-center.
+              Hold your phone flat like a remote, screen facing up. Swivel its
+              top edge left or right to move sideways; tip the top edge up or
+              down to move vertically. Slow turns are precise; quick flicks go
+              further. Push past an edge to re-center.
             </p>
             <div className="sensitivity">
               <span id="sensitivity">Sensitivity</span>

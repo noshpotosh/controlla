@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { replayTilt, segmentReport } from './replay.ts';
+import { axisAngle, inverse, rotate } from '../src/core/calibration.ts';
 import {
   RingBuffer,
   isMotionTrace,
@@ -10,8 +11,13 @@ import {
   type Vec3,
 } from '../src/core/motion/trace.ts';
 
-/** 60 Hz, phone flat and screen up, rotating at `rate` (reported order). */
-function samples(from: number, seconds: number, rate: Vec3): RawMotionSample[] {
+/** Start screen-up, then rotate with matching gravity at 60 Hz. */
+function samples(
+  from: number,
+  seconds: number,
+  rate: Vec3,
+  gravitySign = 1,
+): RawMotionSample[] {
   return Array.from({ length: Math.round(seconds * 60) }, (_, i) => {
     const t = from + (i * 1000) / 60;
     return {
@@ -19,7 +25,13 @@ function samples(from: number, seconds: number, rate: Vec3): RawMotionSample[] {
       at: t + 1,
       interval: 16.67,
       accel: [0, 0, 0],
-      accelG: [0, 0, 9.81],
+      // Motion rates are alpha=X, beta=Y, gamma=Z, unlike orientation angles.
+      accelG: rotate(
+        inverse(
+          axisAngle(...rate, (Math.hypot(...rate) * Math.PI * i) / (180 * 60)),
+        ),
+        [0, 0, gravitySign * 9.81],
+      ) as Vec3,
       rate,
     };
   });
@@ -45,9 +57,41 @@ void test('replay runs the tilt pipeline and reports per segment', async () => {
   assert.equal(still.excursion, 0);
   const roll = segmentReport(trace, cursor, trace.segments[1]);
   assert.equal(roll.rateChannel, 'beta');
-  // Tilt maps the reported beta channel to vertical movement.
-  assert.ok(Math.abs(roll.dy) > 5, `dy ${roll.dy}`);
-  assert.ok(Math.abs(roll.dx) < 0.5, `dx ${roll.dx}`);
+  // Rolling side edges must not be mistaken for vertical pitch.
+  assert.ok(roll.excursion < 0.5, `roll excursion ${roll.excursion}`);
+});
+
+void test('raw motion events move in all four intended directions for either gravity sign', async () => {
+  const gestures: {
+    name: string;
+    rate: Vec3;
+    axis: 'x' | 'y';
+    sign: number;
+  }[] = [
+    { name: 'tip up', rate: [10, 0, 0], axis: 'y', sign: -1 },
+    { name: 'tip down', rate: [-10, 0, 0], axis: 'y', sign: 1 },
+    { name: 'turn right', rate: [0, 0, -10], axis: 'x', sign: 1 },
+    { name: 'turn left', rate: [0, 0, 10], axis: 'x', sign: -1 },
+  ];
+  for (const gravitySign of [-1, 1]) {
+    for (const { name, rate, axis, sign } of gestures) {
+      const cursor = await replayTilt({
+        ...trace,
+        samples: samples(0, 0.5, rate, gravitySign),
+        segments: [],
+      });
+      const end = cursor.at(-1)!;
+      assert.ok(
+        (end[axis] - 0.5) * sign > 0.05,
+        `${name}, gravity ${gravitySign}`,
+      );
+      const other = axis === 'x' ? 'y' : 'x';
+      assert.ok(
+        Math.abs(end[other] - 0.5) < 0.001,
+        `${name} must stay on its axis`,
+      );
+    }
+  }
 });
 
 void test('replay restores the browser globals it stubs', async () => {

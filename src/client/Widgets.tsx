@@ -237,7 +237,7 @@ export function WidgetControl({
         </span>
         {w.type === 'pointer' ? <PointerPreview runtime={runtime} /> : null}
         {w.type === 'pointer'
-          ? 'Point the top of your phone at the screen'
+          ? 'Swivel left/right · Tip the top edge up/down'
           : w.type === 'tilt'
             ? 'Tilt to steer'
             : 'Shake your phone'}

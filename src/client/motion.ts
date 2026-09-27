@@ -128,7 +128,11 @@ export class Motion {
       return;
     }
     this.capabilities.sensors.gyro.present = true;
-    const raw = [r.beta, r.gamma, r.alpha].map((v) => (v * Math.PI) / 180),
+    // DeviceMotion rotationRate uses alpha=X, beta=Y, gamma=Z. The
+    // DeviceOrientation Euler-angle order (beta, gamma, alpha) is different.
+    // Mixing them turns side-to-side roll into pitch and pitch into yaw.
+    // https://www.w3.org/TR/orientation-event/#devicemotioneventrotationrate
+    const raw = [r.alpha, r.beta, r.gamma].map((v) => (v * Math.PI) / 180),
       mag = Math.hypot(...this.gravity);
     if (Math.hypot(...raw) < 0.035 && Math.abs(mag - 9.81) < 0.35) {
       this.stationary += dt;
