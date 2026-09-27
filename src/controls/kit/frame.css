@@ -81,3 +81,19 @@
     animation-duration: 0ms !important;
   }
 }
+
+/* SensorTile: a quiet card for motion inputs; they have no touch surface. */
+.ctl-sensor {
+  display: grid;
+  place-items: center;
+  background: var(--ctl-well);
+  box-shadow:
+    var(--ctl-well-shadow),
+    0 var(--ctl-depth) 0 var(--ctl-surface-lip);
+}
+.ctl-sensor__icon {
+  width: 34cqmin;
+  height: 34cqmin;
+  color: var(--ctl-accent);
+  opacity: 0.8;
+}

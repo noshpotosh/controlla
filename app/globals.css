@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import '../src/controls/controls.css';
+@import '../src/client/controller.css';
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -377,20 +378,6 @@ footer {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-.controller-head {
-  padding: 14px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 14px;
-  border-bottom: 1px solid var(--border);
-}
-.controller-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px;
-}
 /* Legacy widgets not yet ported to src/controls; styled to sit beside them. */
 .widget {
   position: absolute;
@@ -647,19 +634,6 @@ footer {
   margin-left: 20px;
   vertical-align: middle;
 }
-.controller-status {
-  font-size: 14px;
-  text-align: center;
-  padding: 10px;
-  color: #c6cce1;
-  min-height: 40px;
-}
-.controller-bottom {
-  font-size: 12px;
-  color: #b8bed5;
-  text-align: center;
-  padding: 8px 12px 14px;
-}
 .game-option span {
   text-align: left;
   line-height: 1.5;
@@ -679,9 +653,6 @@ footer {
 .hud p {
   color: #b8bed5;
 }
-.controller-tools button {
-  min-height: 36px;
-}
 .join-fields .action {
   width: 100%;
 }
@@ -700,12 +671,6 @@ footer {
     margin-left: 0;
     display: block;
     margin-top: 12px;
-  }
-  .controller-head strong {
-    max-width: 45%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 }
 fieldset.widget {
@@ -903,17 +868,6 @@ body {
   border-radius: 12px;
   box-shadow: 0 4px 0 #78983c;
 }
-.controller-head {
-  background: #232a47;
-  border-bottom-width: 2px;
-}
-.controller-tools button {
-  border-radius: 12px;
-}
-.controller-status {
-  font-weight: 700;
-  color: #d5ff70;
-}
 .result-row,
 .error,
 .hud {
@@ -938,9 +892,6 @@ body {
     gap: 10px;
     font-size: 20px;
   }
-  .controller-tools {
-    gap: 6px;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -950,8 +901,44 @@ body {
     animation: none !important;
   }
 }
-.controller-waiting {
-  flex: 1;
-  display: grid;
-  place-items: center;
+/* Home page shortcuts to the controller tools. */
+.tool-links {
+  display: flex;
+  gap: 8px;
+}
+.tool-links button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tool-links button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.tool-links svg {
+  width: 14px;
+  height: 14px;
+}
+@media (max-width: 800px) {
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 16px 0;
+  }
+  .tool-links {
+    width: 100%;
+  }
+  .tool-links button {
+    flex: 1;
+    justify-content: center;
+  }
 }

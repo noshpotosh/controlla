@@ -1,4 +1,5 @@
-import type { ControlDefinition } from '../types.ts';
+import { rotateVector } from '../layout/rotation.ts';
+import type { ControlDefinition, Vector } from '../types.ts';
 
 export interface StickProps {
   /** Fraction of travel that reads as zero. */
@@ -12,6 +13,7 @@ export const stick: ControlDefinition<StickProps> = {
   displayName: 'Stick',
   description: 'An analog thumbstick. Centres where your thumb lands.',
   channel: 'value',
+  kind: 'vector',
   throttle: true,
   drivesPointer: true,
   output:
@@ -19,4 +21,17 @@ export const stick: ControlDefinition<StickProps> = {
   hint: '',
   variants: [],
   defaults: { deadzone: 0.12, floating: true },
+  fields: [
+    {
+      key: 'deadzone',
+      label: 'Dead zone',
+      type: 'number',
+      min: 0,
+      max: 0.5,
+      step: 0.02,
+    },
+    { key: 'floating', label: 'Centre under thumb', type: 'boolean' },
+  ],
+  minSize: { w: 5, h: 5 },
+  rotateOutput: (v, r) => rotateVector(v as Vector, r),
 };

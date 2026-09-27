@@ -9,9 +9,9 @@ import {
 } from '../src/controls/registry.ts';
 import { views } from '../src/controls/views.ts';
 import {
+  assignSlots,
   defaultLayout,
   LAYOUTS,
-  resolveLayout,
   type LayoutPreset,
 } from '../src/controls/layouts.ts';
 import {
@@ -29,7 +29,8 @@ import {
   raceManifest,
   resolveConfig,
 } from '../src/core/config.ts';
-import type { Manifest } from '../src/core/types.ts';
+import { layouts } from '../src/layouts/index.ts';
+import { emptyLayout } from '../src/controls/layout/schema.ts';
 
 void test('every library control has one definition and a view', () => {
   const types = definitions.map((d) => d.type);
@@ -114,75 +115,89 @@ void test('hold meter: charge ramps linearly and caps at 1', () => {
   assert.equal(chargeAt(-5, 1000), 0);
 });
 
-void test('layouts: every preset fills its slots without collisions', () => {
+void test('presets assign slots in order and refuse to overflow', () => {
   for (const [preset, slots] of Object.entries(LAYOUTS)) {
-    if (preset === 'custom') continue;
     const widgets = slots.map((_, i) => ({ id: `w${i}` }));
-    const placed = resolveLayout(preset as LayoutPreset, widgets);
     assert.deepEqual(
-      placed.map((w) => w.slot),
+      assignSlots(preset as LayoutPreset, widgets).map((w) => w.slot),
       [...slots],
       `${preset} assigns slots in order`,
     );
     assert.throws(
-      () =>
-        resolveLayout(preset as LayoutPreset, [...widgets, { id: 'extra' }]),
+      () => assignSlots(preset as LayoutPreset, [...widgets, { id: 'extra' }]),
       /fits/,
     );
   }
   // Explicit slots win; the rest fill what's left.
   assert.deepEqual(
-    resolveLayout('gamepad', [{ id: 'jump', slot: 'b' }, { id: 'move' }]).map(
+    assignSlots('gamepad', [{ id: 'jump', slot: 'b' }, { id: 'move' }]).map(
       (w) => w.slot,
     ),
     ['b', 'primary'],
   );
   assert.throws(
-    () => resolveLayout('duo', [{ id: 'x', slot: 'primary' }]),
+    () => assignSlots('duo', [{ id: 'x', slot: 'primary' }]),
     /no slot/,
   );
   assert.throws(
     () =>
-      resolveLayout('stack', [
+      assignSlots('stack', [
         { id: 'x', slot: 'a' },
         { id: 'y', slot: 'a' },
       ]),
     /twice/,
   );
-  assert.throws(() => resolveLayout('custom', [{ id: 'x' }]), /rect/);
   assert.equal(defaultLayout(1), 'single');
   assert.equal(defaultLayout(3), 'gamepad');
 });
 
-void test('resolveConfig lays out the built-in games through presets', () => {
+void test('resolveConfig lays out the built-in games from their layouts', () => {
   const c = defaultCapabilities();
   const lab = resolveConfig(labManifest, c, 1);
-  assert.equal(lab.layout, 'stack');
+  assert.equal(lab.orientation, 'portrait');
+  assert.equal(lab.menu, 'top-right');
   assert.deepEqual(
-    lab.widgets.map((w) => [w.action, w.type, w.slot, w.label]),
+    lab.widgets.map((w) => [w.action, w.type, w.label]),
     [
-      ['aim', 'stick', 'primary', 'Aim'],
-      ['fire', 'button', 'a', 'Fire'],
+      ['aim', 'stick', 'Aim'],
+      ['fire', 'button', 'Fire'],
     ],
   );
+  // Grid cells become normalized rects.
+  assert.deepEqual(lab.widgets[0].rect, [0, 2 / 24, 1, 13 / 24]);
   assert.deepEqual(lab.widgets[1].props, { icon: 'fire' });
   const race = resolveConfig(raceManifest, c, 2);
   assert.equal(race.widgets[1].type, 'swipe-pad');
 });
 
 void test('resolveConfig rejects more press controls than the frame carries', () => {
-  const manifest: Manifest = {
-    ...labManifest,
-    layout: 'custom',
-    inputs: Object.fromEntries(
-      Array.from({ length: PRESS_SLOTS + 1 }, (_, i) => [
-        `b${i}`,
-        { required: true, prefer: 'button' as const },
-      ]),
-    ),
-  };
-  assert.throws(
-    () => resolveConfig(manifest, defaultCapabilities(), 1),
-    /more than 4 press/,
+  const inputs = Object.fromEntries(
+    Array.from({ length: PRESS_SLOTS + 1 }, (_, i) => [
+      `b${i}`,
+      { required: true, prefer: 'button' as const },
+    ]),
   );
+  // Register a (deliberately invalid) layout just for this test.
+  layouts['five-buttons'] = {
+    ...emptyLayout('five-buttons', 'Five buttons', 'portrait'),
+    items: Object.keys(inputs).map((name, i) => ({
+      name,
+      type: 'button',
+      rect: { x: 0, y: 2 + i * 4, w: 4, h: 4 },
+      rotation: 0,
+    })),
+  };
+  try {
+    assert.throws(
+      () =>
+        resolveConfig(
+          { ...labManifest, inputs, controller: { layout: 'five-buttons' } },
+          defaultCapabilities(),
+          1,
+        ),
+      /more than 4 press/,
+    );
+  } finally {
+    delete layouts['five-buttons'];
+  }
 });

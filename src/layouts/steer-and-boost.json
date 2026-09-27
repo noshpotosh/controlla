@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 2,
+  "id": "steer-and-boost",
+  "name": "Steer and boost",
+  "orientation": "portrait",
+  "grid": {
+    "cols": 12,
+    "rows": 24
+  },
+  "menu": "top-right",
+  "motion": {
+    "pointer": false,
+    "tilt": true,
+    "shake": false
+  },
+  "items": [
+    {
+      "name": "steer",
+      "type": "stick",
+      "label": "Steer",
+      "rect": {
+        "x": 0,
+        "y": 2,
+        "w": 12,
+        "h": 13
+      },
+      "rotation": 0
+    },
+    {
+      "name": "boost",
+      "type": "swipe-pad",
+      "label": "Boost",
+      "rect": {
+        "x": 0,
+        "y": 15,
+        "w": 12,
+        "h": 9
+      },
+      "rotation": 0,
+      "props": {
+        "hint": "Swipe for a burst of speed"
+      }
+    }
+  ]
+}

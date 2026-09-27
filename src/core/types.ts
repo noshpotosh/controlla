@@ -1,4 +1,5 @@
 import type { LayoutPreset } from '../controls/layouts.ts';
+import type { MenuCorner, Rotation } from '../controls/layout/schema.ts';
 export type Role = 'host' | 'display' | 'controller';
 export type Point = { x: number; y: number };
 export type Quaternion = [number, number, number, number];
@@ -33,10 +34,11 @@ export interface Widget {
   type: WidgetType;
   label: string;
   action: string;
-  /** Named slot in the config's layout preset (see src/controls/layouts.ts). */
-  slot?: string;
-  /** Normalized [x, y, w, h]; only used by the `custom` layout. */
+  /** Placement on the controller: normalized [x, y, w, h]. Motion inputs
+   *  with no touch fallback have none and aren't drawn. */
   rect?: [number, number, number, number];
+  /** Quarter-turn rotation; outputs are converted back to the screen frame. */
+  rotation?: Rotation;
   /** Visual variant from the control's definition (e.g. button tone). */
   variant?: string;
   /** Control-specific props; defaults come from the control's definition. */
@@ -48,7 +50,8 @@ export interface ControllerConfig {
   configId: string;
   generation: number;
   orientation: 'portrait' | 'landscape' | 'any';
-  layout: LayoutPreset;
+  /** Corner reserved for the menu button. */
+  menu: MenuCorner;
   sensors: {
     pointer: { enabled: boolean; rateHz: number };
     tilt: { enabled: boolean };
@@ -74,7 +77,13 @@ export interface Manifest {
   name: string;
   players: { min: number; max: number };
   inputs: Record<string, InputRequirement>;
-  /** Controller layout preset; picked from the input count when omitted. */
+  /**
+   * The controller layout this game uses (an id in src/layouts). Inputs bind
+   * to the layout's controls by name; `bind` maps input → control name when
+   * they differ.
+   */
+  controller?: { layout: string; bind?: Record<string, string> };
+  /** Preset used when there is no designed controller; picked from the input count when omitted. */
   layout?: LayoutPreset;
   expectedDurationSec: number;
   scoring: 'points' | 'time';

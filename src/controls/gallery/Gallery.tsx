@@ -4,9 +4,11 @@
 import { useState, type CSSProperties } from 'react';
 import { COLORS, type Widget } from '../../core/types.ts';
 import { ControllerSurface } from '../ControllerSurface.tsx';
-import { LAYOUTS, type LayoutPreset } from '../layouts.ts';
+import { layoutWidgets } from '../layout/widgets.ts';
+import { LAYOUTS, templateLayout, type LayoutPreset } from '../layouts.ts';
 import { definitions } from '../registry.ts';
-import type { ControlDefinition, ControlPort } from '../types.ts';
+import type { ControlDefinition } from '../types.ts';
+import { Readout, useReadings } from './readings.tsx';
 
 /** Demo configurations shown for each control type. */
 const OPTIONS: Record<string, { name: string; widget: Partial<Widget> }[]> = {
@@ -36,61 +38,6 @@ const OPTIONS: Record<string, { name: string; widget: Partial<Widget> }[]> = {
     { name: '2 s', widget: { label: 'Power', props: { holdMs: 2000 } } },
   ],
 };
-
-type Demo = Omit<Widget, 'id' | 'action'> & { action: string };
-const LAYOUT_DEMOS: Record<Exclude<LayoutPreset, 'custom'>, Demo[]> = {
-  single: [{ type: 'stick', label: 'Move', action: 'move' }],
-  stack: [
-    { type: 'stick', label: 'Move', action: 'move' },
-    { type: 'button', label: 'Jump', action: 'jump', props: { icon: 'jump' } },
-  ],
-  duo: [
-    { type: 'button', label: 'Fire', action: 'fire', props: { icon: 'fire' } },
-    {
-      type: 'button',
-      label: 'Block',
-      action: 'block',
-      variant: 'neutral',
-      props: { icon: 'block' },
-    },
-  ],
-  gamepad: [
-    { type: 'dpad', label: 'Move', action: 'move' },
-    { type: 'button', label: 'Jump', action: 'jump', props: { icon: 'jump' } },
-    {
-      type: 'hold-meter',
-      label: 'Power',
-      action: 'power',
-      props: { hint: '' },
-    },
-  ],
-};
-
-interface Reading {
-  value?: unknown;
-  presses: number;
-  held: boolean;
-  at: number;
-}
-
-function useReadings() {
-  const [readings, setReadings] = useState<Record<string, Reading>>({});
-  const update = (id: string, change: (r: Reading) => Partial<Reading>) =>
-    setReadings((all) => {
-      const r = all[id] ?? { presses: 0, held: false, at: 0 };
-      return { ...all, [id]: { ...r, ...change(r), at: performance.now() } };
-    });
-  const portFor = (w: Widget): ControlPort => ({
-    value: (value) => update(w.id, () => ({ value })),
-    press: (down) =>
-      update(w.id, (r) => ({
-        held: down,
-        presses: down && !r.held ? r.presses + 1 : r.presses,
-      })),
-    haptic: (ms = 10) => navigator.vibrate?.(ms),
-  });
-  return { readings, portFor };
-}
 
 export function Gallery() {
   // ?tab=layouts&layout=duo&landscape deep-links a view (handy for sharing).
@@ -164,6 +111,7 @@ function ControlCard({
     action: d.type,
     type: d.type,
     label: d.displayName,
+    rect: [0, 0, 1, 1],
     ...options[option]?.widget,
   };
   const r = readings[widget.id];
@@ -192,8 +140,7 @@ function ControlCard({
       <div className="ctl-gallery__stage">
         <ControllerSurface
           key={option}
-          layout="single"
-          widgets={[{ ...widget, slot: 'primary' }]}
+          widgets={[widget]}
           accent={accent}
           portFor={portFor}
         />
@@ -206,40 +153,22 @@ function ControlCard({
   );
 }
 
-function Readout({ reading }: { reading?: Reading }) {
-  return (
-    <output
-      className="ctl-gallery__readout"
-      data-held={reading?.held || undefined}
-    >
-      <span>
-        <b>value</b>
-        {reading?.value === undefined ? '—' : JSON.stringify(reading.value)}
-      </span>
-      <span>
-        <b>presses</b>
-        {reading?.presses ?? 0}
-        <i className="ctl-gallery__led" aria-hidden />
-      </span>
-    </output>
-  );
-}
-
 function LayoutPreview({ accent }: { accent: string }) {
-  const presets = Object.keys(LAYOUT_DEMOS) as (keyof typeof LAYOUT_DEMOS)[],
-    [preset, setPreset] = useState<keyof typeof LAYOUT_DEMOS>(() => {
+  const presets = Object.keys(LAYOUTS) as LayoutPreset[],
+    [preset, setPreset] = useState<LayoutPreset>(() => {
       const p = param('layout');
-      return p && p in LAYOUT_DEMOS
-        ? (p as keyof typeof LAYOUT_DEMOS)
-        : 'gamepad';
+      return p && p in LAYOUTS ? (p as LayoutPreset) : 'gamepad';
     }),
     [landscape, setLandscape] = useState(() => param('landscape') !== null),
     { readings, portFor } = useReadings();
-  const widgets: Widget[] = LAYOUT_DEMOS[preset].map((w, i) => ({
-    ...w,
-    id: w.action,
-    slot: LAYOUTS[preset][i],
-  }));
+  const widgets = layoutWidgets(
+    templateLayout(
+      preset,
+      landscape ? 'landscape' : 'portrait',
+      'demo',
+      'Demo',
+    ),
+  );
   return (
     <section className="ctl-gallery__card">
       <div className="ctl-gallery__chips">
@@ -266,7 +195,6 @@ function LayoutPreview({ accent }: { accent: string }) {
         data-landscape={landscape || undefined}
       >
         <ControllerSurface
-          layout={preset}
           widgets={widgets}
           accent={accent}
           portFor={portFor}
@@ -278,9 +206,10 @@ function LayoutPreview({ accent }: { accent: string }) {
           <Readout reading={readings[w.id]} />
         </div>
       ))}
-      <pre className="ctl-gallery__code">
-        {manifestSnippet(preset, widgets)}
-      </pre>
+      <p className="ctl-gallery__output">
+        These are the templates new layouts start from. Design your own at{' '}
+        <code>/?role=designer</code>.
+      </p>
     </section>
   );
 }
@@ -289,19 +218,4 @@ function param(name: string) {
   return typeof location === 'undefined'
     ? null
     : new URLSearchParams(location.search).get(name);
-}
-
-function manifestSnippet(preset: string, widgets: Widget[]) {
-  const inputs = widgets
-    .map((w) => {
-      const extra = [
-        w.variant && `variant: '${w.variant}'`,
-        w.props &&
-          Object.keys(w.props).length &&
-          `props: ${JSON.stringify(w.props)}`,
-      ].filter(Boolean);
-      return `  ${w.action}: { prefer: '${w.type}', required: true, label: '${w.label}'${extra.length ? ', ' + extra.join(', ') : ''} },`;
-    })
-    .join('\n');
-  return `// In your game's Manifest\nlayout: '${preset}',\ninputs: {\n${inputs}\n},`;
 }

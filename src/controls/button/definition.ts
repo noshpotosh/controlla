@@ -11,9 +11,12 @@ export const button: ControlDefinition<ButtonProps> = {
   displayName: 'Button',
   description: 'A big, chunky action button. Tap or hold.',
   channel: 'press',
+  kind: 'press',
   throttle: false,
   output: 'Press and release edges, timestamped (Press journal).',
   hint: '',
   variants: ['accent', 'neutral', 'danger'],
   defaults: {},
+  fields: [{ key: 'icon', label: 'Icon', type: 'icon' }],
+  minSize: { w: 3, h: 3 },
 };

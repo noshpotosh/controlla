@@ -161,6 +161,8 @@ void test('required motion without fallback gives an actionable failure', () => 
       resolveConfig(
         {
           ...labManifest,
+          // No layout, so no touch control can stand in for the pointer.
+          controller: undefined,
           inputs: { aim: { required: true, prefer: 'pointer' } },
         },
         defaultCapabilities(),

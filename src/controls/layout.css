@@ -1,4 +1,4 @@
-/* The controller surface and its layout presets (see layouts.ts). */
+/* The controller surface: one rectangle, controls placed by rect. */
 .ctl-root {
   container: ctl-root / size;
   display: flex;
@@ -13,51 +13,46 @@
   -webkit-touch-callout: none;
 }
 .ctl-surface {
+  position: relative;
   flex: 1;
-  display: grid;
-  gap: var(--ctl-gap);
-  padding: var(--ctl-space-3) var(--ctl-space-3)
-    calc(var(--ctl-space-3) + var(--ctl-depth));
   min-height: 0;
+  /* Half a gap of breathing room at the edges; cells add the other half. */
+  margin: calc(var(--ctl-gap) / 2);
 }
 .ctl-cell {
-  position: relative;
-  min-width: 0;
-  min-height: 0;
-}
-
-.ctl-layout--single {
-  grid-template: 'primary' 1fr / 1fr;
-}
-.ctl-layout--stack {
-  grid-template: 'primary' 3fr 'a' 2fr / 1fr;
-}
-.ctl-layout--duo {
-  grid-template: 'a b' 1fr / 1fr 1fr;
-}
-.ctl-layout--gamepad {
-  grid-template: 'primary primary' 3fr 'a b' 2fr / 1fr 1fr;
-}
-.ctl-layout--custom {
-  position: relative;
-  display: block;
-}
-.ctl-layout--custom > .ctl-cell {
   position: absolute;
 }
-
-/* Landscape: side-by-side thumbs. */
-@container ctl-root (min-aspect-ratio: 4 / 3) {
-  .ctl-layout--stack {
-    grid-template: 'primary a' 1fr / 3fr 2fr;
-  }
-  .ctl-layout--gamepad {
-    grid-template: 'primary a' 1fr 'primary b' 1fr / 1.25fr 1fr;
-  }
+/* Each cell insets by half a gap (plus the lip) so neighbours never touch. */
+.ctl-cell__box {
+  container-type: size;
+  position: absolute;
+  inset: calc(var(--ctl-gap) / 2) calc(var(--ctl-gap) / 2)
+    calc(var(--ctl-gap) / 2 + var(--ctl-depth));
+}
+.ctl-cell__turn {
+  position: absolute;
+  inset: 0;
+}
+.ctl-cell__turn[data-rotation='180'] {
+  rotate: 180deg;
+}
+/* Sideways: swap the box's width and height, then turn it about its centre. */
+.ctl-cell__turn[data-rotation='90'],
+.ctl-cell__turn[data-rotation='270'] {
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: 100cqh;
+  height: 100cqw;
+  translate: -50% -50%;
+  rotate: 90deg;
+}
+.ctl-cell__turn[data-rotation='270'] {
+  rotate: 270deg;
 }
 
 /* Legacy widgets (not yet in the library) fill their cell. */
-.ctl-cell > .widget {
+.ctl-cell__turn > .widget {
   position: absolute;
   inset: 0;
 }

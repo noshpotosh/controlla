@@ -8,9 +8,11 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { toLocal } from '../layout/rotation.ts';
+import { useRotation } from './rotation-context.ts';
 
 export interface TrackedPoint {
-  /** px from the element's top-left. */
+  /** px from the element's top-left, in its own (unrotated) frame. */
   x: number;
   y: number;
   width: number;
@@ -26,7 +28,8 @@ export interface TrackCallbacks {
 }
 
 export function useTrackedPointer(callbacks: TrackCallbacks) {
-  const [active, setActive] = useState(false);
+  const [active, setActive] = useState(false),
+    rotation = useRotation();
   const track = useRef<{
       id: number;
       start: TrackedPoint;
@@ -45,12 +48,24 @@ export function useTrackedPointer(callbacks: TrackCallbacks) {
     [],
   );
   const local = (e: ReactPointerEvent<HTMLElement>): TrackedPoint => {
-    const r = e.currentTarget.getBoundingClientRect();
+    // Measure from the centre so a rotated control (whose bounding box is
+    // turned) still gets coordinates in its own frame.
+    const el = e.currentTarget,
+      r = el.getBoundingClientRect(),
+      width = el.offsetWidth,
+      height = el.offsetHeight,
+      off = toLocal(
+        {
+          x: e.clientX - (r.left + r.width / 2),
+          y: e.clientY - (r.top + r.height / 2),
+        },
+        rotation,
+      );
     return {
-      x: e.clientX - r.left,
-      y: e.clientY - r.top,
-      width: r.width,
-      height: r.height,
+      x: width / 2 + off.x,
+      y: height / 2 + off.y,
+      width,
+      height,
       time: performance.now(),
     };
   };

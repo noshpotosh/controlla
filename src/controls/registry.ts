@@ -1,7 +1,7 @@
 // The single source of truth for which controls exist and how they report.
 // Pure data (no React): core, session and runtime code import this.
 import type { WidgetType } from '../core/types.ts';
-import type { Channel, ControlDefinition } from './types.ts';
+import type { Channel, ControlDefinition, OutputKind } from './types.ts';
 import { button } from './button/definition.ts';
 import { dpad } from './dpad/definition.ts';
 import { stick } from './stick/definition.ts';
@@ -28,16 +28,20 @@ export const isLibraryControl = (type: WidgetType) => byType.has(type);
  * channels live here so the runtime has one lookup for every input type.
  */
 const legacy: Partial<
-  Record<WidgetType, { channel: Channel; throttle: boolean }>
+  Record<WidgetType, { channel: Channel; throttle: boolean; kind: OutputKind }>
 > = {
-  shake: { channel: 'both', throttle: false },
-  text: { channel: 'value', throttle: false },
-  slider: { channel: 'value', throttle: true },
-  dial: { channel: 'value', throttle: true },
-  'draw-canvas': { channel: 'value', throttle: true },
-  pointer: { channel: 'value', throttle: true },
-  tilt: { channel: 'value', throttle: true },
+  shake: { channel: 'both', throttle: false, kind: 'press' },
+  text: { channel: 'value', throttle: false, kind: 'text' },
+  slider: { channel: 'value', throttle: true, kind: 'scalar' },
+  dial: { channel: 'value', throttle: true, kind: 'angle' },
+  'draw-canvas': { channel: 'value', throttle: true, kind: 'stroke' },
+  // Motion inputs steer the frame's x/y, like a stick does.
+  pointer: { channel: 'value', throttle: true, kind: 'vector' },
+  tilt: { channel: 'value', throttle: true, kind: 'vector' },
 };
+
+export const kindOf = (type: WidgetType): OutputKind | undefined =>
+  (byType.get(type) ?? legacy[type])?.kind;
 
 export function channelOf(type: WidgetType) {
   const d = byType.get(type) ?? legacy[type];
@@ -47,6 +51,10 @@ export function channelOf(type: WidgetType) {
     drivesPointer: byType.get(type)?.drivesPointer ?? false,
   };
 }
+
+/** Smallest footprint in grid cells; legacy widgets get a safe default. */
+export const minSizeOf = (type: WidgetType) =>
+  byType.get(type)?.minSize ?? { w: 4, h: 4 };
 
 export const usesPressSlot = (type: WidgetType) =>
   channelOf(type).channel !== 'value';

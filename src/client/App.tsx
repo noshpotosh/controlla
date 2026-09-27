@@ -20,11 +20,15 @@ import {
   Sparkles,
   Zap,
   Trophy,
+  LayoutGrid,
 } from 'lucide-react';
 import { Runtime, type JoinOptions } from './runtime.ts';
 import { LegacyWidget } from './Widgets.tsx';
 import { ControllerSurface } from '../controls/ControllerSurface.tsx';
+import { ControllerMenu, StatusToast } from './ControllerMenu.tsx';
 import { Gallery } from '../controls/gallery/Gallery.tsx';
+import { Designer } from '../controls/designer/Designer.tsx';
+import { Preview } from '../controls/preview/Preview.tsx';
 import { MotionLab } from './MotionLab.tsx';
 import { GameCanvas } from './GameCanvas.tsx';
 import type { Identity, Role } from '../core/types.ts';
@@ -56,14 +60,18 @@ export default function App() {
     [endpoint, setEndpoint] = useState(''),
     [error, setError] = useState(''),
     [resume, setResume] = useState(true),
-    [gallery, setGallery] = useState(false);
+    [tool, setTool] = useState<{
+      page: 'gallery' | 'designer' | 'preview';
+      layout: string | null;
+    } | null>(null);
   const runtimeRef = useRef<Runtime | null>(null);
   useEffect(() => {
     queueMicrotask(() => {
       const params = new URLSearchParams(location.search);
       const r = params.get('role');
       if (r === 'display' || r === 'controller') setRole(r);
-      if (r === 'gallery') setGallery(true);
+      if (r === 'gallery' || r === 'designer' || r === 'preview')
+        setTool({ page: r, layout: params.get('layout') });
       setRoom(params.get('room') ?? '');
       setVenue(params.get('venue') ?? '');
       setEndpoint(
@@ -111,7 +119,9 @@ export default function App() {
     runtimeRef.current = null;
     setRuntime(null);
   }
-  if (gallery) return <Gallery />;
+  if (tool?.page === 'gallery') return <Gallery />;
+  if (tool?.page === 'designer') return <Designer layoutId={tool.layout} />;
+  if (tool?.page === 'preview') return <Preview layoutId={tool.layout} />;
   if (runtime) return <Connected runtime={runtime} leave={leave} />;
   return (
     <main className="shell">
@@ -123,6 +133,21 @@ export default function App() {
         <span className="connection">
           <i /> READY, PLAYER?
         </span>
+        {/* Full page loads: these pages read ?role= once, on mount. */}
+        <nav className="tool-links" aria-label="Controller tools">
+          <button
+            type="button"
+            onClick={() => location.assign('/?role=designer')}
+          >
+            <LayoutGrid /> Layout designer
+          </button>
+          <button
+            type="button"
+            onClick={() => location.assign('/?role=gallery')}
+          >
+            <Gamepad2 /> Controller playground
+          </button>
+        </nav>
       </header>
       <section className="entry">
         <div className="entry-copy">
@@ -394,74 +419,18 @@ function Connected({
         </section>
       </main>
     );
-  if (me.role === 'controller')
+  if (me.role === 'controller') {
+    const accent = v.roster.players.find((p) => p.id === me.id)?.color,
+      menu = (
+        <ControllerMenu
+          runtime={runtime}
+          corner={v.config?.menu ?? 'top-right'}
+          onMotionLab={() => setMotionLab(true)}
+          leave={leave}
+        />
+      );
     return (
-      <main className="controller">
-        <header className="controller-head">
-          <strong
-            style={{
-              color: v.roster.players.find((p) => p.id === me.id)?.color,
-            }}
-          >
-            {v.roster.players.find((p) => p.id === me.id)?.name ??
-              'Your controller'}
-          </strong>
-          <span>
-            {me.room} / {me.venueId.slice(0, 4).toUpperCase()}
-          </span>
-        </header>
-        <div className="controller-tools">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void runtime.enableMotion()}
-          >
-            {v.motionEnabled ? 'Motion enabled' : 'Enable motion'}
-          </Button>
-          {v.config?.sensors.pointer.enabled && (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => runtime.beginAdjustAim()}
-              >
-                <Crosshair />
-                Aim settings
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => runtime.recenter()}
-              >
-                <RotateCcw />
-                Recenter
-              </Button>
-            </>
-          )}
-        </div>
-        {v.warning && (
-          <p className="error" role="alert">
-            {v.warning}
-          </p>
-        )}
-        {!globalThis.isSecureContext && (
-          <p className="error">
-            Motion requires HTTPS. Touch controls still work.
-          </p>
-        )}
-        <div className="controller-status" aria-live="polite">
-          {v.ended
-            ? 'Session ended'
-            : v.status !== 'Connected'
-              ? v.status
-              : v.phase === 'countdown'
-                ? 'Get ready…'
-                : v.phase === 'running'
-                  ? 'You’re playing'
-                  : v.phase === 'results'
-                    ? 'Round complete — look at your screen'
-                    : 'Ready — choose a game on the host screen'}
-        </div>
+      <main className="controller ctl-scope">
         {v.ended ? (
           <div className="calibrate">
             <h1>Thanks for playing.</h1>
@@ -519,33 +488,29 @@ function Connected({
             </Button>
           </div>
         ) : !v.config ? (
-          <p className="note controller-waiting">
-            Waiting for your controller layout…
-          </p>
+          <div className="controller-waiting">
+            <p className="note">Waiting for your controller layout…</p>
+            {menu}
+          </div>
         ) : (
           <ControllerSurface
             key={`${v.config.configId}:${v.config.generation}`}
-            layout={v.config.layout ?? 'stack'}
             widgets={v.config.widgets}
-            accent={v.roster.players.find((p) => p.id === me.id)?.color}
+            accent={accent}
             portFor={(w) => ({
               value: (value) => runtime.action(w.action, value),
               press: (down) => runtime.press(w.action, down),
               haptic: (ms) => runtime.haptic(ms),
             })}
             fallback={(w) => <LegacyWidget widget={w} runtime={runtime} />}
-          />
+          >
+            {menu}
+          </ControllerSurface>
         )}
-        <div className="controller-bottom">
-          {v.controllerPath === 'direct-to-session'
-            ? 'Degraded connection — aiming goes through the host · '
-            : ''}
-          {v.config?.substitutions.join(' · ') ||
-            `${Math.round(v.sensorHz)} motion Hz`}
-          {!v.wakeLock ? ' · Keep this screen awake' : ''}
-        </div>
+        {!v.ended && <StatusToast runtime={runtime} />}
       </main>
     );
+  }
   async function copy() {
     const url = new URL(location.href);
     url.search = '';
