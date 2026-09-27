@@ -6,7 +6,10 @@ import { encodeInput, decodeInput } from '../core/protocol.ts';
 import { Motion } from './motion.ts';
 import { PointerSmoother } from '../core/pointer.ts';
 import {
-  calibrate,
+  centerCalibration,
+  clampGain,
+  DEFAULT_GAIN,
+  gainOf,
   project,
   recenter,
   tangent,
@@ -21,7 +24,6 @@ import {
   type InputFrame,
   type Message,
   type Point,
-  type Quaternion,
   type Role,
   type Result,
   type Roster,
@@ -39,7 +41,11 @@ export interface RuntimeView {
   limitingVenue: string | null;
   telemetry: Message | null;
   links: Record<string, LinkStats>;
+  /** -1 idle, 0 aim at center, 1 move the live cursor into each corner. */
   calibrationStep: number;
+  /** Bits 0–3: top-left, top-right, bottom-right, bottom-left reached. */
+  cornersReached: number;
+  sensitivity: number;
   calibrated: boolean;
   motionEnabled: boolean;
   sensorHz: number;
@@ -82,7 +88,6 @@ export class Runtime {
     { point: Point; at: number; color: string; name: string }
   >();
   private calibration: Calibration | null = null;
-  private samples: Quaternion[] = [];
   private events: GameEvent[] = [];
   private eventIds = new Set<string>();
   private audio: AudioContext | null = null;
@@ -96,7 +101,7 @@ export class Runtime {
   private lastPresentedKey = '';
   private calibrationTargets = new Map<
     string,
-    { step: number; name: string; color: string }
+    { step: number; reached: number; name: string; color: string }
   >();
   private joinedAt = now();
   private lastShake = 0;
@@ -115,6 +120,8 @@ export class Runtime {
     telemetry: null,
     links: {},
     calibrationStep: -1,
+    cornersReached: 0,
+    sensitivity: DEFAULT_GAIN,
     calibrated: false,
     motionEnabled: false,
     sensorHz: 0,
@@ -297,9 +304,15 @@ export class Runtime {
         }
       } else if (channel === 'ctrl') {
         if (data.type === 'calibration') {
-          if (Number.isInteger(data.step) && data.step >= 0 && data.step <= 4)
+          if (data.step === 0 || data.step === 1)
             this.calibrationTargets.set(from, {
               step: data.step,
+              reached:
+                Number.isInteger(data.reached) &&
+                data.reached >= 0 &&
+                data.reached <= 15
+                  ? data.reached
+                  : 0,
               name: player.name,
               color: player.color,
             });
@@ -425,14 +438,11 @@ export class Runtime {
   private applySensorConfig() {
     const c = this.view.config;
     if (!c) return;
-    if (
-      c.sensors.pointer.enabled ||
-      c.sensors.tilt.enabled ||
-      c.sensors.shake.enabled ||
-      c.sensors.accel.enabled
-    )
-      this.motion.start();
-    else this.motion.stop();
+    // Keep sampling whenever permission is granted, even under a touch-only
+    // config: the host only upgrades to pointer/tilt after it sees samples,
+    // and stopping here (e.g. on a roster update before that upgrade lands)
+    // made the no-samples check report the phone as having no motion sensors.
+    this.motion.start();
     this.sendRate = c.sensors.pointer.enabled
       ? Math.min(
           c.sensors.pointer.rateHz,
@@ -491,6 +501,7 @@ export class Runtime {
             ),
             this.motion.lastAt,
           );
+          if (this.view.calibrationStep === 1) this.trackCorners(point);
         } catch {
           /* Keep last valid position when aimed behind the screen. */
         }
@@ -660,43 +671,76 @@ export class Runtime {
       this.warn('Tap Enable motion before calibrating.');
       return;
     }
-    this.samples = [];
-    this.view.calibrationStep = 0;
+    this.view.sensitivity = gainOf(this.calibration);
     this.view.warning = '';
     this.motion.start();
-    this.network.send(this.view.identity!.venueId, 'ctrl', {
-      type: 'calibration',
-      step: 0,
-    });
-    this.notify();
+    this.setCalibrationStep(0);
   }
+  /** Step 0: the current pose becomes screen center and the cursor goes live. */
   captureCalibration() {
     if (this.motion.confidence < 0.5) {
       this.warn('Waiting for fresh motion samples. Move your phone gently.');
       return;
     }
-    this.samples.push([...this.motion.q]);
-    if (this.samples.length === 5) {
-      try {
-        this.calibration = calibrate(
-          this.samples,
-          this.calibration ?? undefined,
-        );
-        this.pointerSmoother.reset();
-        this.view.calibrated = true;
-        this.view.calibrationStep = -1;
-        this.saveCalibration();
-        this.view.warning = '';
-      } catch (error) {
-        this.samples = [];
-        this.view.calibrationStep = 0;
-        this.warn(String(error));
-      }
-    } else this.view.calibrationStep = this.samples.length;
+    this.calibration = centerCalibration(
+      [...this.motion.q],
+      this.view.sensitivity,
+      this.calibration ?? undefined,
+    );
+    this.pointerSmoother.reset();
+    this.view.warning = '';
+    this.setCalibrationStep(1);
+  }
+  /** Step 1 only: rescale the live cursor around the captured center. */
+  setSensitivity(gain: number) {
+    if (this.view.calibrationStep !== 1 || !this.calibration) return;
+    this.view.sensitivity = clampGain(gain);
+    this.calibration = {
+      ...centerCalibration(this.calibration.ref, this.view.sensitivity),
+      count: this.calibration.count,
+      recenters: this.calibration.recenters,
+    };
+    this.notify();
+  }
+  redoCenter() {
+    this.setCalibrationStep(0);
+  }
+  finishCalibration() {
+    if (this.view.calibrationStep !== 1 || this.view.cornersReached !== 15)
+      return;
+    this.view.calibrated = true;
+    this.saveCalibration();
+    this.setCalibrationStep(-1);
+  }
+  private setCalibrationStep(step: number) {
+    this.view.calibrationStep = step;
+    this.view.cornersReached = 0;
+    this.sendCalibrationMarker();
+    this.notify();
+  }
+  private sendCalibrationMarker() {
     this.network.send(this.view.identity!.venueId, 'ctrl', {
       type: 'calibration',
       step: this.view.calibrationStep,
+      reached: this.view.cornersReached,
     });
+  }
+  /** Marks corners of the canonical area the live cursor has reached. */
+  private trackCorners(p: Point) {
+    const edge = 0.08,
+      left = p.x < edge,
+      right = p.x > 1 - edge,
+      top = p.y < edge,
+      bottom = p.y > 1 - edge,
+      hit =
+        (top && left ? 1 : 0) |
+        (top && right ? 2 : 0) |
+        (bottom && right ? 4 : 0) |
+        (bottom && left ? 8 : 0),
+      reached = this.view.cornersReached | hit;
+    if (reached === this.view.cornersReached) return;
+    this.view.cornersReached = reached;
+    this.sendCalibrationMarker();
     this.notify();
   }
   recenter() {
@@ -712,7 +756,8 @@ export class Runtime {
     }
   }
   private calibrationKey() {
-    return `controlla:calibration:${this.view.identity?.room}:${this.view.identity?.venueId}`;
+    // v2: aim axis is the phone's top edge; older saved fits used its back.
+    return `controlla:calibration:v2:${this.view.identity?.room}:${this.view.identity?.venueId}`;
   }
   private saveCalibration() {
     try {
@@ -906,7 +951,9 @@ export class Runtime {
     if (this.syncTimer) clearInterval(this.syncTimer);
     if (this.diagnosticsTimer) clearInterval(this.diagnosticsTimer);
     void this.wake?.release();
-    void this.audio?.close();
+    // close() can run twice (React strict mode, hot reload); closing again throws.
+    if (this.audio && this.audio.state !== 'closed')
+      void this.audio.close().catch(() => {});
     document.removeEventListener('visibilitychange', this.visibility);
     window.removeEventListener('beforeunload', this.beforeUnload);
     window.removeEventListener('pagehide', this.pageHide);

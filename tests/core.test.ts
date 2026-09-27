@@ -9,7 +9,11 @@ import {
   newer,
 } from '../src/core/protocol.ts';
 import {
-  calibrate,
+  centerCalibration,
+  gainOf,
+  DEFAULT_GAIN,
+  MIN_GAIN,
+  MAX_GAIN,
   fitHomography,
   project,
   recenter,
@@ -17,6 +21,7 @@ import {
   axisAngle,
   multiply,
   identity,
+  aimAt,
 } from '../src/core/calibration.ts';
 import {
   ClockSync,
@@ -180,23 +185,50 @@ void test('degenerate, crossed, and nearly coincident calibration is rejected', 
     ]),
   );
 });
-function aim(x: number, y: number): Quaternion {
-  const n = Math.hypot(x, y, 1),
-    v = [x / n, -y / n, -1 / n];
-  const q: Quaternion = [v[1], -v[0], 0, 1 - v[2]];
-  const length = Math.hypot(...q);
-  return q.map((v) => v / length) as Quaternion;
-}
-void test('five-point calibration and recenter preserve H and put current pose at exact center', () => {
-  const samples: Quaternion[] = [
-      identity,
-      aim(-0.5, -0.3),
-      aim(0.5, -0.3),
-      aim(0.5, 0.3),
-      aim(-0.5, 0.3),
-    ],
-    cal = calibrate(samples),
-    current = multiply(axisAngle(0, 1, 0, 0.22), identity),
+const aim = (x: number, y: number): Quaternion => aimAt({ x, y });
+void test('remote grip: yaw steers horizontally and pitch vertically', () => {
+  // Phone flat, top edge toward the screen. Turning right is a clockwise
+  // (negative) rotation about the face normal; tilting the top edge up is a
+  // positive rotation about the right edge.
+  const right = tangent(identity, axisAngle(0, 0, 1, -0.3)),
+    up = tangent(identity, axisAngle(1, 0, 0, 0.3));
+  assert.ok(right.x > 0.25);
+  almost(right.y, 0);
+  assert.ok(up.y < -0.25);
+  almost(up.x, 0);
+  const p = tangent(identity, aim(0.4, -0.2));
+  almost(p.x, 0.4);
+  almost(p.y, -0.2);
+});
+void test('center calibration maps the captured pose to center and scales with gain', () => {
+  const ref = aim(0.3, -0.1),
+    cal = centerCalibration(ref, 2),
+    at = (q: Quaternion) => project(cal.h, tangent(ref, q));
+  const center = at(ref);
+  almost(center.x, 0.5);
+  almost(center.y, 0.5);
+  // Yaw right by θ relative to the captured pose moves x by gain·tan θ.
+  const right = at(multiply(ref, axisAngle(0, 0, 1, -0.2)));
+  almost(right.x, 0.5 + 2 * Math.tan(0.2));
+  almost(right.y, 0.5);
+  // Pitch up moves y up, scaled by 16:9 so both axes match in pixels.
+  const up = at(multiply(ref, axisAngle(1, 0, 0, 0.1)));
+  almost(up.x, 0.5);
+  almost(up.y, 0.5 - ((2 * 16) / 9) * Math.tan(0.1));
+  // Doubling the gain doubles the displacement.
+  const doubled = project(
+    centerCalibration(ref, 4).h,
+    tangent(ref, multiply(ref, axisAngle(0, 0, 1, -0.2))),
+  );
+  almost(doubled.x - 0.5, 2 * (right.x - 0.5));
+  assert.equal(gainOf(cal), 2);
+  assert.equal(gainOf(centerCalibration(ref, 100)), MAX_GAIN);
+  assert.equal(gainOf(centerCalibration(ref, 0)), MIN_GAIN);
+  assert.equal(gainOf(null), DEFAULT_GAIN);
+});
+void test('center calibration and recenter preserve H and put current pose at exact center', () => {
+  const cal = centerCalibration(identity, DEFAULT_GAIN),
+    current = multiply(axisAngle(0, 0, 1, 0.22), identity),
     out = recenter(cal, current);
   assert.equal(out.h, cal.h);
   assert.equal(out.recenters, 1);

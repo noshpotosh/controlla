@@ -102,19 +102,35 @@ export function GameCanvas({ runtime }: { runtime: Runtime }) {
           '#b5bad2',
         );
       } else if (runtime.calibrationMarkers().length > 0) {
-        const points = [
-          { x: 0.5, y: 0.5 },
+        const corners = [
           { x: 0, y: 0 },
           { x: 1, y: 0 },
           { x: 1, y: 1 },
           { x: 0, y: 1 },
         ];
-        runtime.calibrationMarkers().forEach((marker, index) => {
-          const p = points[marker.step];
-          circle(p, 35, marker.color);
-          circle(p, 8, '#15200d');
+        const markers = runtime.calibrationMarkers();
+        markers.forEach((marker, index) => {
+          let status = 'aim at the center';
+          if (marker.step === 0) {
+            circle({ x: 0.5, y: 0.5 }, 35, marker.color);
+            circle({ x: 0.5, y: 0.5 }, 8, '#15200d');
+          } else {
+            let count = 0;
+            corners.forEach((c, i) => {
+              // Concentric corner rings, one per calibrating player; filled once reached.
+              const reached = (marker.reached & (1 << i)) !== 0,
+                r = 70 + index * 16;
+              if (reached) count++;
+              ctx.strokeStyle = marker.color;
+              ctx.lineWidth = reached ? 12 : 4;
+              ctx.beginPath();
+              ctx.arc(c.x * W, c.y * H, r, 0, Math.PI * 2);
+              ctx.stroke();
+            });
+            status = `corners ${count}/4`;
+          }
           label(
-            `${marker.name}: ${marker.step + 1}/5`,
+            `${marker.name}: ${status}`,
             W / 2,
             80 + index * 32,
             22,
@@ -125,7 +141,9 @@ export function GameCanvas({ runtime }: { runtime: Runtime }) {
         ctx.lineWidth = 4;
         ctx.strokeRect(2, 2, W - 4, H - 4);
         label(
-          'Aim at your highlighted point. Tap your phone.',
+          markers.some((m) => m.step === 1)
+            ? 'Move your cursor into each corner.'
+            : 'Aim at the center and tap your phone.',
           W / 2,
           H / 2 + 100,
           30,

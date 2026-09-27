@@ -240,7 +240,7 @@ export function WidgetControl({
         ) : null}
         {w.type === 'pointer'
           ? runtime.view.calibrated
-            ? 'Aim at your screen'
+            ? 'Point the top of your phone at the screen'
             : 'Calibrate to aim'
           : w.type === 'tilt'
             ? 'Tilt to steer'

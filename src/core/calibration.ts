@@ -44,10 +44,32 @@ export function rotate(q: Quaternion, v: number[]): number[] {
     c + w * tz + x * ty - y * tx,
   ];
 }
+// Remote grip: the phone's top edge points at the screen (device +y), its
+// right edge is screen-right (+x) and its face points up (+z).
+const FORWARD = [0, 1, 0],
+  RIGHT = [1, 0, 0],
+  UP = [0, 0, 1];
+const dot = (a: number[], b: number[]) =>
+  a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 export function tangent(ref: Quaternion, q: Quaternion): Point {
-  const [x, y, z] = rotate(multiply(inverse(ref), q), [0, 0, -1]);
-  if (-z < 0.03) throw new Error('Aim toward the screen');
-  return { x: x / -z, y: -y / -z };
+  const aim = rotate(multiply(inverse(ref), q), FORWARD),
+    forward = dot(aim, FORWARD);
+  if (forward < 0.03) throw new Error('Aim toward the screen');
+  return { x: dot(aim, RIGHT) / forward, y: -dot(aim, UP) / forward };
+}
+/** Device orientation, relative to the reference pose, that aims at tangent point p. */
+export function aimAt(p: Point): Quaternion {
+  const to = FORWARD.map((f, i) => f + p.x * RIGHT[i] - p.y * UP[i]),
+    n = Math.hypot(...to),
+    v = to.map((c) => c / n),
+    [a, b, c] = FORWARD;
+  // Shortest rotation from FORWARD to v.
+  return normalize([
+    b * v[2] - c * v[1],
+    c * v[0] - a * v[2],
+    a * v[1] - b * v[0],
+    1 + dot(FORWARD, v),
+  ]);
 }
 export function project(h: number[], p: Point): Point {
   const d = h[6] * p.x + h[7] * p.y + h[8];
@@ -122,24 +144,35 @@ export interface Calibration {
   recenters: number;
   roll: number;
 }
-export function calibrate(
-  samples: Quaternion[],
+// Screen widths per unit of tangent. 1.9 puts the edge at about ±15° of aim.
+export const DEFAULT_GAIN = 1.9,
+  MIN_GAIN = 0.6,
+  MAX_GAIN = 6;
+export const clampGain = (gain: number) =>
+  Number.isFinite(gain)
+    ? Math.max(MIN_GAIN, Math.min(MAX_GAIN, gain))
+    : DEFAULT_GAIN;
+/**
+ * Linear mapping around a captured center pose. The vertical gain is scaled
+ * by 16:9 so a degree of aim covers the same pixels on both axes.
+ */
+export function centerCalibration(
+  ref: Quaternion,
+  gain: number,
   previous?: Calibration,
 ): Calibration {
-  if (samples.length !== 5) throw new Error('Five samples required');
-  const h = fitHomography(samples.slice(1).map((q) => tangent(samples[0], q)));
-  const center = project(h, { x: 0, y: 0 });
-  if (Math.hypot(center.x - 0.5, center.y - 0.5) > 0.18)
-    throw new Error('Center does not match the corners. Try again.');
+  const g = clampGain(gain);
   return {
-    ref: samples[0],
-    h,
+    ref,
+    h: [g, 0, 0.5, 0, (g * 16) / 9, 0.5, 0, 0, 1],
     at: Date.now(),
     count: (previous?.count ?? 0) + 1,
     recenters: previous?.recenters ?? 0,
     roll: 0,
   };
 }
+export const gainOf = (cal: Calibration | null | undefined) =>
+  cal ? clampGain(cal.h[0] / cal.h[8]) : DEFAULT_GAIN;
 export function recenter(cal: Calibration, current: Quaternion): Calibration {
   // A hand-fitted H need not map tangent origin to exact screen center.
   const h = cal.h,
@@ -147,10 +180,7 @@ export function recenter(cal: Calibration, current: Quaternion): Calibration {
       [h[0] - 0.5 * h[6], h[1] - 0.5 * h[7], 0.5 * h[8] - h[2]],
       [h[3] - 0.5 * h[6], h[4] - 0.5 * h[7], 0.5 * h[8] - h[5]],
     ]);
-  const to = [x, -y, -1],
-    n = Math.hypot(...to),
-    v = to.map((c) => c / n);
-  const rotation = normalize([v[1], -v[0], 0, 1 - v[2]]);
+  const rotation = aimAt({ x, y });
   return {
     ...cal,
     ref: multiply(current, inverse(rotation)),

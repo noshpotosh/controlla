@@ -4,6 +4,8 @@ import Link from 'next/link';
 import type { Message } from '../core/types.ts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
+import { MAX_GAIN, MIN_GAIN } from '../core/calibration.ts';
 import {
   Radio,
   Monitor,
@@ -23,6 +25,8 @@ import { Runtime, type JoinOptions } from './runtime.ts';
 import { WidgetControl } from './Widgets.tsx';
 import { GameCanvas } from './GameCanvas.tsx';
 import type { Identity, Role } from '../core/types.ts';
+const cornerCount = (mask: number) =>
+  [1, 2, 4, 8].filter((bit) => mask & bit).length;
 function getResume(role: Role, room: string, venue: string) {
   try {
     for (let i = 0; i < localStorage.length; i++) {
@@ -465,33 +469,72 @@ function Connected({
               Join another room
             </Button>
           </div>
-        ) : v.calibrationStep >= 0 ? (
+        ) : v.calibrationStep === 0 ? (
           <div className="calibrate">
-            <span className="eyebrow lime">
-              CALIBRATION / {v.calibrationStep + 1} OF 5
-            </span>
-            <h1>
-              Aim at the{' '}
-              {
-                [
-                  'center',
-                  'top-left corner',
-                  'top-right corner',
-                  'bottom-right corner',
-                  'bottom-left corner',
-                ][v.calibrationStep]
-              }
-              .
-            </h1>
+            <span className="eyebrow lime">CALIBRATION / 1 OF 2</span>
+            <h1>Aim at the center.</h1>
             <p className="note">
-              Keep your phone upright. Aim at the highlighted point on your
-              screen’s game area, then tap below.
+              Hold your phone like a remote, screen up. Point its top edge at
+              the center of your screen’s game area, then tap below.
             </p>
             <Button
               className="action"
               onClick={() => runtime.captureCalibration()}
             >
-              Capture aim
+              Capture center
+            </Button>
+          </div>
+        ) : v.calibrationStep === 1 ? (
+          <div className="calibrate">
+            <span className="eyebrow lime">CALIBRATION / 2 OF 2</span>
+            <h1>Move your cursor into each corner.</h1>
+            <p className="note">
+              Sitting far away? Turn sensitivity up so you need less movement.
+            </p>
+            <div className="sensitivity">
+              <span id="sensitivity">Sensitivity</span>
+              <Slider
+                aria-labelledby="sensitivity"
+                min={MIN_GAIN}
+                max={MAX_GAIN}
+                step={0.1}
+                value={[v.sensitivity]}
+                onValueChange={(value) =>
+                  runtime.setSensitivity(
+                    Array.isArray(value) ? value[0] : value,
+                  )
+                }
+              />
+              <div className="sensitivity-ends">
+                <span>More movement</span>
+                <span>Less movement</span>
+              </div>
+            </div>
+            <div
+              className="corners"
+              aria-label={`${cornerCount(v.cornersReached)} of 4 corners reached`}
+            >
+              {['top-left', 'top-right', 'bottom-right', 'bottom-left'].map(
+                (corner, i) => (
+                  <i
+                    key={corner}
+                    className={`corner ${corner} ${
+                      v.cornersReached & (1 << i) ? 'reached' : ''
+                    }`}
+                  />
+                ),
+              )}
+              <span>{cornerCount(v.cornersReached)}/4</span>
+            </div>
+            <Button
+              className="action"
+              disabled={v.cornersReached !== 15}
+              onClick={() => runtime.finishCalibration()}
+            >
+              Done
+            </Button>
+            <Button variant="outline" onClick={() => runtime.redoCenter()}>
+              Redo center
             </Button>
           </div>
         ) : (
