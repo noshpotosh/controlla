@@ -3,6 +3,13 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import WebSocket from 'ws';
 import { Runtime } from '../src/client/runtime.ts';
+import {
+  defaultCapabilities,
+  labManifest,
+  resolveConfig,
+} from '../src/core/config.ts';
+import { decodeInput } from '../src/core/protocol.ts';
+import type { Identity } from '../src/core/types.ts';
 
 // Executes the real role routing and Session on actual WebSockets. Browser APIs
 // are minimal mocks: this is deliberately NOT a WebRTC or mobile-browser test.
@@ -194,3 +201,60 @@ void test(
     assert.match(venue.view.warning, /host screen disconnected/);
   },
 );
+
+void test('controller maintains 60 Hz despite timer rounding and skips missed frames after suspension', (t) => {
+  let time = 1000;
+  t.mock.method(performance, 'now', () => time);
+  const globals: Record<string, unknown> = {
+    document: { hidden: false },
+    window: { devicePixelRatio: 1 },
+    innerWidth: 800,
+    innerHeight: 600,
+    navigator: { maxTouchPoints: 1 },
+  };
+  for (const [key, value] of Object.entries(globals)) {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, key);
+    Object.defineProperty(globalThis, key, { configurable: true, value });
+    t.after(() => {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else Reflect.deleteProperty(globalThis, key);
+    });
+  }
+  const runtime = new Runtime({
+    role: 'controller',
+    endpoint: 'ws://localhost/signal',
+  });
+  runtime.view.identity = {
+    role: 'controller',
+    venueId: 'host',
+    hostId: 'host',
+  } as Identity;
+  runtime.view.status = 'Connected';
+  runtime.view.config = resolveConfig(labManifest, defaultCapabilities(), 1);
+  const frames: number[] = [];
+  t.mock.method(
+    runtime.network,
+    'send',
+    (_peer: string, channel: string, data: unknown) => {
+      if (channel === 'input')
+        frames.push(decodeInput(data as ArrayBuffer, time).time);
+    },
+  );
+  // Exercise production scheduling with a deterministic 8 ms browser timer.
+  const tick = () => (runtime as unknown as { tick(): void }).tick();
+  for (; time < 2000; time += 8) tick();
+  assert.ok(
+    frames.length >= 59 && frames.length <= 61,
+    `expected 60 Hz, got ${frames.length}`,
+  );
+  assert.ok(frames.slice(1).every((at, i) => at - frames[i] <= 24.001));
+  time = 10000;
+  const before = frames.length;
+  tick();
+  tick();
+  assert.equal(
+    frames.length,
+    before + 1,
+    'resume sends once without a catch-up burst',
+  );
+});

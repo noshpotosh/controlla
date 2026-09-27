@@ -74,7 +74,7 @@ export function WidgetControl({
       const c = canvas.current,
         ctx = c?.getContext('2d');
       if (c && ctx) {
-        ctx.fillStyle = '#b6ff65';
+        ctx.fillStyle = '#d5ff70';
         ctx.beginPath();
         ctx.arc(
           ((p.x + 1) * c.width) / 2,
@@ -308,9 +308,9 @@ function PointerPreview({ runtime }: { runtime: Runtime }) {
     let raf = 0;
     const render = () => {
       const p = runtime.previewPoint();
-      ctx.fillStyle = '#121d0c';
+      ctx.fillStyle = '#181c35';
       ctx.fillRect(0, 0, 280, 158);
-      ctx.strokeStyle = '#b6ff65';
+      ctx.strokeStyle = '#d5ff70';
       ctx.lineWidth = 2;
       const x = Math.max(0, Math.min(280, p.x * 280)),
         y = Math.max(0, Math.min(158, p.y * 158));

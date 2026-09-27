@@ -27,10 +27,10 @@ export class MinigameRenderer {
       x: number,
       y: number,
       size = 26,
-      color = '#dfead6',
+      color = '#fff9e8',
       align: CanvasTextAlign = 'center',
     ) => {
-      ctx.font = `600 ${size}px Arial`;
+      ctx.font = `800 ${size}px "Trebuchet MS", sans-serif`;
       ctx.fillStyle = color;
       ctx.textAlign = align;
       ctx.fillText(text, x, y);
@@ -40,7 +40,7 @@ export class MinigameRenderer {
       40,
       55,
       22,
-      '#99ad89',
+      '#b8bed5',
       'left',
     );
     label(
@@ -48,15 +48,15 @@ export class MinigameRenderer {
       W - 40,
       55,
       28,
-      '#b6ff65',
+      '#d5ff70',
       'right',
     );
     if (state.gameId === 'tilt-rally') {
       const lane = 0.5 + 0.32 * Math.sin((time - D - state.startAt) / 2300);
-      ctx.fillStyle = '#b6ff6514';
+      ctx.fillStyle = '#d5ff7014';
       ctx.fillRect(0, (lane - 0.12) * H, W, 0.24 * H);
       ctx.setLineDash([12, 12]);
-      ctx.strokeStyle = '#b6ff65';
+      ctx.strokeStyle = '#d5ff70';
       ctx.beginPath();
       ctx.moveTo(0, lane * H);
       ctx.lineTo(W, lane * H);
@@ -67,7 +67,7 @@ export class MinigameRenderer {
         W / 2,
         H - 40,
         22,
-        '#9daf90',
+        '#b8bed5',
       );
       for (const [id, p] of Object.entries(state.racers)) {
         const player = players.find((p) => p.id === id);
@@ -75,20 +75,20 @@ export class MinigameRenderer {
         label(player?.name ?? '', p.x * W, p.y * H - 30, 18, player?.color);
       }
     } else if (state.mode === 'tracking') {
-      circle(state.target, 42, '#b6ff65');
-      circle(state.target, 10, '#182510');
-      label('Keep your crosshair on the target.', W / 2, H - 40, 24, '#9daf90');
+      circle(state.target, 42, '#d5ff70');
+      circle(state.target, 10, '#20283a');
+      label('Keep your crosshair on the target.', W / 2, H - 40, 24, '#b8bed5');
     } else if (state.mode === 'strobe') {
       label(
         'Press FIRE to switch the screen.',
         W / 2,
         H / 2,
         42,
-        state.flash ? '#172411' : '#b6ff65',
+        state.flash ? '#172411' : '#d5ff70',
       );
     } else if (state.promptId && time >= state.targetAt) {
-      circle(state.target, 64, '#b6ff65');
+      circle(state.target, 64, '#d5ff70');
       label('FIRE', state.target.x * W, state.target.y * H + 10, 28, '#15220c');
-    } else label('Wait for the target…', W / 2, H / 2, 42, '#9daf90');
+    } else label('Wait for the target…', W / 2, H / 2, 42, '#b8bed5');
   }
 }

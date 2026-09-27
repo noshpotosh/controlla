@@ -4,6 +4,7 @@ import { SnapshotBuffer } from '../core/snapshots.ts';
 import { SessionAuthority } from '../core/session.ts';
 import { encodeInput, decodeInput } from '../core/protocol.ts';
 import { Motion } from './motion.ts';
+import { PointerSmoother } from '../core/pointer.ts';
 import {
   calibrate,
   project,
@@ -68,6 +69,8 @@ export class Runtime {
   private stopped = false;
   private lastUi = 0;
   private lastSend = 0;
+  private nextSend = 0;
+  private pointerSmoother = new PointerSmoother();
   private seq = 0;
   private latestPoint: Point = { x: 0.5, y: 0.5 };
   private velocity: Point = { x: 0, y: 0 };
@@ -402,6 +405,8 @@ export class Runtime {
         this.edgeTimes = [0, 0, 0, 0];
         this.buttonState = 0;
         this.seq = 0;
+        this.nextSend = 0;
+        this.pointerSmoother.reset();
         this.latestPoint =
           config.sensors.pointer.enabled ||
           config.widgets.some((w) => w.space === 'normalized')
@@ -479,15 +484,25 @@ export class Runtime {
         this.motion.confidence > 0
       ) {
         try {
-          point = project(
-            this.calibration.h,
-            tangent(this.calibration.ref, this.motion.q),
+          point = this.pointerSmoother.sample(
+            project(
+              this.calibration.h,
+              tangent(this.calibration.ref, this.motion.q),
+            ),
+            this.motion.lastAt,
           );
         } catch {
           /* Keep last valid position when aimed behind the screen. */
         }
       } else if (config.sensors.tilt.enabled) point = this.motion.tilt;
-      if (local - this.lastSend >= 1000 / this.sendRate) {
+      if (local >= this.nextSend) {
+        const interval = 1000 / this.sendRate;
+        // Keep the deadline anchored instead of accumulating timer overshoot.
+        // After a suspension, send once without trying to catch up old frames.
+        this.nextSend =
+          local - this.nextSend > interval
+            ? local + interval
+            : this.nextSend + interval;
         const dt = Math.max(0.001, (local - this.lastSend) / 1000);
         this.velocity = {
           x: Math.max(-8, Math.min(8, (point.x - this.latestPoint.x) / dt)),
@@ -667,6 +682,7 @@ export class Runtime {
           this.samples,
           this.calibration ?? undefined,
         );
+        this.pointerSmoother.reset();
         this.view.calibrated = true;
         this.view.calibrationStep = -1;
         this.saveCalibration();
@@ -687,6 +703,7 @@ export class Runtime {
     if (!this.calibration) return;
     try {
       this.calibration = recenter(this.calibration, this.motion.q);
+      this.pointerSmoother.reset();
       this.latestPoint = { x: 0.5, y: 0.5 };
       this.saveCalibration();
       this.notify();

@@ -15,6 +15,9 @@ import {
   Download,
   RotateCcw,
   Crosshair,
+  Sparkles,
+  Zap,
+  Trophy,
 } from 'lucide-react';
 import { Runtime, type JoinOptions } from './runtime.ts';
 import { WidgetControl } from './Widgets.tsx';
@@ -108,32 +111,44 @@ export default function App() {
         <Link className="brand" href="/">
           controlla<span>●</span>
         </Link>
-        <span className="eyebrow">PARTY GAME LAB / 001</span>
+        <span className="eyebrow">GOOD COMPANY. GREAT GAMES.</span>
         <span className="connection">
-          <i /> READY TO CONNECT
+          <i /> READY, PLAYER?
         </span>
       </header>
       <section className="entry">
         <div className="entry-copy">
-          <span className="eyebrow lime">YOUR PHONE. YOUR CONTROLLER.</span>
+          <span className="party-badge">
+            <Sparkles size={16} /> THE LIVING ROOM ARCADE
+          </span>
           <h1>
-            Same game.
+            Little phones.
             <br />
-            Any living room.
+            <span>Big play energy.</span>
           </h1>
           <p>
-            One screen per room. One phone per player.
+            Grab your people. Pick your screen.
             <br />
-            Bring up to eight people together.
+            Your phone is your ticket to game night.
           </p>
           <div className="facts">
-            <span>01 — OPEN A SCREEN</span>
-            <span>02 — CONNECT YOUR PHONES</span>
-            <span>03 — PLAY TOGETHER</span>
+            <span>
+              <Monitor /> One screen
+            </span>
+            <span>
+              <Gamepad2 /> 2–8 players
+            </span>
+            <span>
+              <Zap /> All play
+            </span>
           </div>
         </div>
         <div className="join-panel">
-          <span className="eyebrow">CHOOSE YOUR DEVICE</span>
+          <div className="join-heading">
+            <span className="eyebrow">LET’S PLAY</span>
+            <h2>Pick your seat.</h2>
+            <span className="ticket-tag">ADMIT EVERYONE</span>
+          </div>
           {[
             {
               id: 'host' as const,
@@ -225,7 +240,7 @@ export default function App() {
             )}
             <Button type="submit" className="action">
               {role === 'host'
-                ? 'Create room'
+                ? 'Let’s start a room'
                 : role === 'display'
                   ? 'Connect this screen'
                   : 'Connect my phone'}{' '}
@@ -592,7 +607,7 @@ function Connected({
         </div>
         <aside className="sidebar">
           <h2>
-            THE PLAYERS{' '}
+            <Trophy size={18} aria-hidden="true" /> THE CREW{' '}
             <span className="lime">
               / {active.length.toString().padStart(2, '0')}
             </span>
@@ -619,7 +634,7 @@ function Connected({
             ))
           ) : (
             <p className="empty">
-              Your arena is ready.
+              The gang’s all… almost here.
               <br />
               Open the phone link or enter the room and screen codes on each
               phone.
@@ -647,7 +662,7 @@ function Connected({
             >
               <Crosshair />
               <span>
-                01 / LATENCY LAB
+                LATENCY LAB
                 <br />
                 <small>Aim. React. Test your connection.</small>
               </span>
@@ -661,7 +676,7 @@ function Connected({
             >
               <Gamepad2 />
               <span>
-                02 / TILT RALLY
+                TILT RALLY
                 <br />
                 <small>Steer with motion. Swipe for speed.</small>
               </span>
@@ -732,7 +747,7 @@ function Connected({
       </div>
       {hud && <Diagnostics runtime={runtime} />}
       <footer>
-        <span>YOUR CURSOR IS LOCAL. YOUR OUTCOMES ARE SHARED.</span>
+        <span>A LITTLE COMPETITION. A LOT OF GOOD COMPANY.</span>
         <span>
           {v.wakeLock ? 'SCREEN AWAKE' : 'CHECK DISPLAY SLEEP SETTINGS'}
         </span>

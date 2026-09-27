@@ -4,6 +4,8 @@ The code provides a runnable prototype of the complete venue topology and two mi
 
 ## Automated checks
 
+- Pointer smoothing: stationary jitter attenuation, responsive sweeps, no overshoot, frame-rate independence, stale/invalid samples, and reset after suspension.
+
 - Binary frames under 60 bytes; off-screen coordinates; invalid frame rejection; u16 sequence and u32 timestamp rollover; reorder/loss accounting.
 - Minimum-RTT clock selection; slow correction; D ramp and single-venue zero target; bounded extrapolation.
 - Off-axis corner fit; degenerate/crossed corners; exact center recenter while preserving H.
@@ -36,7 +38,7 @@ Run `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build`. `npm r
 1. Start one host screen and 4–8 phones on trusted HTTPS. Grant motion from the explicit button. Deny it on one phone and confirm stick fallback.
 2. Calibrate center, TL, TR, BR, BL against the **game area**. Record the seat angle. Recenter; verify no corners are requested again.
 3. Run all four Latency Lab modes. Tracking exports RMS error and estimated pursuit phase lag; this includes human tracking behavior. Reaction/Fairness exports mean reaction times and counts. Strobe is designed for a camera.
-4. Film hand and screen together at 240 fps. Measure many trials, not one. Compute p50/p95/p99 and (p99−p50), record display model, browser/OS, power mode, TV Game Mode, and network route. Enter measured motion-to-photon in diagnostics and save the JSON report.
+4. In Tracking, hold still, sweep quickly, then stop on a target; check for tremor, lag, and overshoot. Repeat after Recenter and after backgrounding the phone. Sensor filtering uses an adaptive 8–45 ms time constant; the local crosshair uses a 12 ms display glide. These add latency and need real-device validation. Film hand and screen together at 240 fps. Measure many trials, not one. Compute p50/p95/p99 and (p99−p50), record display model, browser/OS, power mode, TV Game Mode, and network route. Enter measured motion-to-photon in diagnostics and save the JSON report.
 5. Launch Tilt Rally without reloading phones. Pointer output must stop; gyro-independent tilt + swipe (or stick fallback) must take over.
 6. Background and reload a phone, then disconnect it for less than 60 seconds. Verify name/seat/color, configuration, and saved homography. Recenter after a reload if the phone moved while sensor integration was suspended.
 7. Add a second venue, first locally, then remotely. Join uneven phone counts. Check each venue's own cursors remain local while shared objects use snapshots. Compare 16:9 and 4:3 screens.
