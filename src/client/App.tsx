@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Runtime, type JoinOptions } from './runtime.ts';
 import { WidgetControl } from './Widgets.tsx';
+import { MotionLab } from './MotionLab.tsx';
 import { GameCanvas } from './GameCanvas.tsx';
 import type { Identity, Role } from '../core/types.ts';
 function getResume(role: Role, room: string, venue: string) {
@@ -296,7 +297,8 @@ function Connected({
     [game, setGame] = useState('latency-lab'),
     [mode, setMode] = useState('reaction'),
     [hud, setHud] = useState(false),
-    [copied, setCopied] = useState(false);
+    [copied, setCopied] = useState(false),
+    [motionLab, setMotionLab] = useState(false);
   const stage = useRef<HTMLDivElement>(null);
   useEffect(() => runtime.subscribe(() => redraw((x) => x + 1)), [runtime]);
   const v = runtime.view,
@@ -466,6 +468,8 @@ function Connected({
               Join another room
             </Button>
           </div>
+        ) : motionLab ? (
+          <MotionLab runtime={runtime} onClose={() => setMotionLab(false)} />
         ) : v.adjustingAim ? (
           <div className="calibrate">
             <span className="eyebrow lime">AIM SETTINGS</span>
@@ -497,6 +501,9 @@ function Connected({
             <Button variant="outline" onClick={() => runtime.recenter()}>
               <RotateCcw />
               Recenter
+            </Button>
+            <Button variant="outline" onClick={() => setMotionLab(true)}>
+              Motion lab
             </Button>
             <Button
               className="action"

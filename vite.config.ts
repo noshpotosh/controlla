@@ -2,11 +2,15 @@ import { sites } from '@openai/sites-vite-plugin';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import tailwindcss from '@tailwindcss/postcss';
 import vinext from 'vinext';
+import { mkdir, writeFile } from 'node:fs/promises';
 import type { IncomingMessage } from 'node:http';
 import { connect } from 'node:net';
+import { networkInterfaces } from 'node:os';
+import { resolve, sep } from 'node:path';
 import type { Duplex } from 'node:stream';
 import { defineConfig, type Plugin } from 'vite';
 import hostingConfig from './.openai/hosting.json' with { type: 'json' };
+import { isMotionTrace } from './src/core/motion/trace.ts';
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   '00000000-0000-4000-8000-000000000000';
@@ -53,6 +57,81 @@ const signalProxy = (): Plugin => ({
 });
 const SIGNAL_PORT = Number(process.env.SIGNAL_PORT ?? 8787);
 
+// Dev-only: the phone's Motion Lab uploads recordings here so they land in the
+// repo as replay fixtures. Accepts JSON only, from this machine's own
+// addresses, capped in size, written only inside MOTION_TRACE_DIR.
+const MOTION_TRACE_DIR = 'tests/fixtures/motion';
+const MAX_TRACE_BYTES = 5 * 1024 * 1024;
+const ownHostnames = () =>
+  new Set([
+    'localhost',
+    '127.0.0.1',
+    '[::1]',
+    ...Object.values(networkInterfaces())
+      .flat()
+      .flatMap((net) => (net ? [net.address] : [])),
+  ]);
+const motionTraceUpload = (): Plugin => ({
+  name: 'controlla-motion-trace-upload',
+  apply: 'serve',
+  configureServer(server) {
+    server.middlewares.use('/__controlla/motion-trace', (req, res) => {
+      const reply = (status: number, body: object) => {
+        if (res.writableEnded) return;
+        res.statusCode = status;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(body));
+      };
+      let origin = '';
+      try {
+        origin = new URL(req.headers.origin ?? '').hostname;
+      } catch {
+        /* Missing or malformed origin is rejected below. */
+      }
+      if (req.method !== 'POST') return reply(405, { error: 'POST only' });
+      if (!ownHostnames().has(origin))
+        return reply(403, { error: 'Uploads must come from this dev server' });
+      if (!req.headers['content-type']?.includes('application/json'))
+        return reply(415, { error: 'Expected application/json' });
+      const chunks: Buffer[] = [];
+      let size = 0;
+      req.on('data', (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > MAX_TRACE_BYTES) {
+          reply(413, { error: 'Recording is larger than 5 MB' });
+          req.destroy();
+        } else chunks.push(chunk);
+      });
+      req.on('end', async () => {
+        if (res.writableEnded) return;
+        try {
+          const trace: unknown = JSON.parse(Buffer.concat(chunks).toString());
+          if (!isMotionTrace(trace))
+            return reply(400, { error: 'Not a motion trace' });
+          const slug =
+            trace.name
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-|-$/g, '')
+              .slice(0, 40) || 'trace';
+          const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const dir = resolve(server.config.root, MOTION_TRACE_DIR),
+            file = resolve(dir, `${slug}-${stamp}.json`);
+          if (!file.startsWith(dir + sep))
+            return reply(400, { error: 'Invalid name' });
+          await mkdir(dir, { recursive: true });
+          await writeFile(file, JSON.stringify(trace));
+          reply(201, { path: `${MOTION_TRACE_DIR}/${slug}-${stamp}.json` });
+        } catch (error) {
+          reply(400, {
+            error: error instanceof Error ? error.message : 'Upload failed',
+          });
+        }
+      });
+    });
+  },
+});
+
 const localBindingConfig = {
   main: 'vinext/server/fetch-handler',
   compatibility_flags: ['nodejs_compat'],
@@ -96,6 +175,7 @@ export default defineConfig(async () => {
     },
     plugins: [
       signalProxy(),
+      motionTraceUpload(),
       ...(useHttps ? [basicSsl()] : []),
       vinext(),
       sites(),

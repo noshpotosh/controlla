@@ -7,6 +7,11 @@ import {
   identity,
 } from '../core/calibration.ts';
 import type { Capabilities, Quaternion } from '../core/types.ts';
+import {
+  RingBuffer,
+  toRawSample,
+  type RawMotionSample,
+} from '../core/motion/trace.ts';
 import { defaultCapabilities } from '../core/config.ts';
 interface PermissionConstructor {
   requestPermission?: () => Promise<'granted' | 'denied'>;
@@ -86,9 +91,28 @@ export class Motion {
     this.listener = null;
     this.lastAt = 0;
   }
+  /** Last ~60 s of raw events, for the Motion Lab and replay tests. */
+  readonly samples = new RingBuffer<RawMotionSample>(6000);
+  private sampleListeners = new Set<(sample: RawMotionSample) => void>();
+  /** Subscribe to raw events; returns an unsubscribe function. */
+  onSample(listener: (sample: RawMotionSample) => void) {
+    this.sampleListeners.add(listener);
+    return () => {
+      this.sampleListeners.delete(listener);
+    };
+  }
   sample(e: DeviceMotionEvent) {
     const time = performance.now(),
       dt = this.lastAt ? Math.min(0.05, (time - this.lastAt) / 1000) : 0;
+    // Recording is observation only; the processing below is unchanged.
+    const recorded = toRawSample(e, time);
+    this.samples.push(recorded);
+    for (const listener of this.sampleListeners)
+      try {
+        listener(recorded);
+      } catch {
+        /* A lab view must never break motion sampling. */
+      }
     this.lastAt = time;
     this.observed++;
     const g = e.accelerationIncludingGravity,

@@ -461,6 +461,71 @@ footer {
   font-weight: 400;
   opacity: 0.75;
 }
+.motion-lab {
+  padding: 20px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+}
+.motion-lab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.motion-lab-name {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+.motion-lab-step {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+.motion-lab-step h1 {
+  font-size: 26px;
+}
+.motion-lab-countdown {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.motion-lab-tap {
+  min-height: 140px;
+}
+.motion-lab-live {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.motion-lab-bars {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.motion-lab-bar {
+  display: grid;
+  grid-template-columns: 48px 1fr 72px;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+}
+.motion-lab-bar i {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--primary);
+  transition: width 80ms linear;
+}
+.motion-lab-bar small {
+  text-align: right;
+  color: var(--muted-foreground);
+}
 .results-list {
   display: grid;
   gap: 12px;
