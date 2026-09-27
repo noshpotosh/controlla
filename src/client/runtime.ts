@@ -4,17 +4,12 @@ import { SnapshotBuffer } from '../core/snapshots.ts';
 import { SessionAuthority } from '../core/session.ts';
 import { encodeInput, decodeInput } from '../core/protocol.ts';
 import { Motion } from './motion.ts';
-import { PointerSmoother } from '../core/pointer.ts';
 import {
-  centerCalibration,
   clampGain,
   DEFAULT_GAIN,
-  gainOf,
-  project,
-  recenter,
-  tangent,
-  type Calibration,
-} from '../core/calibration.ts';
+  GyroPointer,
+  PointerSmoother,
+} from '../core/pointer.ts';
 import {
   now,
   type ControllerConfig,
@@ -41,12 +36,9 @@ export interface RuntimeView {
   limitingVenue: string | null;
   telemetry: Message | null;
   links: Record<string, LinkStats>;
-  /** -1 idle, 0 aim at center, 1 move the live cursor into each corner. */
-  calibrationStep: number;
-  /** Bits 0–3: top-left, top-right, bottom-right, bottom-left reached. */
-  cornersReached: number;
+  /** The aim settings panel (sensitivity, recenter) is open. */
+  adjustingAim: boolean;
   sensitivity: number;
-  calibrated: boolean;
   motionEnabled: boolean;
   sensorHz: number;
   history: { gameId: string; results: Result[] }[];
@@ -54,6 +46,8 @@ export interface RuntimeView {
   wakeLock: boolean;
   controllerPath: 'venue' | 'direct-to-session';
 }
+// Pointer sensitivity is a property of the player and phone, not the room.
+const POINTER_GAIN_KEY = 'controlla:pointer-gain';
 export interface JoinOptions {
   role: Role;
   room?: string;
@@ -87,7 +81,10 @@ export class Runtime {
     string,
     { point: Point; at: number; color: string; name: string }
   >();
-  private calibration: Calibration | null = null;
+  private gyroPointer = new GyroPointer();
+  private lastPointerSample = 0;
+  private pointerPoint: Point = { x: 0.5, y: 0.5 };
+  private recenters = 0;
   private events: GameEvent[] = [];
   private eventIds = new Set<string>();
   private audio: AudioContext | null = null;
@@ -99,10 +96,6 @@ export class Runtime {
   private sendRate = 60;
   private bootId = crypto.randomUUID();
   private lastPresentedKey = '';
-  private calibrationTargets = new Map<
-    string,
-    { step: number; reached: number; name: string; color: string }
-  >();
   private joinedAt = now();
   private lastShake = 0;
   private widgetLastSent = new Map<string, number>();
@@ -119,10 +112,8 @@ export class Runtime {
     limitingVenue: null,
     telemetry: null,
     links: {},
-    calibrationStep: -1,
-    cornersReached: 0,
+    adjustingAim: false,
     sensitivity: DEFAULT_GAIN,
-    calibrated: false,
     motionEnabled: false,
     sensorHz: 0,
     history: [],
@@ -183,15 +174,9 @@ export class Runtime {
         JSON.stringify(identity),
       );
       if (identity.role === 'controller') {
-        const stored = localStorage.getItem(this.calibrationKey());
-        if (stored) {
-          const value = JSON.parse(stored);
-          if (value.ref?.length === 4 && value.h?.length === 9) {
-            this.calibration = value;
-            this.motion.q = value.fusionQuaternion ?? this.motion.q;
-            this.view.calibrated = true;
-          }
-        }
+        const stored = localStorage.getItem(POINTER_GAIN_KEY);
+        if (stored) this.view.sensitivity = clampGain(Number(stored));
+        this.gyroPointer.gain = this.view.sensitivity;
       }
     } catch {
       /* Private browsing can disallow storage. */
@@ -213,9 +198,6 @@ export class Runtime {
   }
   private roster(roster: Roster) {
     this.view.roster = roster;
-    for (const id of this.calibrationTargets.keys())
-      if (!roster.players.some((p) => p.id === id && p.connected))
-        this.calibrationTargets.delete(id);
     this.authority?.setRoster(roster);
     const me = this.view.identity;
     if (me?.role === 'display') this.sendUp({ type: 'venueHello' });
@@ -303,22 +285,7 @@ export class Runtime {
           this.network.send(me.hostId, 'input', packet.buffer);
         }
       } else if (channel === 'ctrl') {
-        if (data.type === 'calibration') {
-          if (data.step === 0 || data.step === 1)
-            this.calibrationTargets.set(from, {
-              step: data.step,
-              reached:
-                Number.isInteger(data.reached) &&
-                data.reached >= 0 &&
-                data.reached <= 15
-                  ? data.reached
-                  : 0,
-              name: player.name,
-              color: player.color,
-            });
-          else this.calibrationTargets.delete(from);
-          this.notify();
-        } else if (me.role === 'host') this.authority?.control(from, data);
+        if (me.role === 'host') this.authority?.control(from, data);
         else
           this.network.send(me.hostId, 'ctrl', {
             type: 'fromController',
@@ -488,23 +455,26 @@ export class Runtime {
         const shake = config.widgets.find((w) => w.type === 'shake');
         if (shake) this.action(shake.action, 1);
       }
-      if (
-        config.sensors.pointer.enabled &&
-        this.calibration &&
-        this.motion.confidence > 0
-      ) {
-        try {
-          point = this.pointerSmoother.sample(
-            project(
-              this.calibration.h,
-              tangent(this.calibration.ref, this.motion.q),
+      if (config.sensors.pointer.enabled && this.motion.confidence > 0) {
+        // Integrate once per motion sample so a stalled sensor never replays
+        // its last rate.
+        const sampleAt = this.motion.lastAt;
+        if (sampleAt !== this.lastPointerSample) {
+          const dt = this.lastPointerSample
+            ? Math.min(0.05, (sampleAt - this.lastPointerSample) / 1000)
+            : 0;
+          this.lastPointerSample = sampleAt;
+          this.pointerPoint = this.pointerSmoother.sample(
+            this.gyroPointer.update(
+              this.motion.rate,
+              this.motion.up,
+              dt,
+              sampleAt,
             ),
-            this.motion.lastAt,
+            sampleAt,
           );
-          if (this.view.calibrationStep === 1) this.trackCorners(point);
-        } catch {
-          /* Keep last valid position when aimed behind the screen. */
         }
+        point = this.pointerPoint;
       } else if (config.sensors.tilt.enabled) point = this.motion.tilt;
       if (local >= this.nextSend) {
         const interval = 1000 / this.sendRate;
@@ -532,9 +502,7 @@ export class Runtime {
           edges: this.edges,
           edgeTimes: this.edgeTimes,
           confidence: config.sensors.pointer.enabled
-            ? this.calibration
-              ? this.motion.confidence
-              : 0
+            ? this.motion.confidence
             : 1,
         };
         this.network.send(
@@ -648,6 +616,12 @@ export class Runtime {
     if (button < 0 || button > 3) return;
     const mask = 1 << button;
     if (down && !(this.buttonState & mask)) {
+      if (config.sensors.pointer.enabled) {
+        // Tapping jolts the phone; register where the player was aiming.
+        this.pointerPoint = this.latestPoint =
+          this.gyroPointer.holdForPress(now());
+        this.pointerSmoother.reset();
+      }
       this.edges[button] = (this.edges[button] + 1) % 256;
       this.edgeTimes[button] = this.time();
       this.sendUp({
@@ -666,113 +640,36 @@ export class Runtime {
       ? this.buttonState | mask
       : this.buttonState & ~mask;
   }
-  beginCalibration() {
+  beginAdjustAim() {
     if (!this.view.motionEnabled) {
-      this.warn('Tap Enable motion before calibrating.');
+      this.warn('Tap Enable motion before adjusting your aim.');
       return;
     }
-    this.view.sensitivity = gainOf(this.calibration);
     this.view.warning = '';
+    this.view.adjustingAim = true;
     this.motion.start();
-    this.setCalibrationStep(0);
+    this.notify();
   }
-  /** Step 0: the current pose becomes screen center and the cursor goes live. */
-  captureCalibration() {
-    if (this.motion.confidence < 0.5) {
-      this.warn('Waiting for fresh motion samples. Move your phone gently.');
-      return;
-    }
-    this.calibration = centerCalibration(
-      [...this.motion.q],
-      this.view.sensitivity,
-      this.calibration ?? undefined,
-    );
-    this.pointerSmoother.reset();
-    this.view.warning = '';
-    this.setCalibrationStep(1);
+  finishAdjustAim() {
+    this.view.adjustingAim = false;
+    this.notify();
   }
-  /** Step 1 only: rescale the live cursor around the captured center. */
+  /** Screen widths per radian of turn; takes effect immediately. */
   setSensitivity(gain: number) {
-    if (this.view.calibrationStep !== 1 || !this.calibration) return;
-    this.view.sensitivity = clampGain(gain);
-    this.calibration = {
-      ...centerCalibration(this.calibration.ref, this.view.sensitivity),
-      count: this.calibration.count,
-      recenters: this.calibration.recenters,
-    };
-    this.notify();
-  }
-  redoCenter() {
-    this.setCalibrationStep(0);
-  }
-  finishCalibration() {
-    if (this.view.calibrationStep !== 1 || this.view.cornersReached !== 15)
-      return;
-    this.view.calibrated = true;
-    this.saveCalibration();
-    this.setCalibrationStep(-1);
-  }
-  private setCalibrationStep(step: number) {
-    this.view.calibrationStep = step;
-    this.view.cornersReached = 0;
-    this.sendCalibrationMarker();
-    this.notify();
-  }
-  private sendCalibrationMarker() {
-    this.network.send(this.view.identity!.venueId, 'ctrl', {
-      type: 'calibration',
-      step: this.view.calibrationStep,
-      reached: this.view.cornersReached,
-    });
-  }
-  /** Marks corners of the canonical area the live cursor has reached. */
-  private trackCorners(p: Point) {
-    const edge = 0.08,
-      left = p.x < edge,
-      right = p.x > 1 - edge,
-      top = p.y < edge,
-      bottom = p.y > 1 - edge,
-      hit =
-        (top && left ? 1 : 0) |
-        (top && right ? 2 : 0) |
-        (bottom && right ? 4 : 0) |
-        (bottom && left ? 8 : 0),
-      reached = this.view.cornersReached | hit;
-    if (reached === this.view.cornersReached) return;
-    this.view.cornersReached = reached;
-    this.sendCalibrationMarker();
+    this.view.sensitivity = this.gyroPointer.gain = clampGain(gain);
+    try {
+      localStorage.setItem(POINTER_GAIN_KEY, String(this.view.sensitivity));
+    } catch {
+      /* Private browsing can disallow storage; the setting lasts this session. */
+    }
     this.notify();
   }
   recenter() {
-    if (!this.calibration) return;
-    try {
-      this.calibration = recenter(this.calibration, this.motion.q);
-      this.pointerSmoother.reset();
-      this.latestPoint = { x: 0.5, y: 0.5 };
-      this.saveCalibration();
-      this.notify();
-    } catch (error) {
-      this.warn(String(error));
-    }
-  }
-  private calibrationKey() {
-    // v2: aim axis is the phone's top edge; older saved fits used its back.
-    return `controlla:calibration:v2:${this.view.identity?.room}:${this.view.identity?.venueId}`;
-  }
-  private saveCalibration() {
-    try {
-      localStorage.setItem(
-        this.calibrationKey(),
-        JSON.stringify({
-          ...this.calibration,
-          fusionQuaternion: this.motion.q,
-        }),
-      );
-    } catch {
-      this.warn(
-        'Calibration works, but this browser cannot save it for reconnect.',
-      );
-    }
+    this.gyroPointer.recenter();
+    this.pointerSmoother.reset();
+    this.pointerPoint = this.latestPoint = this.gyroPointer.current;
+    this.recenters++;
+    this.notify();
   }
   startGame(id: string, mode: string) {
     try {
@@ -813,9 +710,6 @@ export class Runtime {
     this.events = this.events.filter((e) => e.time > presentationTime);
     return state;
   }
-  calibrationMarkers() {
-    return [...this.calibrationTargets.values()];
-  }
   cursors() {
     return [...this.localCursors.entries()]
       .filter(([, c]) => now() - c.at < 1000)
@@ -851,10 +745,8 @@ export class Runtime {
         error: Number.isFinite(this.clock.error) ? this.clock.error : null,
         rtt: this.clock.rtts.summary(),
         sensorHz: this.motion.rateHz,
-        calibrationAge: this.calibration
-          ? Date.now() - this.calibration.at
-          : null,
-        recenters: this.calibration?.recenters ?? 0,
+        pointerGain: this.view.sensitivity,
+        recenters: this.recenters,
         transport:
           this.view.links[
             this.view.controllerPath === 'direct-to-session'
@@ -896,12 +788,10 @@ export class Runtime {
       telemetry: this.view.telemetry,
       links: this.view.links,
       disconnects: this.disconnects,
-      calibration: this.calibration
-        ? {
-            count: this.calibration.count,
-            recenters: this.calibration.recenters,
-          }
-        : null,
+      pointer: {
+        gain: this.view.sensitivity,
+        recenters: this.recenters,
+      },
       completed: this.view.history,
       authority: this.authority?.summary(),
     };
@@ -924,7 +814,6 @@ export class Runtime {
     }
   };
   private pageHide = () => {
-    if (this.calibration) this.saveCalibration();
     this.motion.stop();
     this.buttonState = 0;
   };

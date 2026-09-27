@@ -461,46 +461,6 @@ footer {
   font-weight: 400;
   opacity: 0.75;
 }
-/* A miniature screen with one dot per corner. */
-.corners {
-  position: relative;
-  align-self: center;
-  width: 160px;
-  height: 90px;
-  border: 2px solid var(--primary);
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-}
-.corner {
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid var(--primary);
-  background: transparent;
-  transition: background 120ms;
-}
-.corner.reached {
-  background: var(--primary);
-}
-.corner.top-left {
-  top: 6px;
-  left: 6px;
-}
-.corner.top-right {
-  top: 6px;
-  right: 6px;
-}
-.corner.bottom-right {
-  bottom: 6px;
-  right: 6px;
-}
-.corner.bottom-left {
-  bottom: 6px;
-  left: 6px;
-}
 .results-list {
   display: grid;
   gap: 12px;

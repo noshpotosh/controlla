@@ -235,19 +235,15 @@ export function WidgetControl({
         <span style={{ fontSize: 56, color: 'var(--primary)' }}>
           {w.type === 'pointer' ? '⊕' : w.type === 'tilt' ? '↔' : '↯'}
         </span>
-        {w.type === 'pointer' && runtime.view.calibrated ? (
-          <PointerPreview runtime={runtime} />
-        ) : null}
+        {w.type === 'pointer' ? <PointerPreview runtime={runtime} /> : null}
         {w.type === 'pointer'
-          ? runtime.view.calibrated
-            ? 'Point the top of your phone at the screen'
-            : 'Calibrate to aim'
+          ? 'Point the top of your phone at the screen'
           : w.type === 'tilt'
             ? 'Tilt to steer'
             : 'Shake your phone'}
         <small>
           {w.type === 'pointer'
-            ? 'Recenter whenever your aim drifts'
+            ? 'Push past an edge or tap Recenter to re-center'
             : `${Math.round(runtime.view.sensorHz)} motion samples / sec`}
         </small>
       </div>

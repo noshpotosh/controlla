@@ -9,21 +9,6 @@ import {
   newer,
 } from '../src/core/protocol.ts';
 import {
-  centerCalibration,
-  gainOf,
-  DEFAULT_GAIN,
-  MIN_GAIN,
-  MAX_GAIN,
-  fitHomography,
-  project,
-  recenter,
-  tangent,
-  axisAngle,
-  multiply,
-  identity,
-  aimAt,
-} from '../src/core/calibration.ts';
-import {
   ClockSync,
   Equalizer,
   Samples,
@@ -41,7 +26,6 @@ import { SessionAuthority } from '../src/core/session.ts';
 import type {
   InputFrame,
   Player,
-  Quaternion,
   Snapshot,
   Message,
   ControllerConfig,
@@ -152,103 +136,6 @@ void test('continuous buffer bounds extrapolation even after a stall', () => {
   assert.equal(b.horizon, 30);
   almost(f.x, 0.33);
   assert.ok(b.depth <= 20);
-});
-void test('off-axis homography maps all corners precisely without clamping', () => {
-  const ps = [
-      { x: -0.8, y: -0.4 },
-      { x: 0.2, y: -0.3 },
-      { x: 0.3, y: 0.5 },
-      { x: -0.6, y: 0.8 },
-    ],
-    h = fitHomography(ps);
-  ps.forEach((p, i) => {
-    const expected = [
-        [0, 0],
-        [1, 0],
-        [1, 1],
-        [0, 1],
-      ][i],
-      v = project(h, p);
-    almost(v.x, expected[0]);
-    almost(v.y, expected[1]);
-  });
-  assert.ok(project(h, { x: 2, y: 0 }).x > 1);
-});
-void test('degenerate, crossed, and nearly coincident calibration is rejected', () => {
-  assert.throws(() => fitHomography(Array(4).fill({ x: 0, y: 0 })));
-  assert.throws(() =>
-    fitHomography([
-      { x: 0, y: 0 },
-      { x: 1, y: 1 },
-      { x: 0, y: 1 },
-      { x: 1, y: 0 },
-    ]),
-  );
-});
-const aim = (x: number, y: number): Quaternion => aimAt({ x, y });
-void test('remote grip: yaw steers horizontally and pitch vertically', () => {
-  // Phone flat, top edge toward the screen. Turning right is a clockwise
-  // (negative) rotation about the face normal; tilting the top edge up is a
-  // positive rotation about the right edge.
-  const right = tangent(identity, axisAngle(0, 0, 1, -0.3)),
-    up = tangent(identity, axisAngle(1, 0, 0, 0.3));
-  assert.ok(right.x > 0.25);
-  almost(right.y, 0);
-  assert.ok(up.y < -0.25);
-  almost(up.x, 0);
-  const p = tangent(identity, aim(0.4, -0.2));
-  almost(p.x, 0.4);
-  almost(p.y, -0.2);
-});
-void test('center calibration maps the captured pose to center and scales with gain', () => {
-  const ref = aim(0.3, -0.1),
-    cal = centerCalibration(ref, 2),
-    at = (q: Quaternion) => project(cal.h, tangent(ref, q));
-  const center = at(ref);
-  almost(center.x, 0.5);
-  almost(center.y, 0.5);
-  // Yaw right by θ relative to the captured pose moves x by gain·tan θ.
-  const right = at(multiply(ref, axisAngle(0, 0, 1, -0.2)));
-  almost(right.x, 0.5 + 2 * Math.tan(0.2));
-  almost(right.y, 0.5);
-  // Pitch up moves y up, scaled by 16:9 so both axes match in pixels.
-  const up = at(multiply(ref, axisAngle(1, 0, 0, 0.1)));
-  almost(up.x, 0.5);
-  almost(up.y, 0.5 - ((2 * 16) / 9) * Math.tan(0.1));
-  // Doubling the gain doubles the displacement.
-  const doubled = project(
-    centerCalibration(ref, 4).h,
-    tangent(ref, multiply(ref, axisAngle(0, 0, 1, -0.2))),
-  );
-  almost(doubled.x - 0.5, 2 * (right.x - 0.5));
-  assert.equal(gainOf(cal), 2);
-  assert.equal(gainOf(centerCalibration(ref, 100)), MAX_GAIN);
-  assert.equal(gainOf(centerCalibration(ref, 0)), MIN_GAIN);
-  assert.equal(gainOf(null), DEFAULT_GAIN);
-});
-void test('center calibration and recenter preserve H and put current pose at exact center', () => {
-  const cal = centerCalibration(identity, DEFAULT_GAIN),
-    current = multiply(axisAngle(0, 0, 1, 0.22), identity),
-    out = recenter(cal, current);
-  assert.equal(out.h, cal.h);
-  assert.equal(out.recenters, 1);
-  const p = project(out.h, tangent(out.ref, current));
-  almost(p.x, 0.5);
-  almost(p.y, 0.5);
-});
-void test('recenter handles a hand-fitted H whose tangent origin is not the exact center', () => {
-  const h = fitHomography([
-    { x: -0.45, y: -0.3 },
-    { x: 0.55, y: -0.3 },
-    { x: 0.55, y: 0.3 },
-    { x: -0.45, y: 0.3 },
-  ]);
-  const cal = { ref: identity, h, at: 0, count: 1, recenters: 0, roll: 0 };
-  const current = axisAngle(0, 1, 0, 0.6),
-    out = recenter(cal, current),
-    p = project(h, tangent(out.ref, current));
-  almost(p.x, 0.5);
-  almost(p.y, 0.5);
 });
 void test('permission denial chooses stick per player, never a dead pointer', () => {
   const c = defaultCapabilities();

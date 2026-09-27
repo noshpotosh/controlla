@@ -22,11 +22,11 @@ Names are the `WidgetType` values in [src/core/types.ts](../src/core/types.ts); 
 
 These need motion permission on the phone (the **Enable motion** button).
 
-| Input     | Senses                                             | Game receives                                                                               | Used by                                                          |
-| --------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `pointer` | Rotation (gyro), with the top edge aimed at the TV | A position on the screen (0–1). Needs a one-time calibration; Recenter fixes drift          | [Latency Lab](MINIGAMES.md)                                      |
-| `tilt`    | Which way is down (gravity)                        | Left–right and forward–back tilt from −1 to 1; full scale at about 38° of tilt              | [Tilt Rally](MINIGAMES.md), [Don't Spill the Milk](MINIGAMES.md) |
-| `shake`   | A hard, sudden movement in any direction           | A single event when acceleration passes about 1.8 g, at most once every 0.6 s; no direction |                                                                  |
+| Input     | Senses                                    | Game receives                                                                                                                                                                | Used by                                                          |
+| --------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `pointer` | Rotation (gyro), phone held like a remote | A position on the screen (0–1). Moves like a mouse: turn speed moves the cursor, quick flicks go further. Adjustable sensitivity; push past an edge or Recenter to re-center | [Latency Lab](MINIGAMES.md)                                      |
+| `tilt`    | Which way is down (gravity)               | Left–right and forward–back tilt from −1 to 1; full scale at about 38° of tilt                                                                                               | [Tilt Rally](MINIGAMES.md), [Don't Spill the Milk](MINIGAMES.md) |
+| `shake`   | A hard, sudden movement in any direction  | A single event when acceleration passes about 1.8 g, at most once every 0.6 s; no direction                                                                                  |                                                                  |
 
 ## Needed (not built)
 

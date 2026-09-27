@@ -5,7 +5,7 @@ import type { Message } from '../core/types.ts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { MAX_GAIN, MIN_GAIN } from '../core/calibration.ts';
+import { MAX_GAIN, MIN_GAIN } from '../core/pointer.ts';
 import {
   Radio,
   Monitor,
@@ -25,8 +25,6 @@ import { Runtime, type JoinOptions } from './runtime.ts';
 import { WidgetControl } from './Widgets.tsx';
 import { GameCanvas } from './GameCanvas.tsx';
 import type { Identity, Role } from '../core/types.ts';
-const cornerCount = (mask: number) =>
-  [1, 2, 4, 8].filter((bit) => mask & bit).length;
 function getResume(role: Role, room: string, venue: string) {
   try {
     for (let i = 0; i < localStorage.length; i++) {
@@ -418,15 +416,14 @@ function Connected({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => runtime.beginCalibration()}
+                onClick={() => runtime.beginAdjustAim()}
               >
                 <Crosshair />
-                {v.calibrated ? 'Recalibrate' : 'Calibrate'}
+                Aim settings
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                disabled={!v.calibrated}
                 onClick={() => runtime.recenter()}
               >
                 <RotateCcw />
@@ -469,27 +466,14 @@ function Connected({
               Join another room
             </Button>
           </div>
-        ) : v.calibrationStep === 0 ? (
+        ) : v.adjustingAim ? (
           <div className="calibrate">
-            <span className="eyebrow lime">CALIBRATION / 1 OF 2</span>
-            <h1>Aim at the center.</h1>
+            <span className="eyebrow lime">AIM SETTINGS</span>
+            <h1>Adjust your aim.</h1>
             <p className="note">
-              Hold your phone like a remote, screen up. Point its top edge at
-              the center of your screen’s game area, then tap below.
-            </p>
-            <Button
-              className="action"
-              onClick={() => runtime.captureCalibration()}
-            >
-              Capture center
-            </Button>
-          </div>
-        ) : v.calibrationStep === 1 ? (
-          <div className="calibrate">
-            <span className="eyebrow lime">CALIBRATION / 2 OF 2</span>
-            <h1>Move your cursor into each corner.</h1>
-            <p className="note">
-              Sitting far away? Turn sensitivity up so you need less movement.
+              Hold your phone like a remote and turn it to move your cursor on
+              the TV. Slow turns are precise; quick flicks go further. Push past
+              an edge to re-center.
             </p>
             <div className="sensitivity">
               <span id="sensitivity">Sensitivity</span>
@@ -510,31 +494,15 @@ function Connected({
                 <span>Less movement</span>
               </div>
             </div>
-            <div
-              className="corners"
-              aria-label={`${cornerCount(v.cornersReached)} of 4 corners reached`}
-            >
-              {['top-left', 'top-right', 'bottom-right', 'bottom-left'].map(
-                (corner, i) => (
-                  <i
-                    key={corner}
-                    className={`corner ${corner} ${
-                      v.cornersReached & (1 << i) ? 'reached' : ''
-                    }`}
-                  />
-                ),
-              )}
-              <span>{cornerCount(v.cornersReached)}/4</span>
-            </div>
+            <Button variant="outline" onClick={() => runtime.recenter()}>
+              <RotateCcw />
+              Recenter
+            </Button>
             <Button
               className="action"
-              disabled={v.cornersReached !== 15}
-              onClick={() => runtime.finishCalibration()}
+              onClick={() => runtime.finishAdjustAim()}
             >
               Done
-            </Button>
-            <Button variant="outline" onClick={() => runtime.redoCenter()}>
-              Redo center
             </Button>
           </div>
         ) : (

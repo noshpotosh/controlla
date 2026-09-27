@@ -1,4 +1,100 @@
-import type { Point } from './types.ts';
+import { clamp, type Point } from './types.ts';
+
+// Screen widths per radian of turn at a curve multiplier of 1.
+export const DEFAULT_GAIN = 1.9,
+  MIN_GAIN = 0.6,
+  MAX_GAIN = 6;
+export const clampGain = (gain: number) =>
+  Number.isFinite(gain) ? clamp(gain, MIN_GAIN, MAX_GAIN) : DEFAULT_GAIN;
+
+const DEG = Math.PI / 180;
+/** Tuning for mouse-style gyro pointing; adjust from playtests. */
+export const GYRO = {
+  // Soft dead zone: below `deadzoneStart` nothing moves, full speed from `deadzoneFull`.
+  deadzoneStart: 0.6 * DEG,
+  deadzoneFull: 2 * DEG,
+  // Acceleration curve: `slowMultiplier` at or below `slowSpeed`, `fastMultiplier` at or above `fastSpeed`.
+  slowSpeed: 5 * DEG,
+  fastSpeed: 60 * DEG,
+  slowMultiplier: 0.7,
+  fastMultiplier: 1.6,
+  // A tap jolts the phone: aim at where the cursor was `pressLookbackMs` earlier, then hold it.
+  pressLookbackMs: 50,
+  pressHoldMs: 120,
+  historyMs: 250,
+  // The canonical play area is 16:9; equal turn angles cover equal pixels on both axes.
+  aspect: 16 / 9,
+};
+
+/**
+ * Relative ("air mouse") pointing: the cursor moves by how fast the phone
+ * turns, not where it is aimed, and stops at the screen edges. Pushing past an
+ * edge re-anchors it, so orientation drift never accumulates into an offset.
+ */
+export class GyroPointer {
+  private point: Point = { x: 0.5, y: 0.5 };
+  private history: { at: number; x: number; y: number }[] = [];
+  private holdUntil = -Infinity;
+  gain = DEFAULT_GAIN;
+
+  /**
+   * @param rate angular velocity in the device frame (rad/s), bias-corrected
+   * @param up world-up expressed in the device frame (unit vector)
+   * @param dt seconds since the previous motion sample
+   * @param at sample time (ms, same clock as `holdForPress`)
+   */
+  update(rate: number[], up: number[], dt: number, at: number): Point {
+    if (at >= this.holdUntil && dt > 0) {
+      // Player space: turning is about world vertical regardless of grip or
+      // roll; tilting is about the phone's right edge. Roll is ignored.
+      let yaw = rate[0] * up[0] + rate[1] * up[1] + rate[2] * up[2],
+        pitch = rate[0];
+      const speed = Math.hypot(yaw, pitch),
+        pass = clamp(
+          (speed - GYRO.deadzoneStart) /
+            (GYRO.deadzoneFull - GYRO.deadzoneStart),
+        ),
+        curve = clamp(
+          (speed - GYRO.slowSpeed) / (GYRO.fastSpeed - GYRO.slowSpeed),
+        ),
+        multiplier =
+          GYRO.slowMultiplier +
+          (GYRO.fastMultiplier - GYRO.slowMultiplier) * curve;
+      yaw *= pass;
+      pitch *= pass;
+      this.point = {
+        x: clamp(this.point.x - yaw * this.gain * multiplier * dt),
+        y: clamp(
+          this.point.y - pitch * this.gain * GYRO.aspect * multiplier * dt,
+        ),
+      };
+    }
+    this.history.push({ at, ...this.point });
+    while (this.history.length && at - this.history[0].at > GYRO.historyMs)
+      this.history.shift();
+    return { ...this.point };
+  }
+
+  /** Freezes the cursor where it was just before a tap jolted the phone. */
+  holdForPress(at: number): Point {
+    const before = at - GYRO.pressLookbackMs;
+    let held = this.history[0] ?? { at, ...this.point };
+    for (const h of this.history) if (h.at <= before) held = h;
+    this.point = { x: held.x, y: held.y };
+    this.holdUntil = at + GYRO.pressHoldMs;
+    return { ...this.point };
+  }
+
+  recenter() {
+    this.point = { x: 0.5, y: 0.5 };
+    this.history = [];
+    this.holdUntil = -Infinity;
+  }
+
+  get current(): Point {
+    return { ...this.point };
+  }
+}
 
 /** Time-based filtering in normalized screen coordinates. */
 export class PointerSmoother {
