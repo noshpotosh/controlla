@@ -1,6 +1,20 @@
 # Validation and acceptance ledger
 
-The current slice uses **Neon Harvest as the sole production game**: 45 seconds, 1–8 players, one `standard` mode. Harness and live rooms share the public author contracts, round runner, validated snapshots and session ledger. **260 integrated tests, typecheck, project lint and production build pass (2026-09-28) after controller motion lifecycle integration.** Current desktop observations are recorded below; earlier slices remain separate historical evidence. Physical latency, cross-country fairness and device compatibility remain uncertified.
+The current slice uses **Neon Harvest as the sole production game**: 45 seconds, 1–8 players, one `standard` mode. Harness and live rooms share the public author contracts, round runner, validated snapshots and session ledger. **270 tests, typecheck, project lint and production build pass (2026-09-28) on the display-playback topic branch.** Current desktop observations are recorded below; earlier slices remain separate historical evidence. Physical latency, cross-country fairness and device compatibility remain uncertified.
+
+## Display playback — 2026-09-28
+
+| Check | Result |
+| --- | --- |
+| Baseline | Fetched `origin`, verified motion checkpoint `34912ee` is integrated at `8a059ef`, and created `codex/display-playback-0928` in `.worktrees/display-playback-0928`. Clean baseline: 260 tests passed. |
+| Automated acceptance | **270 tests pass**, typecheck, lint and production build pass. Bundle assertions verify client, SSR and RSC retain gameplay and exclude developer tools. |
+| Direct playback | Seven browser-free tests cover immutable sampling, delayed results, full/delta snapshots, malformed envelopes, resync coalescing/reconnect, support/phase gates, cue clocks/deduplication/bounds, round retirement, marker acknowledgments, and terminal lifecycle. |
+| Integration and boundaries | Real local WebSocket tests exercise both host-loopback and remote playback on the same round, local cursors and controller reconnect. Runtime tests preserve reports after host loss and suppress late playback effects after teardown. Import checks reject direct/erased/indirect/opaque/external dependencies and prevent engine/screen/shell consumers bypassing the port. |
+| Desktop observation | Isolated preview `http://localhost:3004/` returned HTTP 200 and created room `8P5YH`, screen `3835`, with zero players. This verifies preview compilation and host-room creation only. |
+| Desktop blocker | Browser URL security policy rejected opening the additional client from the copied phone link and explicitly prohibited workarounds. No alternate URL, browser, or lower-level automation was used. Multi-client completed round, rematch, reconnect, abort and downloaded report after host loss were **not verified in this run**. Earlier browser evidence does not close this slice's gate. |
+| Delivery limits | Draft PR only; no merge or deployment. Physical sensors, TV latency and real network routes remain separate acceptance work. |
+
+See [DISPLAY-PLAYBACK](architecture/DISPLAY-PLAYBACK.md) for ownership and recovery. Task-owned preview/signaling processes are stopped at handoff; pre-existing services and worktrees are preserved.
 
 ## Controller motion lifecycle — 2026-09-28
 

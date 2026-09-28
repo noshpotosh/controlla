@@ -148,9 +148,7 @@ function context() {
 void test('screen port samples one immutable snapshot and retains valid state across malformed wires with one resync request', async (t) => {
   const { runtime, receive, sent } = display(t);
   receive('snapshot', wire(await snapshot()));
-  const sample = t.mock.method(runtime.buffer, 'sample');
   const frame = runtime.screenPort.advanceFrame();
-  assert.equal(sample.mock.callCount(), 1);
   assert.equal(frame.presentationTime, 900);
   assert.equal(frame.delay, 100);
   assert.ok(Object.isFrozen(frame));
@@ -481,4 +479,32 @@ void test('an accepted reconnect can replace a resync request lost on the previo
   );
   receive('snapshot', wire(await snapshot(), 3));
   assert.equal(runtime.screenPort.advanceFrame().snapshot?.roundId, 'round-a');
+});
+
+void test('retained runtime callbacks cannot revive playback after close or host loss', async (t) => {
+  const { runtime, receive, sent } = display(t);
+  const state = await snapshot();
+  receive('snapshot', wire(state));
+  runtime.screenPort.advanceFrame();
+  runtime.network.onEnded('Host ended');
+  runtime.close();
+  const before = structuredClone(sent);
+  const metrics = runtime.snapshotMetrics();
+  receive('snapshot', wire(state, 2));
+  receive('snapshot', { type: 'snapshot', snapshot: null });
+  receive('ctrl', { type: 'phase', phase: 'running', roundId: 'late' });
+  receive('events', {
+    type: 'event',
+    event: {
+      id: 'late',
+      roundId: state.roundId,
+      kind: 'hit',
+      clock: 'authority',
+      time: 1000,
+    },
+  });
+  runtime.screenPort.presented(state.roundId, ['marker']);
+  assert.equal(runtime.screenPort.advanceFrame().status, 'ended');
+  assert.deepEqual(sent, before);
+  assert.deepEqual(runtime.snapshotMetrics(), metrics);
 });

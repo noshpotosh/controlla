@@ -2,7 +2,7 @@
 
 A browser-authoritative party-game framework. Each venue has a screen and its own phone controllers. Phones send local input to their venue; screens relay input to the host and render snapshots of its simulation. No video streaming.
 
-**Status: Neon Harvest is the sole game; controller, shell, shared-contract, browser-engine and motion-provider boundaries are implemented. Validation results and desktop observations are recorded in the validation ledger. Hardware/multi-household acceptance remains unverified.** The acceptance budgets in the specification are targets, not measured claims. See [validation](docs/VALIDATION.md) and [design decisions](docs/ADR-001.md).
+**Status: Neon Harvest is the sole game; controller, shell, shared-contract, browser-engine, motion-provider and display-playback boundaries are implemented. Validation results and desktop observations are recorded in the validation ledger. Hardware/multi-household acceptance remains unverified.** The acceptance budgets in the specification are targets, not measured claims. See [validation](docs/VALIDATION.md) and [design decisions](docs/ADR-001.md).
 
 ## Run locally
 
@@ -102,7 +102,8 @@ The gallery, designer, phone preview, Motion Lab and game harness are developmen
 - `src/shared`: platform-independent room/identity/roster contracts, player colors, and application protocol constants; the only project contracts consumed by signaling. See the [shared boundary record](docs/architecture/SHARED-CONTRACTS.md).
 - `src/core`: general geometry primitives (`Point`, `clamp`); motion algorithms and `Quaternion` are controller-owned.
 - `src/client/engine`: session authority, input transport, clocks/buffers, arbitration, generic replication, game snapshot policy, round runner and progress/history. See the [engine ownership record](docs/architecture/ENGINE-OWNERSHIP.md).
-- `src/client/runtime.ts`, `network.ts`: existing session orchestration and peer transport; decomposition remains deferred.
+- [`src/client/playback`](src/client/playback): snapshot playback, presentation cues, acknowledgments and diagnostics; see the [playback ownership record](docs/architecture/DISPLAY-PLAYBACK.md).
+- `src/client/runtime.ts`, `network.ts`: session composition, controller input, browser resources and peer transport; further decomposition remains deferred.
 - `src/client/controls`: controller contracts, validated resolution, reusable controls and saved layouts (`layouts/`).
 - `src/client/devtools`: development entry, controller designer/gallery/preview, Motion Lab and isolated game harness.
 - `src/client/api`, `game-screen`, `minigames`: author contracts, read-only presentation, and the production game catalog.
