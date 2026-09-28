@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
+import { builtinModules } from 'node:module';
 import { test } from 'node:test';
 import ts from 'typescript';
 import type { RoundSnapshot } from '../src/client/api/index.ts';
@@ -164,6 +165,146 @@ function dependencies(
   }
   return seen;
 }
+
+const shared = join(root, 'src/shared');
+const backend = join(root, 'server');
+const nodeModules = new Set(
+  builtinModules.flatMap((name) => [name, `node:${name}`]),
+);
+
+function assertSharedBoundary(
+  entry: string,
+  overrides = new Map<string, string>(),
+) {
+  for (const file of dependencies(entry, true, overrides)) {
+    assert.ok(
+      within(file, shared),
+      `shared contract reaches implementation: ${relative(root, file)}`,
+    );
+    for (const edge of imports(file, overrides.get(file)))
+      assert.ok(
+        edge.resolved && within(edge.resolved, shared),
+        `shared contract imports outside shared: ${edge.specifier}`,
+      );
+  }
+}
+
+function assertBackendBoundary(
+  entry: string,
+  overrides = new Map<string, string>(),
+) {
+  for (const file of dependencies(entry, true, overrides)) {
+    assert.ok(
+      within(file, backend) || within(file, shared),
+      `backend reaches implementation: ${relative(root, file)}`,
+    );
+    if (within(file, shared)) {
+      assertSharedBoundary(file, overrides);
+      continue;
+    }
+    for (const edge of imports(file, overrides.get(file)))
+      assert.ok(
+        nodeModules.has(edge.specifier) ||
+          edge.specifier === 'ws' ||
+          (edge.resolved &&
+            (within(edge.resolved, backend) || within(edge.resolved, shared))),
+        `backend imports outside its boundary: ${edge.specifier}`,
+      );
+  }
+}
+
+void test('backend and shared contracts have independent implementation boundaries', () => {
+  for (const entry of productionFiles(shared)) assertSharedBoundary(entry);
+  for (const entry of productionFiles(backend)) assertBackendBoundary(entry);
+  assert.equal(existsSync(join(root, 'src/core/app-protocol.ts')), false);
+});
+
+void test('shared and backend boundaries reject erased, indirect and dynamic dependency leaks', () => {
+  const room = join(shared, 'room.ts');
+  const protocol = join(shared, 'app-protocol.ts');
+  const server = join(backend, 'index.ts');
+  const rooms = join(backend, 'rooms.ts');
+  const leaks = [
+    "import { Runtime } from '@/src/client/runtime.ts';",
+    "import type { Capabilities } from '@/src/client/controls/api.ts';",
+    "type Capabilities = import('@/src/client/controls/api.ts').Capabilities;",
+    "export type { Player } from '@/src/client/api/index.ts';",
+    "export * from '@/src/core/types.ts';",
+    "const load = () => import('@/src/client/network.ts');",
+    "const load = () => require('@/src/client/network.ts');",
+    'const load = (path: string) => import(path);',
+    "import type { Missing } from './missing-contract.ts';",
+  ];
+  for (const source of leaks) {
+    assert.throws(() => assertSharedBoundary(room, new Map([[room, source]])));
+    assert.throws(() =>
+      assertSharedBoundary(
+        protocol,
+        new Map([
+          [protocol, "export * from './room.ts';"],
+          [room, source],
+        ]),
+      ),
+    );
+    assert.throws(() =>
+      assertBackendBoundary(rooms, new Map([[rooms, source]])),
+    );
+    assert.throws(() =>
+      assertBackendBoundary(server, new Map([[rooms, source]])),
+    );
+    assert.throws(() =>
+      assertBackendBoundary(server, new Map([[room, source]])),
+    );
+  }
+  for (const source of [
+    "import { createHmac } from 'node:crypto';",
+    "import type { ReactNode } from 'react';",
+    "export { RoomRegistry } from '@/server/rooms.ts';",
+  ])
+    assert.throws(() => assertSharedBoundary(room, new Map([[room, source]])));
+});
+
+void test('shared contracts compile with ECMAScript alone, without DOM or Node ambient types', () => {
+  const compileOptions: ts.CompilerOptions = {
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    lib: ['lib.es2022.d.ts'],
+    types: [],
+    strict: true,
+    noEmit: true,
+    allowImportingTsExtensions: true,
+  };
+  const entries = productionFiles(shared);
+  const diagnostics = (extra = '') => {
+    const host = ts.createCompilerHost(compileOptions);
+    const read = host.readFile.bind(host);
+    host.readFile = (file) => {
+      const content = read(file);
+      return file === join(shared, 'room.ts') && content !== undefined
+        ? content + extra
+        : content;
+    };
+    return ts.getPreEmitDiagnostics(
+      ts.createProgram(entries, compileOptions, host),
+    );
+  };
+  assert.deepEqual(
+    diagnostics().map((item) =>
+      ts.flattenDiagnosticMessageText(item.messageText, '\n'),
+    ),
+    [],
+  );
+  for (const source of [
+    '\nwindow.location;',
+    '\nprocess.pid;',
+    '\nlet node: HTMLElement;',
+  ])
+    assert.ok(
+      diagnostics(source).length > 0,
+      'platform ambient dependencies must fail',
+    );
+});
 
 void test('Neon Harvest production modules import only their own folder or the author API', () => {
   const files = productionFiles(targetDirectory);
@@ -389,6 +530,7 @@ void test('the production canvas and game screen can read presentation but canno
 void test('shell ports stay type-only and UI leaves cannot reach the runtime', () => {
   const ports = join(root, 'src/client/shell/ports.ts');
   const allowed = [
+    'src/shared/room.ts',
     'src/client/controls/api.ts',
     'src/core/types.ts',
     'src/core/motion/trace.ts',

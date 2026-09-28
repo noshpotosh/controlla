@@ -1,13 +1,14 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { Network } from '../src/client/network.ts';
-import { APP_PROTOCOL_VERSION } from '../src/core/app-protocol.ts';
+import { APP_PROTOCOL_VERSION } from '../src/shared/app-protocol.ts';
 import { SessionProgress } from '../src/client/engine/progress.ts';
 import {
   historyMessages,
   ProgressAssembler,
 } from '../src/client/engine/history.ts';
-import type { Identity, Message, Player, Roster } from '../src/core/types.ts';
+import type { Message } from '../src/core/types.ts';
+import type { Identity, Player, Roster } from '../src/shared/room.ts';
 
 const utf8 = new TextEncoder();
 const players: Player[] = Array.from({ length: 8 }, (_, seat) => ({

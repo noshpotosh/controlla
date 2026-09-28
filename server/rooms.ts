@@ -5,8 +5,8 @@ import type {
   Role,
   Venue,
   Roster,
-} from '../src/core/types.ts';
-import { COLORS } from '../src/core/types.ts';
+} from '../src/shared/room.ts';
+import { COLORS } from '../src/shared/room.ts';
 export const ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
 export interface Member {
   id: string;

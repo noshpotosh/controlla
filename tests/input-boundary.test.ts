@@ -11,7 +11,7 @@ import { Network } from '../src/client/network.ts';
 import {
   APP_PROTOCOL_VERSION,
   PROTOCOL_MISMATCH,
-} from '../src/core/app-protocol.ts';
+} from '../src/shared/app-protocol.ts';
 import { SessionAuthority } from '../src/core/session.ts';
 import { games, findGame } from '../src/client/minigames/catalog.ts';
 import type { GameInput, GameDescriptor } from '../src/client/api/index.ts';
@@ -25,13 +25,8 @@ import {
   valueFitsEnvelope,
 } from '../src/client/controls/value.ts';
 import type { ControllerConfig } from '../src/client/controls/api.ts';
-import type {
-  Identity,
-  InputFrame,
-  Message,
-  Player,
-  Press,
-} from '../src/core/types.ts';
+import type { InputFrame, Message, Press } from '../src/core/types.ts';
+import type { Identity, Player } from '../src/shared/room.ts';
 
 function globals(t: TestContext, values: Record<string, unknown>) {
   for (const [key, value] of Object.entries(values)) {

@@ -37,13 +37,11 @@ import {
 
 import {
   now,
-  type Identity,
   type InputFrame,
   type Message,
   type Point,
-  type Role,
-  type Roster,
 } from '../core/types.ts';
+import { type Identity, type Role, type Roster } from '../shared/room.ts';
 export interface RuntimeView {
   identity: Identity | null;
   roster: Roster;

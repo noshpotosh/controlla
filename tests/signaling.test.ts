@@ -1,4 +1,4 @@
-import { APP_PROTOCOL_VERSION } from '../src/core/app-protocol.ts';
+import { APP_PROTOCOL_VERSION } from '../src/shared/app-protocol.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';

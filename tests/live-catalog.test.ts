@@ -10,7 +10,8 @@ import type {
   PresentationEvent,
 } from '../src/client/api/index.ts';
 import type { ControllerConfig } from '../src/client/controls/api.ts';
-import type { Message, Player, WireSnapshot } from '../src/core/types.ts';
+import type { Message, WireSnapshot } from '../src/core/types.ts';
+import type { Player } from '../src/shared/room.ts';
 import {
   harvestPosition,
   type NeonHarvestState,

@@ -13,7 +13,7 @@ import {
   resolveConfig,
 } from '../src/client/controls/resolve.ts';
 import { decodeInput } from '../src/core/protocol.ts';
-import type { Identity } from '../src/core/types.ts';
+import type { Identity } from '../src/shared/room.ts';
 
 // Executes the real role routing and Session on actual WebSockets. Browser APIs
 // are minimal mocks: this is deliberately NOT a WebRTC or mobile-browser test.

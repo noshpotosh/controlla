@@ -2,8 +2,9 @@ import {
   APP_PROTOCOL_VERSION,
   PROTOCOL_MISMATCH,
   PROTOCOL_RELOAD_MESSAGE,
-} from '../core/app-protocol.ts';
-import type { Identity, Message, Role, Roster } from '../core/types.ts';
+} from '../shared/app-protocol.ts';
+import type { Message } from '../core/types.ts';
+import type { Identity, Role, Roster } from '../shared/room.ts';
 import { MAX_MESSAGE_BYTES, messageFits } from './engine/history.ts';
 export type Channel = 'ctrl' | 'input' | 'snapshot' | 'events';
 const MAX_HISTORY_QUEUE_BYTES = 64 * 1024 * 1024;

@@ -23,7 +23,8 @@ import { neonHarvest } from '../src/client/minigames/neon-harvest/index.ts';
 import { games } from '../src/client/minigames/catalog.ts';
 import type { GameDescriptor } from '../src/client/api/index.ts';
 import { SessionAuthority } from '../src/core/session.ts';
-import type { Message, Player } from '../src/core/types.ts';
+import type { Message } from '../src/core/types.ts';
+import type { Player } from '../src/shared/room.ts';
 import { Runtime } from '../src/client/runtime.ts';
 
 const granted = (): Capabilities => {

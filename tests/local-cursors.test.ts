@@ -7,7 +7,8 @@ import {
   resolveConfig,
 } from '../src/client/controls/resolve.ts';
 import { pointerSpec } from './fixtures/games.ts';
-import type { InputFrame, Message, Roster } from '../src/core/types.ts';
+import type { InputFrame, Message } from '../src/core/types.ts';
+import type { Roster } from '../src/shared/room.ts';
 
 function localVenue(t: TestContext, role: 'host' | 'display') {
   let time = 10000;

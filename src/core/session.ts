@@ -33,11 +33,10 @@ import {
   now,
   type InputFrame,
   type Message,
-  type Player,
   type Press,
-  type Roster,
   type Snapshot,
 } from './types.ts';
+import { type Player, type Roster } from '../shared/room.ts';
 export interface SessionPorts {
   toPlayer: (id: string, message: Message) => void;
   toVenue: (id: string, message: Message) => void;
