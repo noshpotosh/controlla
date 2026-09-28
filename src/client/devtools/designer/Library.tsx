@@ -86,22 +86,25 @@ export function Library({
           const games = usedBy(layout.id);
           return (
             <article key={layout.id} className="dz-card">
-              <button
-                type="button"
+              <div
                 className="dz-thumb"
                 data-orientation={layout.orientation}
-                aria-label={`Open ${layout.name}`}
-                onClick={() => open(layout)}
               >
-                <span className="dz-thumb__phone">
+                <div className="dz-thumb__phone" inert aria-hidden="true">
                   <ControllerSurface
                     widgets={layoutWidgets(layout)}
                     accent={COLORS[0]}
                     portFor={() => noopPort}
                     fallback={(w) => <SensorTile widget={w} />}
                   />
-                </span>
-              </button>
+                </div>
+                <button
+                  type="button"
+                  className="dz-thumb__open"
+                  aria-label={`Open ${layout.name}`}
+                  onClick={() => open(layout)}
+                />
+              </div>
               <div className="dz-card__body">
                 <h2>{layout.name}</h2>
                 <code>{layout.id}</code>

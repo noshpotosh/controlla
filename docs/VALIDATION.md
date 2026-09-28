@@ -1,5 +1,32 @@
 # Validation and acceptance ledger
 
+## Local iPhone acceptance preparation — 2026-09-28
+
+Use the [local iPhone runbook](acceptance/LOCAL-IPHONE.md) and
+[results template](acceptance/RESULTS-TEMPLATE.md). The selected first device is
+an iPhone 13; the operator reports latest iOS, with the exact version still to
+be recorded. Physical cases are **not run** until observations are supplied.
+HTTPS setup alone does not close this gate.
+
+Designer checkpoint `736511a` separates inert decorative controller surfaces
+from sibling open buttons. All 308 tests, typecheck, lint and production
+build/bundle assertions passed. Desktop checks confirmed visible focus, Tab
+skipping decorative controls, Enter/Space opening correct layouts, pointer
+activation and Aim/PULSE readouts in designer play mode; no warning or error
+console messages were observed. This closes the previously recorded library
+nested-button warning; older entries below remain historical evidence.
+
+Standalone preview also passed in a 390×844 desktop viewport: aim value
+`{"x":-0.475,"y":-0.359}`, zero aim presses and one PULSE press, with no
+warning/error logs. This is browser input evidence, not iPhone multitouch.
+
+The local proxy preparation passed Caddy 2.11.4 configuration validation,
+CA-verified HTTPS requests to frontend/preflight, public-root download, a 404
+for an unlisted bootstrap path, and an actual protocol-4 welcome through WSS.
+The release archive matched its official SHA-512 checksum. No machine trust or
+firewall settings were changed. Phone/host-browser certificate trust, exact iOS
+version, physical route and all L01–L09 cases remain pending operator evidence.
+
 The current slice uses **Neon Harvest as the sole production game**: 45 seconds, 1–8 players, one `standard` mode. Harness and live rooms share the public author contracts, round runner, validated snapshots and session ledger. **308 tests, typecheck, project lint and production build pass (2026-09-28) on the runtime-decomposition topic branch.** Current desktop observations are recorded below; earlier slices remain separate historical evidence. Physical latency, cross-country fairness and device compatibility remain uncertified.
 
 ## Runtime composition — 2026-09-28
