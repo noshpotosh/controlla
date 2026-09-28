@@ -1,0 +1,99 @@
+/* ControlFrame: the shared shell. Pads are recessed wells with a raised rim. */
+.ctl-frame {
+  container-type: size;
+  position: absolute;
+  inset: 0;
+  min-width: var(--ctl-touch-min);
+  min-height: var(--ctl-touch-min);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  color: var(--ctl-ink);
+  border-radius: var(--ctl-radius-lg);
+  background: var(--ctl-surface);
+  box-shadow:
+    inset 0 1px 0 var(--ctl-highlight),
+    0 var(--ctl-depth) 0 var(--ctl-surface-lip);
+  overflow: hidden;
+  touch-action: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    box-shadow var(--ctl-spring-ms) ease,
+    transform var(--ctl-spring-ms) var(--ctl-ease-spring);
+}
+.ctl-frame:focus-visible {
+  outline: 3px solid var(--ctl-accent);
+  outline-offset: 3px;
+}
+.ctl-frame[data-active] {
+  box-shadow:
+    inset 0 1px 0 var(--ctl-highlight),
+    inset 0 0 0 2px var(--ctl-accent-glow),
+    0 var(--ctl-depth) 0 var(--ctl-surface-lip);
+}
+
+.ctl-frame__label {
+  position: absolute;
+  top: var(--ctl-space-3);
+  left: var(--ctl-space-4);
+  z-index: 2;
+  font-size: var(--ctl-font-label);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ctl-ink-muted);
+  pointer-events: none;
+  transition: color var(--ctl-press-ms) linear;
+}
+.ctl-frame[data-active] .ctl-frame__label {
+  color: var(--ctl-accent);
+}
+.ctl-frame__hint {
+  position: absolute;
+  inset: auto var(--ctl-space-4) var(--ctl-space-3);
+  z-index: 2;
+  font-size: var(--ctl-font-hint);
+  text-align: center;
+  color: var(--ctl-ink-muted);
+  pointer-events: none;
+}
+
+/* Too small for chrome: the play area gets every pixel. */
+@container (max-height: 110px) {
+  .ctl-frame__hint {
+    display: none;
+  }
+}
+
+/* A shared recessed well, used inside pads. */
+.ctl-well {
+  background: var(--ctl-well);
+  box-shadow: var(--ctl-well-shadow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ctl-root *,
+  .ctl-root *::before,
+  .ctl-root *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+
+/* SensorTile: a quiet card for motion inputs; they have no touch surface. */
+.ctl-sensor {
+  display: grid;
+  place-items: center;
+  background: var(--ctl-well);
+  box-shadow:
+    var(--ctl-well-shadow),
+    0 var(--ctl-depth) 0 var(--ctl-surface-lip);
+}
+.ctl-sensor__icon {
+  width: 34cqmin;
+  height: 34cqmin;
+  color: var(--ctl-accent);
+  opacity: 0.8;
+}

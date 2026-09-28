@@ -1,0 +1,74 @@
+/* D-pad: a raised cross in the middle of the pad; the held arm lights up. */
+.ctl-dpad {
+  display: grid;
+  place-items: center;
+}
+.ctl-dpad__cross {
+  --arm: calc(min(84cqw, 84cqh) / 3);
+  display: grid;
+  grid-template:
+    '. up .' var(--arm)
+    'left hub right' var(--arm)
+    '. down .' var(--arm) / var(--arm) var(--arm) var(--arm);
+  filter: drop-shadow(0 var(--ctl-depth) 0 var(--ctl-surface-lip));
+}
+.ctl-dpad__arm,
+.ctl-dpad__hub {
+  display: grid;
+  place-items: center;
+  background: var(--ctl-surface-raised);
+  color: var(--ctl-ink-muted);
+  transition:
+    background var(--ctl-press-ms) linear,
+    color var(--ctl-press-ms) linear,
+    transform var(--ctl-spring-ms) var(--ctl-ease-spring);
+}
+.ctl-dpad__arm svg {
+  width: 45%;
+  height: 45%;
+}
+.ctl-dpad__hub {
+  grid-area: hub;
+}
+.ctl-dpad__arm--up {
+  grid-area: up;
+  border-radius: var(--ctl-radius-md) var(--ctl-radius-md) 0 0;
+}
+.ctl-dpad__arm--down {
+  grid-area: down;
+  border-radius: 0 0 var(--ctl-radius-md) var(--ctl-radius-md);
+}
+.ctl-dpad__arm--left {
+  grid-area: left;
+  border-radius: var(--ctl-radius-md) 0 0 var(--ctl-radius-md);
+}
+.ctl-dpad__arm--right {
+  grid-area: right;
+  border-radius: 0 var(--ctl-radius-md) var(--ctl-radius-md) 0;
+}
+.ctl-dpad__hub::after {
+  content: '';
+  width: 38%;
+  height: 38%;
+  border-radius: 50%;
+  box-shadow: var(--ctl-well-shadow);
+  background: var(--ctl-surface);
+}
+.ctl-dpad__arm[data-lit] {
+  background: var(--ctl-accent);
+  color: var(--ctl-accent-ink);
+  box-shadow: 0 0 24px var(--ctl-accent-glow);
+  z-index: 1;
+}
+.ctl-dpad__arm--up[data-lit] {
+  transform: translateY(2px);
+}
+.ctl-dpad__arm--down[data-lit] {
+  transform: translateY(-2px);
+}
+.ctl-dpad__arm--left[data-lit] {
+  transform: translateX(2px);
+}
+.ctl-dpad__arm--right[data-lit] {
+  transform: translateX(-2px);
+}

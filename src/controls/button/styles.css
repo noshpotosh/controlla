@@ -1,0 +1,54 @@
+/* Button: the frame itself is a chunky keycap in the fill colour. */
+.ctl-button {
+  --ctl-fill: var(--ctl-accent);
+  --ctl-fill-lip: var(--ctl-accent-lip);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: var(--ctl-fill);
+  color: var(--ctl-accent-ink);
+  box-shadow:
+    inset 0 2px 0 var(--ctl-cap-highlight),
+    0 var(--ctl-depth) 0 var(--ctl-fill-lip);
+}
+.ctl-button.ctl--neutral {
+  --ctl-fill: var(--ctl-neutral);
+  --ctl-fill-lip: color-mix(
+    in oklab,
+    var(--ctl-neutral) 45%,
+    var(--ctl-surface-lip)
+  );
+}
+.ctl-button.ctl--danger {
+  --ctl-fill: var(--ctl-danger);
+  --ctl-fill-lip: color-mix(
+    in oklab,
+    var(--ctl-danger) 50%,
+    var(--ctl-surface-lip)
+  );
+}
+.ctl-button .ctl-frame__label,
+.ctl-button .ctl-frame__hint,
+.ctl-button[data-active] .ctl-frame__label {
+  color: var(--ctl-accent-ink);
+  opacity: 0.65;
+}
+.ctl-button[data-active] {
+  transform: translateY(calc(var(--ctl-depth) - 2px));
+  box-shadow:
+    inset 0 2px 0 var(--ctl-cap-highlight),
+    0 2px 0 var(--ctl-fill-lip),
+    0 0 0 6px var(--ctl-accent-soft);
+  transition-duration: var(--ctl-press-ms);
+}
+.ctl-button__glyph {
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--ctl-font-glyph) * 1.3);
+  font-weight: 900;
+  line-height: 1;
+}
+.ctl-button__glyph svg {
+  width: 1em;
+  height: 1em;
+}

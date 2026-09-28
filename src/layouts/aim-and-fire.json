@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 2,
+  "id": "aim-and-fire",
+  "name": "Aim and fire",
+  "orientation": "portrait",
+  "grid": {
+    "cols": 12,
+    "rows": 24
+  },
+  "menu": "top-right",
+  "motion": {
+    "pointer": true,
+    "tilt": false,
+    "shake": false
+  },
+  "items": [
+    {
+      "name": "aim",
+      "type": "stick",
+      "label": "Aim",
+      "rect": {
+        "x": 0,
+        "y": 2,
+        "w": 12,
+        "h": 13
+      },
+      "rotation": 0
+    },
+    {
+      "name": "fire",
+      "type": "button",
+      "label": "Fire",
+      "rect": {
+        "x": 0,
+        "y": 15,
+        "w": 12,
+        "h": 9
+      },
+      "rotation": 0,
+      "props": {
+        "icon": "fire"
+      }
+    }
+  ]
+}

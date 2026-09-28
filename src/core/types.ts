@@ -1,3 +1,5 @@
+import type { LayoutPreset } from '../controls/layouts.ts';
+import type { MenuCorner, Rotation } from '../controls/layout/schema.ts';
 export type Role = 'host' | 'display' | 'controller';
 export type Point = { x: number; y: number };
 export type Quaternion = [number, number, number, number];
@@ -30,12 +32,17 @@ export type WidgetType =
 export interface Widget {
   id: string;
   type: WidgetType;
-  rect: [number, number, number, number];
   label: string;
   action: string;
-  style?: string;
-  holdMs?: number;
-  deadzone?: number;
+  /** Placement on the controller: normalized [x, y, w, h]. Motion inputs
+   *  with no touch fallback have none and aren't drawn. */
+  rect?: [number, number, number, number];
+  /** Quarter-turn rotation; outputs are converted back to the screen frame. */
+  rotation?: Rotation;
+  /** Visual variant from the control's definition (e.g. button tone). */
+  variant?: string;
+  /** Control-specific props; defaults come from the control's definition. */
+  props?: Record<string, unknown>;
   space?: 'normalized' | 'signed';
 }
 export interface ControllerConfig {
@@ -43,6 +50,8 @@ export interface ControllerConfig {
   configId: string;
   generation: number;
   orientation: 'portrait' | 'landscape' | 'any';
+  /** Corner reserved for the menu button. */
+  menu: MenuCorner;
   sensors: {
     pointer: { enabled: boolean; rateHz: number };
     tilt: { enabled: boolean };
@@ -57,12 +66,25 @@ export interface InputRequirement {
   required: boolean;
   prefer: WidgetType;
   fallback?: WidgetType | null;
+  /** Caption shown on the phone; defaults to the action name. */
+  label?: string;
+  slot?: string;
+  variant?: string;
+  props?: Record<string, unknown>;
 }
 export interface Manifest {
   id: string;
   name: string;
   players: { min: number; max: number };
   inputs: Record<string, InputRequirement>;
+  /**
+   * The controller layout this game uses (an id in src/layouts). Inputs bind
+   * to the layout's controls by name; `bind` maps input → control name when
+   * they differ.
+   */
+  controller?: { layout: string; bind?: Record<string, string> };
+  /** Preset used when there is no designed controller; picked from the input count when omitted. */
+  layout?: LayoutPreset;
   expectedDurationSec: number;
   scoring: 'points' | 'time';
   onPlayerDropped: 'pause' | 'substitute' | 'freeze';
