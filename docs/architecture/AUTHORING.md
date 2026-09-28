@@ -1,6 +1,6 @@
 # Independent game authoring: Neon Harvest walkthrough
 
-Status: the current accepted authoring example is the sole production descriptor, **Neon Harvest**. Controller and shell boundaries are implemented; **238 tests**, typecheck, project lint, and production build pass. Shell desktop observations and remaining physical-device checks are recorded in the [validation ledger](../VALIDATION.md). The interfaces remain repository-local and versioned with the application. Read the [baseline/provenance](BASELINE.md), [decisions/evidence](DECISIONS-EXPERIMENTS.md), and [meta-plan](../ARCHITECTURE-META-PLAN.md).
+Status: the current accepted authoring example is the sole production descriptor, **Neon Harvest**. Controller, shell, shared and [engine boundaries](ENGINE-OWNERSHIP.md) are implemented; **248 tests**, typecheck, project lint, and production build pass. Desktop observations, browser report-save limitations and remaining physical-device checks are recorded in the [validation ledger](../VALIDATION.md). The interfaces remain repository-local and versioned with the application. Read the [baseline/provenance](BASELINE.md), [decisions/evidence](DECISIONS-EXPERIMENTS.md), and [meta-plan](../ARCHITECTURE-META-PLAN.md).
 
 ## Run the authoring environment
 

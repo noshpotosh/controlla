@@ -1,6 +1,25 @@
 # Validation and acceptance ledger
 
-The current slice uses **Neon Harvest as the sole production game**: 45 seconds, 1–8 players, one `standard` mode. Harness and live rooms share the public author contracts, round runner, validated snapshots and session ledger. **244 integrated tests, typecheck, project lint and production build pass (2026-09-28) after shared contract extraction.** Current desktop observations are recorded below; controller and Neon results remain separate historical evidence. Physical latency, cross-country fairness and device compatibility remain uncertified.
+The current slice uses **Neon Harvest as the sole production game**: 45 seconds, 1–8 players, one `standard` mode. Harness and live rooms share the public author contracts, round runner, validated snapshots and session ledger. **248 integrated tests, typecheck, project lint and production build pass (2026-09-28) after browser-engine relocation.** Current desktop observations are recorded below; earlier slices remain separate historical evidence. Physical latency, cross-country fairness and device compatibility remain uncertified.
+
+## Browser-engine ownership — 2026-09-28
+
+| Check | Result |
+| --- | --- |
+| Baseline and checkpoint | `codex/browser-engine-ownership-0928`, isolated worktree `.worktrees/browser-engine-ownership-0928`, starts from integration checkpoint `8d03840`, confirmed against origin after fetching. Baseline passed 244 tests, typecheck, lint and build. Implementation/enforcement checkpoint `ec3344e` is pushed to origin. |
+| Automated acceptance | **248 tests pass**, typecheck, lint and production build/bundle assertions pass. Existing wire-format, freshness/ACK, settling, snapshot, progress, host-loss report, reconnect and async teardown regressions pass through the new imports. Four new tests cover engine ownership, forbidden dependencies, removal of legacy owners, and screen access to relocated authority. |
+| Graph and bundle evidence | Engine graphs reject shell/screen/browser orchestration/network/motion/tools/backend dependencies, unresolved imports and opaque dynamic loading. Erased and indirect edges are checked. Existing controller `IconName` references remain allowed for type inspection, but executing icon UI is rejected. Shell/screen/backend negative fixtures and production session positive controls use the relocated paths; graph entries must exist. |
+| Isolated local setup | Development preview on `http://localhost:3128`, signaling on 8898 restricted to that origin, local production preview on 3129. Existing servers and other worktrees were left untouched. |
+| Live roles and controls | Room `9TP69`, host screen `AE24`, remote screen `2D7F`; AdaEngine at host and BeaEngine at remote. The normal join form used room/screen codes; Bea selected a new device to avoid identity reuse. Both aim keyboard controls and separate PULSE controls were exercised. No physical motion permission was requested. |
+| Completion and rematch | First round completed with standings Ada 1 / Bea 0. Rematch completed with cumulative standings 1 / 1 on both displays. Individual live game scores were not separately captured. |
+| Reconnect | Bea reloaded during rematch and rejoined within grace. Read-only room observations confirmed the same player identity, seat 1, color, venue and name before/after, with two connected players and no duplicate. Aim and pulse were exercised after return. |
+| Abort and host loss | A third round was aborted; room observation confirmed `aborted`, with totals still 1 / 1. Closing the host produced explicit session-ended guidance on the remote while preserving both totals and Save session report. |
+| Report export limitation | Save session report was clicked after host loss. A subsequent download-event waiter timed out after 10 seconds, and no matching file was found in accessible Downloads/task locations. Browser file-save/content verification is **unverified** for this run; it is not claimed as passed. No warning/error entries appeared in inspected remote logs. The passing automated host-loss test captures and parses the actual report Blob and checks the retained progress revision and outcome statistics. |
+| Standalone harness | Development harness completed Neon Harvest with host/remote previews, scores Ada 480 / Bea 670 / Cy 1440 and awards/totals 0 / 1 / 2. It uses engine replication and the production runner. |
+| Route checks | Development harness HTTP 200; production root HTTP 200 and production harness HTTP 404. Production build assertions passed for client, SSR, RSC and emitted assets. |
+| Remaining limits | No physical phones, sensor permission/orientation, multitouch, TVs, TURN, cross-household testing or latency certification. Copy-link/clipboard inspection was blocked by browser tooling; local join-form acceptance proceeded without copied URLs or resume-token inspection. No gameplay, wire/schema, dependency, hosting, deployment or main-branch change. |
+
+The local acceptance services and test tabs are stopped at handoff. Source and sibling worktrees remain available. The engine ownership record is [ENGINE-OWNERSHIP.md](architecture/ENGINE-OWNERSHIP.md).
 
 ## Shared room and protocol contracts — 2026-09-28
 
