@@ -2,7 +2,7 @@
 
 A browser-authoritative party-game framework. Each venue has a screen and its own phone controllers. Phones send local input to their venue; screens relay input to the host and render snapshots of its simulation. No video streaming.
 
-**Status: the current slice ships Neon Harvest as the sole game; current-run software/browser validation is pending, and hardware/multi-household acceptance remains unverified.** The acceptance budgets in the specification are targets, not measured claims. See [validation](docs/VALIDATION.md) and [design decisions](docs/ADR-001.md).
+**Status: Neon Harvest is the sole game; controller and shell boundaries are implemented. All 238 tests and the production build pass, with desktop browser observations recorded. Hardware/multi-household acceptance remains unverified.** The acceptance budgets in the specification are targets, not measured claims. See [validation](docs/VALIDATION.md) and [design decisions](docs/ADR-001.md).
 
 ## Run locally
 
@@ -97,8 +97,11 @@ Frontend and signaling must both use application protocol **4**. Reload existing
 
 The gallery, designer, phone preview, Motion Lab and game harness are development-only. Production builds assert that their modules and styles are excluded. Calibration, connection diagnostics and session reports remain available in production. Rounds hold a 200 ms settling period after the timer ends before showing final results.
 
-- `src/core`: binary input protocol, clock sync, jitter buffer, calibration, snapshot replication, controller resolution, authoritative session.
-- `src/client`: peer transport, phone sensor fusion, role routing, controller widgets, display and diagnostics UI.
+- [`src/client/shell`](src/client/shell): composition, join/room/phone views, diagnostics and read-only runtime ports. See the [shell boundary and acceptance](docs/architecture/NEXT-SHELL-BOUNDARY.md).
+- `src/core`: binary input protocol, clock sync, jitter buffer, calibration, snapshot replication and authoritative session.
+- `src/client/runtime.ts`, `network.ts`, `motion.ts`: existing session orchestration, peer transport and phone sensor fusion.
+- `src/controls`, `src/layouts`: controller contracts, validated resolution, reusable controls and layouts.
+- `src/devtools`, `src/experiments/architecture`: development entry and isolated authoring harness.
 - `src/client/api`, `engine`, `game-screen`, `minigames`: author contracts, shared lifecycle/progress, read-only presentation, and the production game catalog.
 - `src/client/minigames/neon-harvest`: independent rules, state, renderer and colocated tests. Lab, Tilt Rally, Target Practice and their combined legacy adapters/state are retired; cross-game guarantees use test-only descriptors.
 - `server`: signed identity/resume tokens, room codes, source/global join limits, authorized signaling and relay routes, heartbeat-based host termination.

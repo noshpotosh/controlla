@@ -1,6 +1,6 @@
 # Independent game authoring: Neon Harvest walkthrough
 
-Status: the current accepted authoring example is the sole production descriptor, **Neon Harvest**. The completed controller boundary migration passes **224 tests**, typecheck, project lint excluding sibling worktrees, and production build. Its post-migration local browser/HTTP gate is closed; the earlier Neon baseline browser gate is preserved as separate evidence. Physical-device validation remains separate. The interfaces remain repository-local and versioned with the application. Read the [baseline/provenance](BASELINE.md), [decisions/evidence](DECISIONS-EXPERIMENTS.md), and [meta-plan](../ARCHITECTURE-META-PLAN.md).
+Status: the current accepted authoring example is the sole production descriptor, **Neon Harvest**. Controller and shell boundaries are implemented; **238 tests**, typecheck, project lint, and production build pass. Shell desktop observations and remaining physical-device checks are recorded in the [validation ledger](../VALIDATION.md). The interfaces remain repository-local and versioned with the application. Read the [baseline/provenance](BASELINE.md), [decisions/evidence](DECISIONS-EXPERIMENTS.md), and [meta-plan](../ARCHITECTURE-META-PLAN.md).
 
 ## Run the authoring environment
 
@@ -65,6 +65,16 @@ Game/mode choices come from the catalog. The current catalog contains only `neon
    ```
 
    Register in [`src/client/minigames/catalog.ts`](../../src/client/minigames/catalog.ts). Shell, harness, designer usage and production bundle checks use that catalog; no second game registration or new engine/screen branch is needed. For live testing, start the ordinary frontend and signaling service and connect screens/controllers. Every role must use application protocol **4**; reload all existing participants after upgrading. Controller schema and binary frame stay unchanged.
+
+## Contribute to the application shell
+
+Start in [`src/client/shell/`](../../src/client/shell/). `JoinScreen` owns the join form; `ConnectedShell` subscribes and routes roles; `RoomScreen` owns host/display chrome; `ControllerScreen` and `ControllerMenu` own phone session UI; `DiagnosticsPanel` presents typed metrics. `App` composes these views, creates one session per join, closes it on leave/unmount, and supplies catalog metadata and the existing `GameCanvas` screen slot.
+
+Use `ports.ts` for UI contracts and `runtime-adapter.ts` for concrete adaptation. A new view receives only its required snapshot/commands. Do not import runtime, motion, network, game implementations or tools into a view. Never expose resume tokens, mutable runtime collections, game state, raw wire messages or the snapshot buffer. Snapshots are detached and frozen; reading them does not sample presentation or replay audio. The existing controller config retains its public type annotations for compatibility but is frozen in each shell snapshot.
+
+Preserve stable session commands/screen ports and captured widget generation/input epoch. New asynchronous work must retire on leave: motion permission and wake-lock requests can finish after teardown. Phone touch suppression must restore the previous body overscroll setting. Developer extensions remain injected by `DevelopmentApp`; their observation port cannot control raw motion internals.
+
+Run `npm test`, `npm run typecheck`, `npm run lint -- --ignore-pattern '.worktrees/**'`, and `npm run build`. The shell adapter/lifetime tests and architecture graph checks cover immutable projections, command delegation, close/retry, stale ports, late browser promises and forbidden imports. Follow the [shell acceptance scenarios](NEXT-SHELL-BOUNDARY.md#acceptance-scenarios) for browser changes; preserve calibration and report availability. Game authors still use the game API and catalog, without shell edits.
 
 ## Exercise the boundaries
 

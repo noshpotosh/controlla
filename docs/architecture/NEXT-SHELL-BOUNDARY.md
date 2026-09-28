@@ -1,12 +1,12 @@
 # Next architecture slice: shell ownership and runtime ports
 
-Status: proposed follow-on to **Controller API cleanup after Neon Harvest**. This document plans implementation; it does not claim that cleanup or its acceptance gates have finished. Prepared on 2026-09-28 against the shared `codex/architecture-spikes` working tree.
+Status: **implemented on 2026-09-28** in `codex/shell-boundary-0928`, worktree `.worktrees/shell-boundary-0928`, from accepted controller/plan checkpoint `0fbaf05`. Ports/adaptation: `0edcbd3`; view separation: `e306f58`; final enforcement/evidence follows those checkpoints. **238 tests**, typecheck, project lint and production build pass. Browser observations and remaining device checks are recorded in [validation](../VALIDATION.md#shell-boundary-validation--2026-09-28). The design and acceptance scenarios below remain the scope reference.
 
 ## Recommendation and evidence
 
-Extract the application shell into `src/client/shell/` and replace UI access to the concrete `Runtime` with explicit, limited ports. Preserve the existing game, controller and screen contracts. This is the first bounded implementation of item 3 in the [ordered backlog](DECISIONS-EXPERIMENTS.md#ordered-next-backlog), following the controller-owned contracts/resolver work.
+Extract the application shell into `src/client/shell/` and replace UI access to the concrete `Runtime` with explicit, limited ports. Preserve the existing game, controller and screen contracts. This implements the shell/integration boundary from the [ordered backlog](DECISIONS-EXPERIMENTS.md#ordered-next-backlog), following the controller-owned contracts/resolver work.
 
-The remaining coupling is concrete:
+The starting coupling was concrete (the former paths below are now removed):
 
 - `src/client/App.tsx` combines join/resume and runtime lifetime, controller screens, host/display screens, standings, optional browser room inspection, and diagnostics in roughly 900 lines.
 - `ControllerMenu.tsx` and `Widgets.tsx` receive the complete runtime. UI code reads `runtime.motion`, `runtime.options.endpoint`, `runtime.buffer.starvations` and the broad mutable `runtime.view`.
@@ -17,7 +17,7 @@ Separating engine/core/shared/backend first would touch transport, timing and au
 
 ## Prerequisite and scope
 
-Prepare this plan while controller cleanup runs. Begin implementation only from an identifiable checkpoint containing completed controller cleanup and its recorded acceptance. Record the actual baseline and outstanding device/network gaps; do not reuse a historical test count as a target. If its browser gate remains open, finish that prerequisite before starting this migration.
+Implementation began from `0fbaf05`, which contains completed controller cleanup, its 224-test acceptance and the closed local browser gate. Physical device/network gaps remain separate. This preserved the prerequisite rather than inferring acceptance from a historical count.
 
 Consume the final `src/controls/api.ts`, `resolve.ts` and `controllerSpec` surfaces from that checkpoint. Do not recreate the deleted core resolver or compatibility exports. Keep Neon Harvest the sole production game; preserve protocol 4, layout schema 2, resolved configuration schema 1 and the binary input frame.
 
@@ -99,6 +99,14 @@ Run the full suite, typecheck, lint and production build from the completed bran
 5. **User flows and bundle:** join/resume links, connecting/error/ended states, fullscreen, calibration, diagnostics and reports retain behavior. Gallery/designer/phone preview and the motion extension work in development; production retains Neon and required control/screen assets, excludes developer code/CSS, and serves `/dev/game-harness` as 404.
 
 Preserve the cleanup suite and add meaningful adapter/subscription/import regressions. Record unobserved browser or physical-device checks as pending. Architecture checks do not establish phone, TV or cross-household latency claims.
+
+## Delivery evidence
+
+The three slices are implemented without compatibility forwards. Import enforcement uses the existing TypeScript graph walker and tests forbidden direct, transitive, type-only, alias, re-export and dynamic edges. Composition has an explicit allowlist; the adapter remains headless. Production positive controls include the new shell modules.
+
+The session adapter preserves stable screen/command identities, cached detached frozen snapshots, captured generation/epoch, observation cleanup and safe resume-token handling. The shell never samples frames. Review found existing late browser-promise cleanup races; narrow runtime guards now retire late motion/audio/wake completions, with three regressions. No general provider redesign was introduced.
+
+The 238-test full suite, typecheck, project lint and production build pass. The desktop flow used one host, a remote display and two simulated phones; completed rounds/rematch, reload within grace, explicit leave/rejoin, abort, tools, fullscreen, diagnostics and report download after host loss were observed. See the validation ledger for exact results and unobserved physical motion/calibration/multitouch checks. Original and sibling worktrees were preserved; no deployment or merge to main is part of this slice.
 
 ## Decision record and handoff
 

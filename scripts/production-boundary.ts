@@ -27,6 +27,12 @@ const forbiddenArtifact =
   /\/dev\/game-harness|HarnessPreview|Controller playground|Motion lab|__controlla\/(?:layouts|motion-trace)/;
 const gameplayModules = [
   'src/client/shell/App.tsx',
+  'src/client/shell/runtime-adapter.ts',
+  'src/client/shell/ConnectedShell.tsx',
+  'src/client/shell/JoinScreen.tsx',
+  'src/client/shell/RoomScreen.tsx',
+  'src/client/shell/ControllerScreen.tsx',
+  'src/client/shell/DiagnosticsPanel.tsx',
   'src/client/runtime.ts',
   'src/client/GameCanvas.tsx',
   'src/client/shell/ControllerMenu.tsx',

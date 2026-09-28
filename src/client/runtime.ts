@@ -138,6 +138,7 @@ export class Runtime {
   private eventIds = new Set<string>();
   private audio: AudioContext | null = null;
   private wake: WakeLockSentinel | null = null;
+  private wakePending = false;
   private disconnects: { at: number; status: string }[] = [];
   private snapshotDelays = new Samples();
   private lastSnapshotSize = 0;
@@ -740,7 +741,13 @@ export class Runtime {
     }
   }
   async enableMotion() {
+    if (this.stopped || this.view.ended) return;
     await this.motion.enable();
+    // A permission prompt can outlive the joined session.
+    if (this.stopped || this.view.ended) {
+      this.motion.stop();
+      return;
+    }
     this.view.motionEnabled =
       this.motion.capabilities.sensors.gyro.permission === 'granted';
     this.sendUp({
@@ -772,25 +779,43 @@ export class Runtime {
     this.notify();
   }
   async unlock() {
+    if (this.stopped || this.view.ended) return;
     try {
       this.audio ??= new AudioContext();
       await this.audio.resume();
     } catch {
       /* Audio may be unavailable. */
     }
-    await this.acquireWake();
+    if (!this.stopped && !this.view.ended) await this.acquireWake();
   }
   private async acquireWake() {
+    if (
+      this.stopped ||
+      this.view.ended ||
+      this.wakePending ||
+      this.wake ||
+      !('wakeLock' in navigator)
+    )
+      return;
+    this.wakePending = true;
     try {
-      if ('wakeLock' in navigator) {
-        this.wake = await navigator.wakeLock.request('screen');
-        this.view.wakeLock = true;
-        this.wake.addEventListener('release', () => {
-          this.view.wakeLock = false;
-        });
+      const wake = await navigator.wakeLock.request('screen');
+      if (this.stopped || this.view.ended) {
+        await wake.release();
+        return;
       }
+      this.wake = wake;
+      this.view.wakeLock = true;
+      wake.addEventListener('release', () => {
+        if (this.wake === wake) {
+          this.wake = null;
+          this.view.wakeLock = false;
+        }
+      });
     } catch {
       this.view.wakeLock = false;
+    } finally {
+      this.wakePending = false;
     }
   }
   previewPoint() {
@@ -1254,6 +1279,8 @@ export class Runtime {
     if (this.diagnosticsTimer) clearInterval(this.diagnosticsTimer);
     this.clearWidgetInput(true);
     void this.wake?.release();
+    this.wake = null;
+    this.view.wakeLock = false;
     // close() can run twice (React strict mode, hot reload); closing again throws.
     if (this.audio && this.audio.state !== 'closed')
       void this.audio.close().catch(() => {});

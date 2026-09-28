@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { test } from 'node:test';
 import ts from 'typescript';
@@ -55,12 +55,12 @@ function productionFiles(directory: string): string[] {
 const edgeCache = new Map<string, ImportEdge[]>();
 
 /** Resolve imports/re-exports, import types and literal dynamic imports as TS does. */
-function imports(file: string): ImportEdge[] {
-  const cached = edgeCache.get(file);
+function imports(file: string, sourceText?: string): ImportEdge[] {
+  const cached = sourceText === undefined ? edgeCache.get(file) : undefined;
   if (cached) return cached;
   const source = ts.createSourceFile(
     file,
-    readFileSync(file, 'utf8'),
+    sourceText ?? readFileSync(file, 'utf8'),
     ts.ScriptTarget.Latest,
     true,
   );
@@ -135,12 +135,16 @@ function imports(file: string): ImportEdge[] {
     ts.forEachChild(node, visit);
   };
   visit(source);
-  edgeCache.set(file, result);
+  if (sourceText === undefined) edgeCache.set(file, result);
   return result;
 }
 
 /** Traverse project modules recursively; type edges may be included separately. */
-function dependencies(entry: string, includeTypes = false): Set<string> {
+function dependencies(
+  entry: string,
+  includeTypes = false,
+  overrides = new Map<string, string>(),
+): Set<string> {
   const seen = new Set<string>();
   const pending = [entry];
   while (pending.length) {
@@ -148,7 +152,7 @@ function dependencies(entry: string, includeTypes = false): Set<string> {
     if (seen.has(file)) continue;
     seen.add(file);
     if (!isSource(file)) continue;
-    for (const edge of imports(file)) {
+    for (const edge of imports(file, overrides.get(file))) {
       if (edge.typeOnly && !includeTypes) continue;
       if (
         edge.resolved &&
@@ -207,7 +211,7 @@ void test('the catalog is the only production module that imports Neon Harvest',
 
 void test('game and harness dependency graphs stay outside shell, network ownership and tooling', () => {
   const forbidden = [
-    'src/client/shell/App.tsx',
+    'src/client/shell',
     'src/client/runtime.ts',
     'src/client/devtools',
     'server',
@@ -336,7 +340,7 @@ void test('the production canvas and game screen can read presentation but canno
     'src/client/engine/round.ts',
     'src/client/engine/progress.ts',
     'src/client/engine/history.ts',
-    'src/client/shell/App.tsx',
+    'src/client/shell',
     'src/client/devtools',
     'src/experiments',
     'server',
@@ -393,21 +397,200 @@ void test('shell ports stay type-only and UI leaves cannot reach the runtime', (
       edge.typeOnly && allowed.includes(edge.resolved!),
       `shell contract imports implementation: ${edge.specifier}`,
     );
-  for (const path of [
-    'src/client/shell/ControllerMenu.tsx',
-    'src/client/shell/LegacyWidget.tsx',
-  ]) {
-    for (const file of dependencies(join(root, path))) {
+  for (const entry of shellLeaves()) assertShellLeaf(entry);
+});
+
+const shell = join(root, 'src/client/shell');
+const composition = join(shell, 'App.tsx');
+const adapter = join(shell, 'runtime-adapter.ts');
+function shellLeaves() {
+  return productionFiles(shell).filter(
+    (file) => file !== composition && file !== adapter,
+  );
+}
+function assertShellLeaf(entry: string, overrides = new Map<string, string>()) {
+  const forbidden = [
+    composition,
+    adapter,
+    ...[
+      'src/client/runtime.ts',
+      'src/client/network.ts',
+      'src/client/motion.ts',
+      'src/client/GameCanvas.tsx',
+      'src/client/engine',
+      'src/client/minigames',
+      'src/core/session.ts',
+      'src/core/pointer.ts',
+      'src/devtools',
+      'src/client/MotionLab.tsx',
+      'src/experiments',
+      'server',
+      'src/controls/designer',
+      'src/controls/gallery',
+      'src/controls/preview',
+    ].map((path) => join(root, path)),
+  ];
+  for (const file of dependencies(entry, true, overrides)) {
+    assert.ok(
+      !forbidden.some((path) => within(file, path)),
+      `${relative(root, entry)} reaches implementation: ${relative(root, file)}`,
+    );
+    for (const edge of imports(file, overrides.get(file)))
       assert.ok(
-        ![
-          'src/client/runtime.ts',
-          'src/client/network.ts',
-          'src/client/motion.ts',
-          'src/core/session.ts',
-          'src/client/shell/runtime-adapter.ts',
-        ].some((forbidden) => file === join(root, forbidden)),
-        `${path} reaches ${relative(root, file)}`,
+        !/^(?:node:|ws$)/.test(edge.specifier),
+        `${relative(root, entry)} reaches server package ${edge.specifier}`,
       );
-    }
   }
+}
+
+void test('shell boundary rejects direct, type-only, alias, re-export and dynamic escapes including through helper modules', () => {
+  const entry = join(shell, 'RoomScreen.tsx'),
+    helper = join(shell, 'standings.ts');
+  for (const source of [
+    "import { Runtime } from '../runtime.ts';",
+    "import type { Runtime } from '../runtime.ts';",
+    "type R = import('../runtime.ts').Runtime;",
+    "export { Runtime } from '@/src/client/runtime.ts';",
+    "export * from '../network.ts';",
+    "const lazy = () => import('../motion.ts');",
+    "import './runtime-adapter.ts';",
+    "export { default } from './App.tsx';",
+    "import { games } from '../minigames/catalog.ts';",
+    "import '../MotionLab.tsx';",
+  ]) {
+    assert.throws(
+      () => assertShellLeaf(entry, new Map([[entry, source]])),
+      /reaches implementation/,
+    );
+    assert.throws(
+      () =>
+        assertShellLeaf(
+          entry,
+          new Map([
+            [entry, "export * from './standings.ts';"],
+            [helper, source],
+          ]),
+        ),
+      /reaches implementation/,
+    );
+  }
+  assert.throws(
+    () =>
+      assertShellLeaf(
+        entry,
+        new Map([[entry, 'const load = (path: string) => import(path);']]),
+      ),
+    /opaque dynamic import/,
+  );
+});
+
+void test('shell contracts cannot acquire implementations and the runtime bridge stays headless', () => {
+  const ports = join(shell, 'ports.ts');
+  const source = ts.createSourceFile(
+    ports,
+    readFileSync(ports, 'utf8'),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  assert.ok(
+    source.statements.every(
+      (statement) =>
+        ts.isImportDeclaration(statement) ||
+        ts.isExportDeclaration(statement) ||
+        ts.isInterfaceDeclaration(statement) ||
+        ts.isTypeAliasDeclaration(statement),
+    ),
+  );
+  assert.ok(
+    !/\b(?:Runtime|RuntimeView|Network|Message)\b/.test(
+      readFileSync(ports, 'utf8'),
+    ),
+  );
+  for (const edge of imports(adapter)) {
+    if (edge.resolved && within(edge.resolved, shell))
+      assert.ok(
+        edge.resolved === join(shell, 'standings.ts') ||
+          (edge.resolved === ports && edge.typeOnly),
+      );
+  }
+  for (const file of dependencies(adapter, true)) {
+    assert.ok(
+      !file.endsWith('.tsx'),
+      `runtime adapter imports UI: ${relative(root, file)}`,
+    );
+    for (const edge of imports(file))
+      assert.ok(!/^(?:react|next|vinext)(?:\/|$)/.test(edge.specifier));
+  }
+});
+
+void test('engine, screen, controls and backend cannot depend back on the shell; moved files have no forwards', () => {
+  const entries = [
+    ...[
+      'src/client/engine',
+      'src/client/game-screen',
+      'src/controls',
+      'server',
+    ].flatMap((path) => productionFiles(join(root, path))),
+    ...[
+      'src/client/runtime.ts',
+      'src/client/network.ts',
+      'src/client/motion.ts',
+      'src/client/GameCanvas.tsx',
+      'src/core/session.ts',
+    ].map((path) => join(root, path)),
+  ].filter(
+    (file) =>
+      ![
+        'src/controls/designer',
+        'src/controls/gallery',
+        'src/controls/preview',
+      ].some((path) => within(file, join(root, path))),
+  );
+  for (const entry of entries)
+    for (const file of dependencies(entry, true))
+      assert.ok(
+        !within(file, shell),
+        `${relative(root, entry)} imports shell: ${relative(root, file)}`,
+      );
+  for (const old of [
+    'App.tsx',
+    'ControllerMenu.tsx',
+    'Widgets.tsx',
+    'standings.ts',
+    'extensions.ts',
+  ])
+    assert.equal(
+      existsSync(join(root, 'src/client', old)),
+      false,
+      `${old} must not remain as a compatibility forward`,
+    );
+});
+
+function assertShellComposition(sourceText?: string) {
+  const allowed = [
+    'runtime-adapter.ts',
+    'JoinScreen.tsx',
+    'ConnectedShell.tsx',
+    'extensions.ts',
+    'ports.ts',
+  ].map((file) => join(shell, file));
+  allowed.push(join(root, 'src/client/GameCanvas.tsx'), catalog);
+  for (const edge of imports(composition, sourceText))
+    assert.ok(
+      edge.specifier === 'react' ||
+        (edge.resolved && allowed.includes(edge.resolved)),
+      `composition bypasses its adapter: ${edge.specifier}`,
+    );
+}
+void test('shell composition can assemble catalog, screen and ports but cannot bypass the runtime adapter', () => {
+  assertShellComposition();
+  for (const source of [
+    "import { Runtime } from '../runtime.ts';",
+    "import type { Runtime } from '../runtime.ts';",
+    "export * from '@/src/core/session.ts';",
+    "const load = () => import('../network.ts');",
+    "import '../motion.ts';",
+    "export * from '../../devtools/DevelopmentApp.tsx';",
+  ])
+    assert.throws(() => assertShellComposition(source), /composition bypasses/);
 });

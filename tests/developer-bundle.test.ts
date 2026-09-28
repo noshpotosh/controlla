@@ -92,6 +92,12 @@ void test('production guard rejects tool modules in every environment including 
 
 const modules = [
   'src/client/shell/App.tsx',
+  'src/client/shell/runtime-adapter.ts',
+  'src/client/shell/ConnectedShell.tsx',
+  'src/client/shell/JoinScreen.tsx',
+  'src/client/shell/RoomScreen.tsx',
+  'src/client/shell/ControllerScreen.tsx',
+  'src/client/shell/DiagnosticsPanel.tsx',
   'src/client/runtime.ts',
   'src/client/GameCanvas.tsx',
   'src/client/shell/ControllerMenu.tsx',

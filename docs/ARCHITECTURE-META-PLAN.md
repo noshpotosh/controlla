@@ -1,6 +1,6 @@
 # Project organization and game extensibility: meta plan
 
-Status: draft for planning. Prepared against the repository on 2026-09-27.
+Status: original planning draft, prepared against the repository on 2026-09-27. Current implementation now includes the [shell boundary](architecture/NEXT-SHELL-BOUNDARY.md); use the linked ownership and evidence records for current paths and acceptance.
 
 The first planning slice is now recorded in the [baseline and ownership map](architecture/BASELINE.md), [runnable author walkthrough](architecture/AUTHORING.md), and [decisions and experiment evidence](architecture/DECISIONS-EXPERIMENTS.md). The original experimental harness did not replace the production shell. The next live slice promotes its contracts/round runner into the default production catalog, with a narrow screen boundary and authoritative session progress; unrelated directory moves remain deferred. The follow-up closes reliable-input validation, adds framework-owned 200 ms round settling, and isolates developer tools from production builds; its evidence gates and ordered migration backlog live in the same records.
 
@@ -26,7 +26,7 @@ First-slice decision: independent development means a game folder in this reposi
 
 The original prototype contained boundaries worth preserving, but adding a new game crossed several of them. This inventory records that starting point; the linked baseline and evidence records track the implemented live-catalog changes:
 
-- [`src/client/App.tsx`](../src/client/App.tsx) combines joining, controller UI, game selection, display UI, and diagnostics. Game choices and mode options are built into this component.
+- The former `src/client/App.tsx` combined joining, controller UI, game selection, display UI and diagnostics. That historical file is now split into [`src/client/shell/`](../src/client/shell/), with explicit ports and composition-owned catalog metadata.
 - [`src/client/runtime.ts`](../src/client/runtime.ts) coordinates transport, host authority, controller input, motion, presentation, audio, and reports. Legacy widgets and display components receive this broad runtime; reusable library controls already use a narrow `ControlPort`.
 - [`src/core/config.ts`](../src/core/config.ts) combines built-in game manifests with reusable capability checks and controller resolution. The declarative input requirements are a useful starting point for the controller library.
 - [`src/games/engine.ts`](../src/games/engine.ts) declares `GameContract`, but both games live inside one `PartyGame` implementation. [`src/core/session.ts`](../src/core/session.ts) constructs that concrete class and reads its state directly.
