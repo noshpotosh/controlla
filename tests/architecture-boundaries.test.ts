@@ -207,7 +207,7 @@ void test('the catalog is the only production module that imports Neon Harvest',
 
 void test('game and harness dependency graphs stay outside shell, network ownership and tooling', () => {
   const forbidden = [
-    'src/client/App.tsx',
+    'src/client/shell/App.tsx',
     'src/client/runtime.ts',
     'src/client/devtools',
     'server',
@@ -233,7 +233,10 @@ void test('game and harness dependency graphs stay outside shell, network owners
       }
     }
   }
-  for (const file of dependencies(join(root, 'src/client/App.tsx'), true)) {
+  for (const file of dependencies(
+    join(root, 'src/client/shell/App.tsx'),
+    true,
+  )) {
     assert.ok(
       !within(file, spike),
       `the shipped shell reaches the architecture spike: ${relative(root, file)}`,
@@ -333,7 +336,7 @@ void test('the production canvas and game screen can read presentation but canno
     'src/client/engine/round.ts',
     'src/client/engine/progress.ts',
     'src/client/engine/history.ts',
-    'src/client/App.tsx',
+    'src/client/shell/App.tsx',
     'src/client/devtools',
     'src/experiments',
     'server',
@@ -391,8 +394,8 @@ void test('shell ports stay type-only and UI leaves cannot reach the runtime', (
       `shell contract imports implementation: ${edge.specifier}`,
     );
   for (const path of [
-    'src/client/ControllerMenu.tsx',
-    'src/client/Widgets.tsx',
+    'src/client/shell/ControllerMenu.tsx',
+    'src/client/shell/LegacyWidget.tsx',
   ]) {
     for (const file of dependencies(join(root, path))) {
       assert.ok(

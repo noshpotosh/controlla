@@ -2,7 +2,7 @@ import { Runtime, type JoinOptions } from '../runtime.ts';
 import type { Motion } from '../motion.ts';
 import type { Identity } from '../../core/types.ts';
 import { MAX_GAIN, MIN_GAIN } from '../../core/pointer.ts';
-import { standingsForPresentation } from '../standings.ts';
+import { standingsForPresentation } from './standings.ts';
 import type {
   JoinRequest,
   ShellSession,

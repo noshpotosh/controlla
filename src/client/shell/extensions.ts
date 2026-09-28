@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from 'react';
-import type { MotionDiagnosticsPort } from './shell/ports.ts';
-export type { MotionDiagnosticsPort } from './shell/ports.ts';
+import type { MotionDiagnosticsPort } from './ports.ts';
+export type { MotionDiagnosticsPort } from './ports.ts';
 
 export interface ControllerPanelProps {
   motion: MotionDiagnosticsPort;

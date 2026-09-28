@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { standingsForPresentation } from '../src/client/standings.ts';
+import { standingsForPresentation } from '../src/client/shell/standings.ts';
 
 void test('standings retain a returning nonparticipant’s points after the current results become visible', () => {
   const ledger = { revision: 6, totals: { ada: 4, bea: 3, cy: 9 } };

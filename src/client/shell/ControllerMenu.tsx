@@ -4,8 +4,8 @@
 // corner, plus short status toasts.
 import { useEffect, useState } from 'react';
 import { Crosshair, Menu, RotateCcw, X } from 'lucide-react';
-import type { MenuCorner } from '../controls/api.ts';
-import type { ShellView, PhoneActions } from './shell/ports.ts';
+import type { MenuCorner } from '../../controls/api.ts';
+import type { ShellView, PhoneActions } from './ports.ts';
 
 export function ControllerMenu({
   view: v,

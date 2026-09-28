@@ -12,7 +12,7 @@ export function developmentEntry(
         root,
         command === 'serve'
           ? 'src/devtools/DevelopmentApp.tsx'
-          : 'src/client/App.tsx',
+          : 'src/client/shell/App.tsx',
       ),
     },
     pageExtensions: [

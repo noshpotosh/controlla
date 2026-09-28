@@ -26,10 +26,10 @@ const forbiddenCss =
 const forbiddenArtifact =
   /\/dev\/game-harness|HarnessPreview|Controller playground|Motion lab|__controlla\/(?:layouts|motion-trace)/;
 const gameplayModules = [
-  'src/client/App.tsx',
+  'src/client/shell/App.tsx',
   'src/client/runtime.ts',
   'src/client/GameCanvas.tsx',
-  'src/client/ControllerMenu.tsx',
+  'src/client/shell/ControllerMenu.tsx',
   'src/controls/ControllerSurface.tsx',
   'src/core/session.ts',
   'src/client/engine/round.ts',

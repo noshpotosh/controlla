@@ -16,7 +16,7 @@
     "incremental": true,
     "paths": {
       "@/*": ["./*"],
-      "@controlla/app-entry": ["./src/client/App.tsx"]
+      "@controlla/app-entry": ["./src/client/shell/App.tsx"]
     },
     "allowImportingTsExtensions": true
   },

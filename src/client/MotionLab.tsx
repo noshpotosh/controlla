@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import type {
   ControllerPanelProps,
   MotionDiagnosticsPort,
-} from './extensions.ts';
+} from './shell/extensions.ts';
 import type {
   MotionTrace,
   RawMotionSample,

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Gamepad2, LayoutGrid } from 'lucide-react';
-import App from '../client/App.tsx';
+import App from '../client/shell/App.tsx';
 import { MotionLab } from '../client/MotionLab.tsx';
 import { Designer } from '../controls/designer/Designer.tsx';
 import { Gallery } from '../controls/gallery/Gallery.tsx';

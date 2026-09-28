@@ -21,7 +21,7 @@ void test('build selection excludes dev routes before Vinext scans client import
     development = developmentEntry(root, 'serve');
   assert.equal(
     production.alias['@controlla/app-entry'],
-    resolve(root, 'src/client/App.tsx'),
+    resolve(root, 'src/client/shell/App.tsx'),
   );
   assert.equal(
     development.alias['@controlla/app-entry'],
@@ -91,10 +91,10 @@ void test('production guard rejects tool modules in every environment including 
 });
 
 const modules = [
-  'src/client/App.tsx',
+  'src/client/shell/App.tsx',
   'src/client/runtime.ts',
   'src/client/GameCanvas.tsx',
-  'src/client/ControllerMenu.tsx',
+  'src/client/shell/ControllerMenu.tsx',
   'src/controls/ControllerSurface.tsx',
   'src/core/session.ts',
   'src/client/engine/round.ts',

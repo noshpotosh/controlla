@@ -1,4 +1,4 @@
-import type { Progress, ReadonlyDeep, RoundProgress } from './api/index.ts';
+import type { Progress, ReadonlyDeep, RoundProgress } from '../api/index.ts';
 
 /** Preserve nonparticipants' known totals without revealing a future ledger revision. */
 export function standingsForPresentation(

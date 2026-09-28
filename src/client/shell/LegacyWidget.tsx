@@ -10,8 +10,8 @@ import {
 } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import type { Widget, ControlPort } from '../controls/api.ts';
-import type { PhoneActions } from './shell/ports.ts';
+import type { Widget, ControlPort } from '../../controls/api.ts';
+import type { PhoneActions } from './ports.ts';
 const clamp = (x: number) => Math.max(-1, Math.min(1, x));
 export function LegacyWidget({
   widget: w,
