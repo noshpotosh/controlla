@@ -24,7 +24,7 @@ import { dpadDirection } from '../src/controls/dpad/logic.ts';
 import { clampOrigin, stickVector } from '../src/controls/stick/logic.ts';
 import { classifySwipe } from '../src/controls/swipe-pad/logic.ts';
 import { chargeAt } from '../src/controls/hold-meter/logic.ts';
-import { defaultCapabilities, resolveConfig } from '../src/core/config.ts';
+import { defaultCapabilities, resolveConfig } from '../src/controls/resolve.ts';
 import { layouts } from '../src/layouts/index.ts';
 import { emptyLayout } from '../src/controls/layout/schema.ts';
 
@@ -195,7 +195,7 @@ void test('resolveConfig rejects more press controls than the frame carries', ()
           defaultCapabilities(),
           1,
         ),
-      /more than 4 press/,
+      /at most 4/,
     );
   } finally {
     delete layouts['five-buttons'];

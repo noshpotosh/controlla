@@ -1,4 +1,4 @@
-import { defaultCapabilities } from '../../core/config.ts';
+import { defaultCapabilities } from '../../controls/resolve.ts';
 import type { Capabilities } from '../../controls/api.ts';
 export {
   controllerSpec,

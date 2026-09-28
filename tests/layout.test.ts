@@ -50,7 +50,7 @@ import {
   defaultCapabilities,
   gameLayout,
   resolveConfig,
-} from '../src/core/config.ts';
+} from '../src/controls/resolve.ts';
 
 import { layouts } from '../src/layouts/index.ts';
 

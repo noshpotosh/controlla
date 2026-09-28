@@ -4,13 +4,17 @@ import type {
   ControllerSpec,
   Widget,
   WidgetType,
-} from '../controls/api.ts';
-import { gameDefaultLayout } from '../controls/layouts.ts';
-import { itemWidget } from '../controls/layout/widgets.ts';
-import { isMotion } from '../controls/layout/schema.ts';
-import { boundName } from '../controls/layout/validate.ts';
+} from './api.ts';
+import { gameDefaultLayout } from './layouts.ts';
+import { itemWidget } from './layout/widgets.ts';
+import { isMotion } from './layout/schema.ts';
+import {
+  boundName,
+  checkAssignment,
+  validateLayout,
+} from './layout/validate.ts';
 import { layouts } from '../layouts/index.ts';
-import { PRESS_SLOTS, usesPressSlot } from '../controls/registry.ts';
+import { PRESS_SLOTS, usesPressSlot } from './registry.ts';
 export function available(type: WidgetType, c: Capabilities) {
   if (type === 'pointer')
     return (
@@ -23,13 +27,14 @@ export function available(type: WidgetType, c: Capabilities) {
     return c.sensors.accel.present && c.sensors.accel.permission === 'granted';
   return true;
 }
-/** The layout a game plays on: its chosen one, else a generated default. */
+/** Select the named controller layout, or generate one from requirements. */
 export function gameLayout(spec: ControllerSpec) {
   const id = spec.controller?.layout;
   if (id && !layouts[id])
     throw new Error(`${spec.name} uses layout "${id}", which doesn't exist.`);
   return id ? layouts[id] : gameDefaultLayout(spec);
 }
+/** Resolve atomically: no configuration escapes before all checks pass. */
 export function resolveConfig(
   spec: ControllerSpec,
   c: Capabilities,
@@ -38,6 +43,9 @@ export function resolveConfig(
   const layout = gameLayout(spec),
     substitutions: string[] = [],
     widgets: Widget[] = [];
+  const issues = [...validateLayout(layout), ...checkAssignment(spec, layout)];
+  if (issues.length)
+    throw new Error(issues.map((issue) => issue.message).join(' '));
   for (const [action, input] of Object.entries(spec.inputs)) {
     const item = layout.items.find((i) => i.name === boundName(spec, action)),
       // A motion input the layout switches on wins when the phone has it;
@@ -77,6 +85,15 @@ export function resolveConfig(
       space: input.prefer === 'pointer' ? 'normalized' : 'signed',
     });
   }
+  // The unchanged binary frame carries one motion vector. Check resolved
+  // actions, including repeated uses of one sensor, rather than layout flags.
+  const motionWidgets = widgets.filter(
+    (widget) => widget.type === 'pointer' || widget.type === 'tilt',
+  );
+  if (motionWidgets.length > 1)
+    throw new Error(
+      `${spec.name}: only one binary motion vector is supported; conflicting actions: ${motionWidgets.map((widget) => `${widget.action} (${widget.type})`).join(', ')}.`,
+    );
   const types = widgets.map((w) => w.type);
   if (types.filter(usesPressSlot).length > PRESS_SLOTS)
     throw new Error(

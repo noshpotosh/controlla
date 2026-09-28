@@ -2,7 +2,7 @@ import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { Runtime } from '../src/client/runtime.ts';
 import { encodeInput } from '../src/core/protocol.ts';
-import { defaultCapabilities, resolveConfig } from '../src/core/config.ts';
+import { defaultCapabilities, resolveConfig } from '../src/controls/resolve.ts';
 import { pointerSpec } from './fixtures/games.ts';
 import type { InputFrame, Message, Roster } from '../src/core/types.ts';
 

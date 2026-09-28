@@ -16,7 +16,7 @@ import {
   validateLayout,
 } from '../src/controls/layout/validate.ts';
 import { layouts } from '../src/layouts/index.ts';
-import { defaultCapabilities, resolveConfig } from '../src/core/config.ts';
+import { defaultCapabilities, resolveConfig } from '../src/controls/resolve.ts';
 import type {
   ControllerSpec,
   Widget,

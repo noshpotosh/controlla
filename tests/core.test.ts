@@ -27,7 +27,7 @@ import {
   SnapshotEncoder,
   type SnapshotPolicy,
 } from '../src/core/snapshots.ts';
-import { defaultCapabilities, resolveConfig } from '../src/core/config.ts';
+import { defaultCapabilities, resolveConfig } from '../src/controls/resolve.ts';
 import { SessionAuthority } from '../src/core/session.ts';
 import type { RoundSnapshot } from '../src/client/api/index.ts';
 import type { ControllerConfig } from '../src/controls/api.ts';

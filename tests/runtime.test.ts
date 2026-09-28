@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import WebSocket from 'ws';
 import { Runtime } from '../src/client/runtime.ts';
-import { defaultCapabilities, resolveConfig } from '../src/core/config.ts';
+import { defaultCapabilities, resolveConfig } from '../src/controls/resolve.ts';
 import { decodeInput } from '../src/core/protocol.ts';
 import type { Identity } from '../src/core/types.ts';
 

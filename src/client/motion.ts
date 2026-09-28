@@ -13,7 +13,7 @@ import {
   toRawSample,
   type RawMotionSample,
 } from '../core/motion/trace.ts';
-import { defaultCapabilities } from '../core/config.ts';
+import { defaultCapabilities } from '../controls/resolve.ts';
 interface PermissionConstructor {
   requestPermission?: () => Promise<'granted' | 'denied'>;
 }

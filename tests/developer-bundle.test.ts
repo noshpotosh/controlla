@@ -13,7 +13,7 @@ import {
 import { toolRequest } from '../src/devtools/routing.ts';
 import { motionDiagnostics } from '../src/client/extensions.ts';
 import { RingBuffer, type RawMotionSample } from '../src/core/motion/trace.ts';
-import { defaultCapabilities } from '../src/core/config.ts';
+import { defaultCapabilities } from '../src/controls/resolve.ts';
 
 void test('build selection excludes dev routes before Vinext scans client imports', () => {
   const root = process.cwd(),

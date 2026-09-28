@@ -1,4 +1,4 @@
-import { defaultCapabilities } from './config.ts';
+import { defaultCapabilities } from '../controls/resolve.ts';
 import {
   defaultGame,
   findGame,
