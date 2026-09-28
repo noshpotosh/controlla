@@ -376,3 +376,35 @@ void test('the production canvas and game screen can read presentation but canno
     'the canvas port exposes only frame sampling and visible marker acknowledgments',
   );
 });
+
+void test('shell ports stay type-only and UI leaves cannot reach the runtime', () => {
+  const ports = join(root, 'src/client/shell/ports.ts');
+  const allowed = [
+    'src/controls/api.ts',
+    'src/core/types.ts',
+    'src/core/motion/trace.ts',
+    'src/client/game-screen/port.ts',
+  ].map((path) => join(root, path));
+  for (const edge of imports(ports))
+    assert.ok(
+      edge.typeOnly && allowed.includes(edge.resolved!),
+      `shell contract imports implementation: ${edge.specifier}`,
+    );
+  for (const path of [
+    'src/client/ControllerMenu.tsx',
+    'src/client/Widgets.tsx',
+  ]) {
+    for (const file of dependencies(join(root, path))) {
+      assert.ok(
+        ![
+          'src/client/runtime.ts',
+          'src/client/network.ts',
+          'src/client/motion.ts',
+          'src/core/session.ts',
+          'src/client/shell/runtime-adapter.ts',
+        ].some((forbidden) => file === join(root, forbidden)),
+        `${path} reaches ${relative(root, file)}`,
+      );
+    }
+  }
+});

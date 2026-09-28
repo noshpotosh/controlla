@@ -5,21 +5,22 @@
 import { useEffect, useState } from 'react';
 import { Crosshair, Menu, RotateCcw, X } from 'lucide-react';
 import type { MenuCorner } from '../controls/api.ts';
-import type { Runtime } from './runtime.ts';
+import type { ShellView, PhoneActions } from './shell/ports.ts';
 
 export function ControllerMenu({
-  runtime,
+  view: v,
+  phone,
   corner,
   extraAction,
   leave,
 }: {
-  runtime: Runtime;
+  view: ShellView;
+  phone: PhoneActions;
   corner: MenuCorner;
   extraAction?: { label: string; run(): void };
   leave: () => void;
 }) {
   const [open, setOpen] = useState(false),
-    v = runtime.view,
     me = v.identity,
     player = v.roster.players.find((p) => p.id === me?.id),
     pointer = v.config?.sensors.pointer.enabled,
@@ -42,7 +43,7 @@ export function ControllerMenu({
         <button
           type="button"
           className="ctl-motion-prompt"
-          onClick={() => void runtime.enableMotion()}
+          onClick={() => void phone.enableMotion()}
         >
           Tap to enable motion
         </button>
@@ -67,7 +68,7 @@ export function ControllerMenu({
               <X />
             </button>
           </div>
-          <p className="ctl-sheet__status">{statusText(runtime)}</p>
+          <p className="ctl-sheet__status">{statusText(v)}</p>
           {v.warning && <p className="ctl-sheet__warning">{v.warning}</p>}
           {!globalThis.isSecureContext && (
             <p className="ctl-sheet__warning">
@@ -75,7 +76,7 @@ export function ControllerMenu({
             </p>
           )}
           <div className="ctl-sheet__actions">
-            <button type="button" onClick={() => void runtime.enableMotion()}>
+            <button type="button" onClick={() => void phone.enableMotion()}>
               {v.motionEnabled ? 'Motion enabled' : 'Enable motion'}
             </button>
             {pointer && (
@@ -84,12 +85,12 @@ export function ControllerMenu({
                   type="button"
                   onClick={() => {
                     setOpen(false);
-                    runtime.beginAdjustAim();
+                    phone.beginAdjustAim();
                   }}
                 >
                   <Crosshair /> Aim settings
                 </button>
-                <button type="button" onClick={() => runtime.recenter()}>
+                <button type="button" onClick={() => phone.recenter()}>
                   <RotateCcw /> Recenter
                 </button>
               </>
@@ -123,8 +124,7 @@ export function ControllerMenu({
   );
 }
 
-export function statusText(runtime: Runtime) {
-  const v = runtime.view;
+export function statusText(v: ShellView) {
   if (v.ended) return 'Session ended';
   if (v.status !== 'Connected') return v.status;
   if (v.phase === 'countdown') return 'Get ready…';
@@ -135,9 +135,9 @@ export function statusText(runtime: Runtime) {
 }
 
 /** Shows the status briefly whenever it changes; stays while disconnected. */
-export function StatusToast({ runtime }: { runtime: Runtime }) {
-  const text = statusText(runtime),
-    sticky = runtime.view.status !== 'Connected',
+export function StatusToast({ view: v }: { view: ShellView }) {
+  const text = statusText(v),
+    sticky = v.status !== 'Connected',
     [dismissed, setDismissed] = useState<string | null>(null);
   useEffect(() => {
     if (sticky) return;

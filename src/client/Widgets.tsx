@@ -10,19 +10,20 @@ import {
 } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import type { Widget } from '../controls/api.ts';
-import type { Runtime } from './runtime.ts';
+import type { Widget, ControlPort } from '../controls/api.ts';
+import type { PhoneActions } from './shell/ports.ts';
 const clamp = (x: number) => Math.max(-1, Math.min(1, x));
 export function LegacyWidget({
   widget: w,
-  runtime,
-  generation,
+  port,
+  previewPoint,
+  sensorHz,
 }: {
   widget: Widget;
-  runtime: Runtime;
-  generation: number;
+  port: ControlPort;
+  previewPoint: PhoneActions['previewPoint'];
+  sensorHz: number;
 }) {
-  const port = runtime.portFor(w, generation);
   const [progress, setProgress] = useState(0),
     [text, setText] = useState(''),
     [angle, setAngle] = useState(0);
@@ -132,7 +133,9 @@ export function LegacyWidget({
         <span className="widget-glyph">
           {w.type === 'pointer' ? '⊕' : w.type === 'tilt' ? '↔' : '↯'}
         </span>
-        {w.type === 'pointer' ? <PointerPreview runtime={runtime} /> : null}
+        {w.type === 'pointer' ? (
+          <PointerPreview previewPoint={previewPoint} />
+        ) : null}
         {w.type === 'pointer'
           ? 'Swivel left/right · Tip the top edge up/down'
           : w.type === 'tilt'
@@ -141,7 +144,7 @@ export function LegacyWidget({
         <small>
           {w.type === 'pointer'
             ? 'Push past an edge or tap Recenter to re-center'
-            : `${Math.round(runtime.view.sensorHz)} motion samples / sec`}
+            : `${Math.round(sensorHz)} motion samples / sec`}
         </small>
       </div>
     );
@@ -176,14 +179,18 @@ export function LegacyWidget({
   );
 }
 
-function PointerPreview({ runtime }: { runtime: Runtime }) {
+function PointerPreview({
+  previewPoint,
+}: {
+  previewPoint: PhoneActions['previewPoint'];
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current!,
       ctx = canvas.getContext('2d')!;
     let raf = 0;
     const render = () => {
-      const p = runtime.previewPoint();
+      const p = previewPoint();
       ctx.fillStyle = '#181c35';
       ctx.fillRect(0, 0, 280, 158);
       ctx.strokeStyle = '#d5ff70';
@@ -201,7 +208,7 @@ function PointerPreview({ runtime }: { runtime: Runtime }) {
     };
     raf = requestAnimationFrame(render);
     return () => cancelAnimationFrame(raf);
-  }, [runtime]);
+  }, [previewPoint]);
   return (
     <canvas
       ref={ref}

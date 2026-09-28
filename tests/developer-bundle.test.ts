@@ -11,7 +11,7 @@ import {
   type BundleReport,
 } from '../scripts/production-boundary.ts';
 import { toolRequest } from '../src/devtools/routing.ts';
-import { motionDiagnostics } from '../src/client/extensions.ts';
+import { motionDiagnostics } from '../src/client/shell/runtime-adapter.ts';
 import { RingBuffer, type RawMotionSample } from '../src/core/motion/trace.ts';
 import { defaultCapabilities } from '../src/controls/resolve.ts';
 

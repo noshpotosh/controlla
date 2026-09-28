@@ -1,11 +1,9 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import type { Message } from '../core/types.ts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { MAX_GAIN, MIN_GAIN } from '../core/pointer.ts';
 import {
   Radio,
   Monitor,
@@ -20,36 +18,21 @@ import {
   Zap,
   Trophy,
 } from 'lucide-react';
-import { Runtime, type JoinOptions } from './runtime.ts';
+import { createSession } from './shell/runtime-adapter.ts';
+import type {
+  ShellSession,
+  Role,
+  ShellView,
+  RoomActions,
+} from './shell/ports.ts';
 import { LegacyWidget } from './Widgets.tsx';
 import { ControllerSurface } from '../controls/ControllerSurface.tsx';
 import { ControllerMenu, StatusToast } from './ControllerMenu.tsx';
 import { GameCanvas } from './GameCanvas.tsx';
 import { games, findGame } from './minigames/catalog.ts';
-import { standingsForPresentation } from './standings.ts';
-import { motionDiagnostics, type AppExtensions } from './extensions.ts';
-import type { Identity, Role } from '../core/types.ts';
-function getResume(role: Role, room: string, venue: string) {
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)!;
-      if (key.startsWith(`controlla:resume:${role}:${room.toUpperCase()}:`)) {
-        const identity = JSON.parse(localStorage.getItem(key)!) as Identity;
-        if (
-          !venue ||
-          identity.venueId === venue ||
-          identity.venueId.startsWith(venue.toLowerCase())
-        )
-          return identity.token;
-      }
-    }
-  } catch {
-    /* Storage is optional. */
-  }
-  return undefined;
-}
+import type { AppExtensions } from './extensions.ts';
 export default function App({ extensions }: { extensions?: AppExtensions }) {
-  const [runtime, setRuntime] = useState<Runtime | null>(null),
+  const [session, setSession] = useState<ShellSession | null>(null),
     [role, setRole] = useState<Role>('host'),
     [room, setRoom] = useState(''),
     [venue, setVenue] = useState(''),
@@ -57,7 +40,7 @@ export default function App({ extensions }: { extensions?: AppExtensions }) {
     [endpoint, setEndpoint] = useState(''),
     [error, setError] = useState(''),
     [resume, setResume] = useState(true);
-  const runtimeRef = useRef<Runtime | null>(null);
+  const sessionRef = useRef<ShellSession | null>(null);
   useEffect(() => {
     queueMicrotask(() => {
       const params = new URLSearchParams(location.search);
@@ -70,49 +53,39 @@ export default function App({ extensions }: { extensions?: AppExtensions }) {
           `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/signal`,
       );
     });
-    return () => runtimeRef.current?.close();
+    return () => sessionRef.current?.close();
   }, []);
   function join() {
     try {
-      if (
-        role !== 'host' &&
-        !/^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{4,6}$/i.test(room.trim())
-      )
-        throw new Error('Enter the room code shown on the screen.');
-      if (role === 'controller' && !venue)
-        throw new Error(
-          'Open the room on a screen first, then enter its screen code or open its phone link.',
-        );
-      const url = new URL(endpoint);
-      if (!['ws:', 'wss:'].includes(url.protocol))
-        throw new Error('Room service address must start with ws:// or wss://');
-      const options: JoinOptions = {
+      if (sessionRef.current) return;
+      const joined = createSession({
         role,
-        room: room.toUpperCase().trim(),
-        venueId: venue.trim(),
+        room,
+        venue,
         name,
         endpoint,
-        token:
-          role !== 'host' && resume ? getResume(role, room, venue) : undefined,
-      };
-      const r = new Runtime(options);
-      runtimeRef.current = r;
-      setRuntime(r);
-      r.start();
-      void r.unlock();
+        resume,
+      });
+      sessionRef.current = joined;
+      setSession(joined);
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
   }
   function leave() {
-    runtimeRef.current?.close();
-    runtimeRef.current = null;
-    setRuntime(null);
+    sessionRef.current?.close();
+    sessionRef.current = null;
+    setSession(null);
   }
-  if (runtime)
+  if (session)
     return (
-      <Connected runtime={runtime} leave={leave} extensions={extensions} />
+      <Connected
+        session={session}
+        screen={<GameCanvas port={session.screen} />}
+        leave={leave}
+        extensions={extensions}
+      />
     );
   return (
     <main className="shell">
@@ -294,26 +267,30 @@ export default function App({ extensions }: { extensions?: AppExtensions }) {
   );
 }
 function Connected({
-  runtime,
+  session,
+  screen,
   leave,
   extensions,
 }: {
-  runtime: Runtime;
+  session: ShellSession;
+  screen: import('react').ReactNode;
   leave: () => void;
   extensions?: AppExtensions;
 }) {
-  const [, redraw] = useState(0),
-    [game, setGame] = useState(games[0].id),
+  const [game, setGame] = useState(games[0].id),
     [mode, setMode] = useState(games[0].defaultMode),
     [hud, setHud] = useState(false),
     [copied, setCopied] = useState(false),
     [panelOpen, setPanelOpen] = useState(false);
   const panel = extensions?.controllerPanel;
   const Panel = panel?.Component;
-  const motion = useMemo(() => motionDiagnostics(runtime.motion), [runtime]);
+  const motion = session.motion;
   const stage = useRef<HTMLDivElement>(null);
-  useEffect(() => runtime.subscribe(() => redraw((x) => x + 1)), [runtime]);
-  const v = runtime.view,
+  const v = useSyncExternalStore(
+      session.subscribe,
+      session.getSnapshot,
+      session.getSnapshot,
+    ),
     me = v.identity;
   useEffect(() => {
     if (me?.role !== 'controller') return;
@@ -360,12 +337,12 @@ function Connected({
               )
                 throw new Error('Expected an empty object');
               return {
-                room: runtime.view.identity?.room,
-                role: runtime.view.identity?.role,
-                roster: runtime.view.roster,
-                phase: runtime.view.phase,
-                status: runtime.view.status,
-                D: runtime.view.D,
+                room: session.getSnapshot().identity?.room,
+                role: session.getSnapshot().identity?.role,
+                roster: session.getSnapshot().roster,
+                phase: session.getSnapshot().phase,
+                status: session.getSnapshot().status,
+                D: session.getSnapshot().D,
               };
             },
           },
@@ -376,7 +353,7 @@ function Connected({
       /* Optional browser standard. */
     }
     return () => abort.abort();
-  }, [runtime]);
+  }, [session]);
   if (!me)
     return (
       <main className="shell">
@@ -405,7 +382,8 @@ function Connected({
     const accent = v.roster.players.find((p) => p.id === me.id)?.color,
       menu = (
         <ControllerMenu
-          runtime={runtime}
+          view={v}
+          phone={session.phone}
           corner={v.config?.menu ?? 'top-right'}
           extraAction={
             panel
@@ -421,7 +399,10 @@ function Connected({
           <div className="calibrate">
             <h1>Thanks for playing.</h1>
             <p>{v.warning}</p>
-            <Button className="action" onClick={() => runtime.exportSummary()}>
+            <Button
+              className="action"
+              onClick={() => session.room.exportSummary()}
+            >
               Save results
             </Button>
             <Button className="action" onClick={leave}>
@@ -444,12 +425,12 @@ function Connected({
               <span id="sensitivity">Sensitivity</span>
               <Slider
                 aria-labelledby="sensitivity"
-                min={MIN_GAIN}
-                max={MAX_GAIN}
+                min={v.sensitivityRange.min}
+                max={v.sensitivityRange.max}
                 step={0.1}
                 value={[v.sensitivity]}
                 onValueChange={(value) =>
-                  runtime.setSensitivity(
+                  session.phone.setSensitivity(
                     Array.isArray(value) ? value[0] : value,
                   )
                 }
@@ -459,7 +440,7 @@ function Connected({
                 <span>Less movement</span>
               </div>
             </div>
-            <Button variant="outline" onClick={() => runtime.recenter()}>
+            <Button variant="outline" onClick={() => session.phone.recenter()}>
               <RotateCcw />
               Recenter
             </Button>
@@ -470,7 +451,7 @@ function Connected({
             )}
             <Button
               className="action"
-              onClick={() => runtime.finishAdjustAim()}
+              onClick={() => session.phone.finishAdjustAim()}
             >
               Done
             </Button>
@@ -485,19 +466,20 @@ function Connected({
             key={`${v.config.configId}:${v.config.generation}:${v.inputEpoch}`}
             widgets={v.config.widgets}
             accent={accent}
-            portFor={(w) => runtime.portFor(w, v.config!.generation)}
+            portFor={(w) => session.phone.portFor(w, v.config!.generation)}
             fallback={(w) => (
               <LegacyWidget
                 widget={w}
-                runtime={runtime}
-                generation={v.config!.generation}
+                port={session.phone.portFor(w, v.config!.generation)}
+                previewPoint={session.phone.previewPoint}
+                sensorHz={v.sensorHz}
               />
             )}
           >
             {menu}
           </ControllerSurface>
         )}
-        {!v.ended && <StatusToast runtime={runtime} />}
+        {!v.ended && <StatusToast view={v} />}
       </main>
     );
   }
@@ -507,13 +489,13 @@ function Connected({
     url.searchParams.set('role', 'controller');
     url.searchParams.set('room', me!.room);
     url.searchParams.set('venue', me!.venueId);
-    url.searchParams.set('signal', runtime.options.endpoint);
+    url.searchParams.set('signal', session.room.endpoint);
     try {
       await navigator.clipboard.writeText(url.href);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      runtime.warn(
+      session.room.warn(
         'Clipboard access is unavailable. Use the room and screen codes shown above.',
       );
     }
@@ -521,11 +503,7 @@ function Connected({
   const active = v.roster.players.filter((p) => p.connected),
     selected = findGame(game) ?? games[0],
     playing = ['loading', 'countdown', 'running', 'settling'].includes(v.phase),
-    standings = standingsForPresentation(
-      v.progress,
-      v.state?.progress ?? null,
-      v.phase,
-    );
+    standings = v.standings;
   return (
     <main className="shell">
       <header className="topbar">
@@ -566,11 +544,13 @@ function Connected({
             className="action"
             variant="outline"
             onClick={() => {
-              void runtime.unlock();
+              void session.room.unlock();
               void stage.current
                 ?.requestFullscreen()
                 .catch(() =>
-                  runtime.warn('Fullscreen is not available in this browser.'),
+                  session.room.warn(
+                    'Fullscreen is not available in this browser.',
+                  ),
                 );
             }}
           >
@@ -587,7 +567,7 @@ function Connected({
       <div className="play-layout">
         <div>
           <div className="stage" ref={stage}>
-            <GameCanvas port={runtime.screenPort} />
+            {screen}
           </div>
           <div className="health">
             {v.roster.venues.filter((v) => v.connected).length} screen(s)
@@ -701,8 +681,8 @@ function Connected({
                 playing
               }
               onClick={() => {
-                void runtime.unlock();
-                runtime.startGame(selected.id, mode);
+                void session.room.unlock();
+                session.host?.startGame(selected.id, mode);
               }}
             >
               {playing
@@ -713,7 +693,10 @@ function Connected({
               <ArrowUpRight />
             </Button>
             {playing && (
-              <Button variant="outline" onClick={() => runtime.abortGame()}>
+              <Button
+                variant="outline"
+                onClick={() => session.host?.abortGame()}
+              >
                 Abort round
               </Button>
             )}
@@ -735,7 +718,7 @@ function Connected({
         <Button
           className="action"
           variant="outline"
-          onClick={() => runtime.exportSummary()}
+          onClick={() => session.room.exportSummary()}
         >
           <Download />
           Save session report
@@ -746,7 +729,7 @@ function Connected({
           </Button>
         )}
       </div>
-      {hud && <Diagnostics runtime={runtime} />}
+      {hud && <Diagnostics view={v} actions={session.room} />}
       <footer>
         <span>A LITTLE COMPETITION. A LOT OF GOOD COMPANY.</span>
         <span>
@@ -756,9 +739,14 @@ function Connected({
     </main>
   );
 }
-function Diagnostics({ runtime }: { runtime: Runtime }) {
-  const v = runtime.view,
-    t = v.telemetry;
+function Diagnostics({
+  view: v,
+  actions,
+}: {
+  view: ShellView;
+  actions: RoomActions;
+}) {
+  const t = v.diagnostics;
   return (
     <section className="hud">
       <h2>Path A · Phone → this screen</h2>
@@ -776,7 +764,7 @@ function Diagnostics({ runtime }: { runtime: Runtime }) {
           </tr>
         </thead>
         <tbody>
-          {Object.entries(v.links).map(([id, l]) => (
+          {Object.entries(t.links).map(([id, l]) => (
             <tr key={id}>
               <td>
                 {v.roster.players.find((p) => p.id === id)?.name ??
@@ -808,7 +796,7 @@ function Diagnostics({ runtime }: { runtime: Runtime }) {
           </tr>
         </thead>
         <tbody>
-          {t?.players?.map((p: Message) => (
+          {t?.players?.map((p) => (
             <tr key={p.id}>
               <td>{p.name}</td>
               <td>{p.hz.toFixed(0)}</td>
@@ -835,7 +823,7 @@ function Diagnostics({ runtime }: { runtime: Runtime }) {
         D = {v.D.toFixed(1)} ms · Limiting venue:{' '}
         {v.roster.venues.find((x) => x.id === v.limitingVenue)?.name ??
           'single venue'}{' '}
-        · Snapshot starvation events: {runtime.buffer.starvations}
+        · Snapshot starvation events: {t.snapshots.starvations}
       </p>
       <p>
         Last prompt’s software presentation spread:{' '}
@@ -845,9 +833,9 @@ function Diagnostics({ runtime }: { runtime: Runtime }) {
         . This excludes panel/compositor delay.
       </p>
       <p>
-        Snapshot bytes: {runtime.snapshotMetrics().lastBytes} · Delta/full
-        ratio: {runtime.snapshotMetrics().deltaRatio?.toFixed(2) ?? '—'} ·
-        Downstream p95: {runtime.snapshotMetrics().oneWay.p95.toFixed(1)} ms
+        Snapshot bytes: {t.snapshots.lastBytes} · Delta/full ratio:{' '}
+        {t.snapshots.deltaRatio?.toFixed(2) ?? '—'} · Downstream p95:{' '}
+        {t.snapshots.oneWay.p95.toFixed(1)} ms
       </p>
       <table>
         <thead>
@@ -862,7 +850,7 @@ function Diagnostics({ runtime }: { runtime: Runtime }) {
           </tr>
         </thead>
         <tbody>
-          {t?.players?.map((p: Message) => (
+          {t?.players?.map((p) => (
             <tr key={p.id}>
               <td>{p.name}</td>
               <td>
@@ -895,7 +883,7 @@ function Diagnostics({ runtime }: { runtime: Runtime }) {
           placeholder="Not measured"
           value={v.panelLatency ?? ''}
           onChange={(e) =>
-            runtime.setPanelLatency(
+            actions.setPanelLatency(
               e.target.value ? Number(e.target.value) : null,
             )
           }
