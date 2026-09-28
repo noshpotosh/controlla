@@ -1,5 +1,9 @@
 # Local iPhone functional acceptance
 
+This runbook is for formal trusted-LAN acceptance, including route and latency
+observations. For ordinary motion-control development without installing a
+certificate profile, use [`npm run dev:phone`](../PHONE-DEVELOPMENT.md) instead.
+
 Use one or two iPhones in Safari on the same trusted LAN as a computer/display,
 running Neon Harvest, protocol 4. This does not certify Android, 4–8 phones,
 TVs, TURN, another household, fairness or physical latency. Copy the

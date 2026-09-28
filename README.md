@@ -34,11 +34,26 @@ Open http://localhost:3000. Create a room on a screen. Connect one to eight phon
 
 On a single computer, separate browser tabs can act as phones using touch/mouse fallback. Choose **Join as a new device** in connection settings to avoid resuming another tab's saved identity. This is a functional test, not a latency measurement.
 
-## Real phones need HTTPS
+## Fast phone development with motion
+
+For the normal phone-development loop, use one command:
+
+```sh
+npm run dev:phone
+```
+
+It prints a temporary, browser-trusted `https://…trycloudflare.com` URL. Open
+that same URL on the laptop and phone; no certificate profile, hosting account,
+DNS setup or router configuration is required. The URL is public to anyone who
+knows it while the command runs, changes each run, and routes through the
+internet, so it is for functional development rather than LAN or latency
+acceptance. See the [fast phone workflow](docs/PHONE-DEVELOPMENT.md).
+
+## Direct LAN testing and trusted local HTTPS
 
 The frontend listens on the computer's LAN addresses as well as localhost. Phones must open that LAN address; `localhost` on a phone points to the phone itself. Plain LAN HTTP supports touch testing, but motion and wake lock need a secure context.
 
-For trusted HTTPS on iPhones, follow the [local device setup](docs/acceptance/LOCAL-IPHONE.md). Its temporary Caddy proxy and certificate preflight live under `scripts/local-testing/`; they need no public hosting account, tunnel or deployment.
+For formal trusted-LAN HTTPS testing on iPhones, follow the [local device setup](docs/acceptance/LOCAL-IPHONE.md). Its temporary Caddy proxy and certificate preflight live under `scripts/local-testing/`; they need no public hosting account, tunnel or deployment. This heavier setup verifies local routing properties that the fast tunnel workflow cannot.
 
 For a quick HTTPS preview, `HTTPS=1 npm run dev` enables a self-signed certificate. A browser warning bypass is not a substitute for trusted HTTPS when accepting real-device motion behavior. In a separate terminal, allow the exact frontend origin (replace the example with your computer's LAN address and actual port):
 

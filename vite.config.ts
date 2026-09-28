@@ -224,6 +224,9 @@ export default defineConfig(({ command }) => {
       // vinext dev ignores --host, so bind every interface here for phones.
       host: true,
       strictPort: true,
+      // `npm run dev:phone` uses a temporary Cloudflare Quick Tunnel so mobile
+      // browsers receive a trusted HTTPS origin without installing a local CA.
+      allowedHosts: ['.trycloudflare.com'],
       proxy: {
         '/signal': {
           target: `http://127.0.0.1:${SIGNAL_PORT}`,

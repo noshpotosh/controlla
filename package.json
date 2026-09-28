@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "vinext dev",
+    "dev:phone": "tsx scripts/phone-development.ts",
     "build": "vinext build && node --import tsx scripts/assert-production-bundle.ts",
     "lint": "oxlint",
     "format": "oxfmt",
@@ -58,7 +59,8 @@
     "tailwindcss": "4.2.1",
     "tsx": "^4.23.15",
     "typescript": "5.9.3",
-    "vite": "^8.3.1"
+    "vite": "^8.3.1",
+    "wrangler": "^4.143.0"
   },
   "type": "module",
   "allowScripts": {
