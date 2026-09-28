@@ -28,7 +28,9 @@ export const swipePad: ControlDefinition<SwipePadProps> = {
       step: 0.02,
     },
   ],
-  minSize: { w: 4, h: 4 },
+  recommendedSize: { w: 4, h: 4 },
+  shapes: ['rounded', 'square', 'capsule'],
+  appearances: ['plain', 'tinted'],
   rotateOutput(value, r) {
     const s = value as SwipeOutput;
     return { ...s, ...rotateVector(s, r), dir: rotateDirection(s.dir, r) };

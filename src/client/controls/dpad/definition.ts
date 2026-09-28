@@ -21,6 +21,8 @@ export const dpad: ControlDefinition<DpadProps> = {
   fields: [
     { key: 'directions', label: 'Directions', type: 'select', options: [4, 8] },
   ],
-  minSize: { w: 5, h: 5 },
+  recommendedSize: { w: 5, h: 5 },
+  shapes: ['rounded', 'circle', 'square'],
+  appearances: ['plain', 'tinted'],
   rotateOutput: (v, r) => rotateVector(v as Vector, r),
 };

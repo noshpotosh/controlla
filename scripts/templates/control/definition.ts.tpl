@@ -21,6 +21,9 @@ export const __CAMEL__: ControlDefinition<__PASCAL__Props> = {
   fields: [
     { key: 'sensitivity', label: 'Sensitivity', type: 'number', min: 0.1, max: 3, step: 0.1 },
   ],
-  // Smallest footprint in layout grid cells (12×24 portrait grid).
-  minSize: { w: 4, h: 4 },
+  // Comfortable footprint in layout grid cells (12×24 portrait grid); the
+  // designer allows smaller but flags it. First shape/appearance is default.
+  recommendedSize: { w: 4, h: 4 },
+  shapes: ['rounded', 'square', 'circle'],
+  appearances: ['plain', 'tinted'],
 };

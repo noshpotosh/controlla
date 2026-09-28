@@ -1,74 +1,83 @@
-/* D-pad: a raised cross in the middle of the pad; the held arm lights up. */
+/*
+ * D-pad: one continuous cross on the plate. The held arm washes with the
+ * accent, brightest at its tip.
+ */
 .ctl-dpad {
   display: grid;
   place-items: center;
 }
 .ctl-dpad__cross {
-  --arm: calc(min(84cqw, 84cqh) / 3);
+  --arm: calc(min(86cqw, 86cqh) / 3);
+  --arm-radius: calc(var(--arm) * 0.3);
+  --arm-fill: var(--ctl-surface-raised);
   display: grid;
   grid-template:
     '. up .' var(--arm)
     'left hub right' var(--arm)
     '. down .' var(--arm) / var(--arm) var(--arm) var(--arm);
-  filter: drop-shadow(0 var(--ctl-depth) 0 var(--ctl-surface-lip));
+  filter: drop-shadow(
+    0 var(--ctl-hairline) var(--ctl-space-1) var(--ctl-scrim)
+  );
+}
+.ctl-dpad[data-appearance='tinted'] .ctl-dpad__cross {
+  --arm-fill: color-mix(
+    in oklab,
+    var(--ctl-tone) var(--ctl-tint-mix),
+    var(--ctl-surface-raised)
+  );
 }
 .ctl-dpad__arm,
 .ctl-dpad__hub {
   display: grid;
   place-items: center;
-  background: var(--ctl-surface-raised);
+  background: var(--arm-fill);
   color: var(--ctl-ink-muted);
   transition:
-    background var(--ctl-press-ms) linear,
-    color var(--ctl-press-ms) linear,
-    transform var(--ctl-spring-ms) var(--ctl-ease-spring);
+    background var(--ctl-spring-ms) var(--ctl-ease-out),
+    color var(--ctl-press-ms) linear;
 }
 .ctl-dpad__arm svg {
-  width: 45%;
-  height: 45%;
+  width: 44%;
+  height: 44%;
 }
 .ctl-dpad__hub {
   grid-area: hub;
 }
-.ctl-dpad__arm--up {
-  grid-area: up;
-  border-radius: var(--ctl-radius-md) var(--ctl-radius-md) 0 0;
-}
-.ctl-dpad__arm--down {
-  grid-area: down;
-  border-radius: 0 0 var(--ctl-radius-md) var(--ctl-radius-md);
-}
-.ctl-dpad__arm--left {
-  grid-area: left;
-  border-radius: var(--ctl-radius-md) 0 0 var(--ctl-radius-md);
-}
-.ctl-dpad__arm--right {
-  grid-area: right;
-  border-radius: 0 var(--ctl-radius-md) var(--ctl-radius-md) 0;
-}
 .ctl-dpad__hub::after {
   content: '';
-  width: 38%;
-  height: 38%;
+  width: 34%;
+  height: 34%;
   border-radius: 50%;
-  box-shadow: var(--ctl-well-shadow);
   background: var(--ctl-surface);
+  box-shadow: var(--ctl-shadow-inset);
+}
+.ctl-dpad__arm--up {
+  --wash: to top;
+  grid-area: up;
+  border-radius: var(--arm-radius) var(--arm-radius) 0 0;
+  box-shadow: inset 0 var(--ctl-hairline) 0 var(--ctl-specular);
+}
+.ctl-dpad__arm--down {
+  --wash: to bottom;
+  grid-area: down;
+  border-radius: 0 0 var(--arm-radius) var(--arm-radius);
+}
+.ctl-dpad__arm--left {
+  --wash: to left;
+  grid-area: left;
+  border-radius: var(--arm-radius) 0 0 var(--arm-radius);
+}
+.ctl-dpad__arm--right {
+  --wash: to right;
+  grid-area: right;
+  border-radius: 0 var(--arm-radius) var(--arm-radius) 0;
 }
 .ctl-dpad__arm[data-lit] {
-  background: var(--ctl-accent);
+  background: linear-gradient(
+    var(--wash),
+    color-mix(in oklab, var(--ctl-accent) 35%, var(--arm-fill)),
+    var(--ctl-accent)
+  );
   color: var(--ctl-accent-ink);
-  box-shadow: 0 0 24px var(--ctl-accent-glow);
-  z-index: 1;
-}
-.ctl-dpad__arm--up[data-lit] {
-  transform: translateY(2px);
-}
-.ctl-dpad__arm--down[data-lit] {
-  transform: translateY(-2px);
-}
-.ctl-dpad__arm--left[data-lit] {
-  transform: translateX(2px);
-}
-.ctl-dpad__arm--right[data-lit] {
-  transform: translateX(-2px);
+  transition-duration: var(--ctl-press-ms);
 }

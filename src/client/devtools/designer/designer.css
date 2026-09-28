@@ -149,7 +149,7 @@
   border: 0;
   border-radius: var(--ctl-radius-sm);
   background: var(--ctl-surface-raised);
-  box-shadow: 0 3px 0 var(--ctl-surface-lip);
+  box-shadow: var(--ctl-shadow-1);
   text-align: left;
   cursor: grab;
 }
@@ -160,7 +160,7 @@
 .dz-tile[data-wanted] {
   box-shadow:
     inset 0 0 0 2px var(--ctl-accent),
-    0 3px 0 var(--ctl-surface-lip);
+    var(--ctl-shadow-1);
 }
 .dz-inputs {
   grid-column: 1 / -1;
@@ -250,6 +250,40 @@
 .dz-issues li[data-selected] {
   box-shadow: inset 0 0 0 1px var(--ctl-danger);
 }
+.dz-issues li[data-level='warning'] {
+  color: var(--ctl-warning);
+}
+.dz-issues li[data-level='warning'][data-selected] {
+  box-shadow: inset 0 0 0 1px var(--ctl-warning);
+}
+.dz-seg--fill {
+  display: flex;
+}
+.dz-seg--fill button {
+  flex: 1;
+  padding: 0 var(--ctl-space-1);
+  white-space: nowrap;
+}
+/* Shape glyphs in the inspector's shape picker. */
+.dz-shape {
+  display: inline-block;
+  width: 18px;
+  height: 14px;
+  vertical-align: middle;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+}
+.dz-shape[data-shape='square'] {
+  border-radius: 1px;
+}
+.dz-shape[data-shape='circle'] {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+}
+.dz-shape[data-shape='capsule'] {
+  border-radius: 999px;
+}
 
 .dz-stage {
   grid-area: stage;
@@ -270,7 +304,7 @@
   overflow: hidden;
   box-shadow:
     0 0 0 10px var(--ctl-surface-raised),
-    0 14px 0 10px var(--ctl-surface-lip);
+    var(--ctl-shadow-2);
 }
 .dz-device[data-orientation='portrait'] {
   height: min(calc(100vh - 150px), 820px);
@@ -313,6 +347,7 @@
   text-transform: uppercase;
 }
 .dz-item {
+  container-type: size;
   position: absolute;
   border-radius: var(--ctl-radius-md);
   box-shadow: inset 0 0 0 1px var(--ctl-line);
@@ -324,6 +359,14 @@
 .dz-item[data-selected] {
   box-shadow: inset 0 0 0 2px var(--ctl-accent);
 }
+.dz-item[data-warn] {
+  box-shadow: inset 0 0 0 2px var(--ctl-warning);
+}
+.dz-item[data-selected][data-warn] {
+  box-shadow:
+    inset 0 0 0 2px var(--ctl-accent),
+    0 0 0 2px var(--ctl-warning);
+}
 .dz-item[data-invalid] {
   background: color-mix(in oklab, var(--ctl-danger) 22%, transparent);
   box-shadow: inset 0 0 0 2px var(--ctl-danger);
@@ -332,6 +375,10 @@
   position: absolute;
   left: 6px;
   bottom: 6px;
+  max-width: calc(100% - 12px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding: 1px 6px;
   border-radius: var(--ctl-radius-pill);
   background: var(--ctl-bg);
@@ -340,33 +387,108 @@
   font-family: ui-monospace, Menlo, monospace;
   pointer-events: none;
 }
-.dz-handle {
+.dz-item[data-dragging] .dz-item__tag {
+  display: none;
+}
+/* Live size while dragging. */
+.dz-item__size {
   position: absolute;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
+  inset: 0;
+  margin: auto;
+  width: fit-content;
+  height: fit-content;
+  padding: 2px 8px;
+  border-radius: var(--ctl-radius-pill);
   background: var(--ctl-accent);
-  box-shadow: 0 0 0 2px var(--ctl-bg);
+  color: var(--ctl-accent-ink);
+  font:
+    600 12px/1.4 ui-monospace,
+    Menlo,
+    monospace;
+  pointer-events: none;
+  z-index: 2;
 }
-.dz-handle--nw {
-  left: -5px;
-  top: -5px;
-  cursor: nwse-resize;
+/* Alignment guides: shown while dragging where edges or centres line up. */
+.dz-guide {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  background: var(--ctl-accent);
+  opacity: 0.8;
 }
-.dz-handle--ne {
-  right: -5px;
-  top: -5px;
-  cursor: nesw-resize;
+.dz-guide--x {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  translate: -0.5px 0;
 }
+.dz-guide--y {
+  left: 0;
+  right: 0;
+  height: 1px;
+  translate: 0 -0.5px;
+}
+.dz-handle {
+  --handle: 12px;
+  position: absolute;
+  z-index: 3;
+  width: var(--handle);
+  height: var(--handle);
+  border-radius: 50%;
+  background: var(--ctl-ink);
+  box-shadow:
+    0 0 0 1.5px var(--ctl-accent),
+    0 1px 3px rgb(0 0 0 / 0.5);
+  translate: -50% -50%;
+}
+.dz-handle--nw,
+.dz-handle--w,
 .dz-handle--sw {
-  left: -5px;
-  bottom: -5px;
-  cursor: nesw-resize;
+  left: 0;
 }
+.dz-handle--n,
+.dz-handle--s {
+  left: 50%;
+}
+.dz-handle--ne,
+.dz-handle--e,
 .dz-handle--se {
-  right: -5px;
-  bottom: -5px;
+  left: 100%;
+}
+.dz-handle--nw,
+.dz-handle--n,
+.dz-handle--ne {
+  top: 0;
+}
+.dz-handle--w,
+.dz-handle--e {
+  top: 50%;
+}
+.dz-handle--sw,
+.dz-handle--s,
+.dz-handle--se {
+  top: 100%;
+}
+/* Edge handles are pills along their edge. */
+.dz-handle--n,
+.dz-handle--s {
+  width: calc(var(--handle) * 1.8);
+  border-radius: var(--ctl-radius-pill);
+  cursor: ns-resize;
+}
+.dz-handle--e,
+.dz-handle--w {
+  height: calc(var(--handle) * 1.8);
+  border-radius: var(--ctl-radius-pill);
+  cursor: ew-resize;
+}
+.dz-handle--nw,
+.dz-handle--se {
   cursor: nwse-resize;
+}
+.dz-handle--ne,
+.dz-handle--sw {
+  cursor: nesw-resize;
 }
 .dz-item__tools {
   position: absolute;
@@ -390,6 +512,24 @@
   width: 15px;
   height: 15px;
 }
+/* Tiny items: corners only, no tag, tools float above. */
+@container (max-width: 56px) or (max-height: 56px) {
+  .dz-handle--n,
+  .dz-handle--s,
+  .dz-handle--e,
+  .dz-handle--w {
+    display: none;
+  }
+  .dz-item__tag {
+    display: none;
+  }
+  .dz-item__tools {
+    top: auto;
+    bottom: calc(100% + 8px);
+    right: 50%;
+    translate: 50% 0;
+  }
+}
 
 .dz-modal {
   position: fixed;
@@ -407,7 +547,7 @@
   color: var(--ctl-ink);
   box-shadow:
     0 0 0 1px var(--ctl-line),
-    0 30px 80px var(--ctl-surface-lip);
+    0 30px 80px var(--ctl-scrim);
 }
 .dz-modal h2 {
   margin: 0;
@@ -573,7 +713,7 @@
   background: var(--ctl-surface);
   box-shadow:
     inset 0 0 0 1px var(--ctl-line),
-    0 6px 0 var(--ctl-surface-lip);
+    var(--ctl-shadow-1);
   overflow: hidden;
 }
 /* Thumbnails render the real surface at phone size, scaled down. */

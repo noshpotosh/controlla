@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { ArrowUp } from 'lucide-react';
+import { ChevronUp } from 'lucide-react';
 import { ControlFrame } from '../kit/ControlFrame.tsx';
 import { useTrackedPointer } from '../kit/useTrackedPointer.ts';
 import type { SwipeDirection } from '../api.ts';
@@ -56,6 +56,8 @@ export function SwipePad({
       active={active}
       hint={props.hint}
       bare={props.bare}
+      shape={props.shape}
+      appearance={props.appearance}
       {...handlers}
     >
       <span className="ctl-swipe-pad__dots" />
@@ -65,7 +67,7 @@ export function SwipePad({
           className="ctl-swipe-pad__flash"
           style={{ rotate: `${ROTATION[flash.dir]}deg` }}
         >
-          <ArrowUp strokeWidth={3} />
+          <ChevronUp strokeWidth={2.5} />
         </span>
       )}
       <svg className="ctl-swipe-pad__trail" aria-hidden>
@@ -77,7 +79,7 @@ export function SwipePad({
             x2={pt.x}
             y2={pt.y}
             style={{ opacity: (i + 1) / trail.length }}
-            strokeWidth={4 + ((i + 1) / trail.length) * 10}
+            strokeWidth={2 + ((i + 1) / trail.length) * 7}
           />
         ))}
       </svg>

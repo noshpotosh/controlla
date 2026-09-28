@@ -1,13 +1,24 @@
-/* Hold meter: a round cap wrapped in a charge ring. */
+/*
+ * Hold meter: a round key inside a thin activity ring that fills while held.
+ * Full charge pulses once and tints the key.
+ */
 .ctl-hold-meter {
+  --cap-fill: var(--ctl-surface-raised);
   display: grid;
   place-items: center;
   cursor: pointer;
 }
+.ctl-hold-meter[data-appearance='tinted'] {
+  --cap-fill: color-mix(
+    in oklab,
+    var(--ctl-tone) var(--ctl-tint-mix),
+    var(--ctl-surface-raised)
+  );
+}
 .ctl-hold-meter__dial {
   position: relative;
-  width: 76cqmin;
-  height: 76cqmin;
+  width: 78cqmin;
+  height: 78cqmin;
   display: grid;
   place-items: center;
 }
@@ -20,7 +31,7 @@
 .ctl-hold-meter__track,
 .ctl-hold-meter__fill {
   fill: none;
-  stroke-width: 7;
+  stroke-width: 6;
 }
 .ctl-hold-meter__track {
   stroke: var(--ctl-well);
@@ -28,56 +39,63 @@
 .ctl-hold-meter__fill {
   stroke: var(--ctl-accent);
   stroke-linecap: round;
-  filter: drop-shadow(0 0 4px var(--ctl-accent-glow));
+  filter: drop-shadow(0 0 var(--ctl-space-1) var(--ctl-accent-glow));
 }
 .ctl-hold-meter:not([data-active]) .ctl-hold-meter__fill {
-  transition: stroke-dashoffset var(--ctl-spring-ms) ease-out;
+  transition: stroke-dashoffset var(--ctl-spring-ms) var(--ctl-ease-out);
 }
 .ctl-hold-meter__cap {
-  width: 74%;
-  height: 74%;
+  width: 72%;
+  height: 72%;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--ctl-surface-raised);
+  background: var(--ctl-sheen-soft), var(--cap-fill);
   box-shadow:
-    inset 0 2px 0 var(--ctl-highlight),
-    0 var(--ctl-depth) 0 var(--ctl-surface-lip);
+    inset 0 var(--ctl-hairline) 0 var(--ctl-specular),
+    inset 0 0 0 var(--ctl-hairline) var(--ctl-line),
+    var(--ctl-shadow-1);
   transition:
-    transform var(--ctl-spring-ms) var(--ctl-ease-spring),
-    background var(--ctl-press-ms) linear;
+    scale var(--ctl-spring-ms) var(--ctl-ease-spring),
+    background-color var(--ctl-press-ms) linear;
 }
 .ctl-hold-meter__value {
-  font-size: calc(var(--ctl-font-glyph) * 0.7);
-  font-weight: 900;
+  font-family: var(--ctl-font-rounded);
+  font-size: var(--ctl-font-numeral);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
   color: var(--ctl-ink-muted);
 }
 .ctl-hold-meter__value::after {
   content: '%';
-  font-size: 0.45em;
-  margin-left: 0.05em;
+  font-size: 0.5em;
+  margin-left: 0.06em;
+  opacity: 0.7;
 }
 .ctl-hold-meter[data-active] .ctl-hold-meter__cap {
-  transform: translateY(calc(var(--ctl-depth) - 2px));
-  box-shadow:
-    inset 0 2px 0 var(--ctl-highlight),
-    0 2px 0 var(--ctl-surface-lip);
+  scale: var(--ctl-press-scale);
+  transition-duration: var(--ctl-press-ms);
 }
 .ctl-hold-meter[data-active] .ctl-hold-meter__value {
   color: var(--ctl-ink);
 }
 .ctl-hold-meter[data-full] .ctl-hold-meter__cap {
-  background: var(--ctl-accent);
-  animation: ctl-hold-full 360ms ease-in-out infinite alternate;
+  background: var(--ctl-sheen), var(--ctl-accent);
+  animation: ctl-hold-full var(--ctl-flash-ms) var(--ctl-ease-out);
 }
 .ctl-hold-meter[data-full] .ctl-hold-meter__value {
   color: var(--ctl-accent-ink);
 }
 @keyframes ctl-hold-full {
+  from {
+    box-shadow:
+      var(--ctl-shadow-1),
+      0 0 0 0 var(--ctl-accent-glow);
+  }
   to {
     box-shadow:
-      0 0 0 8px var(--ctl-accent-soft),
-      0 0 36px var(--ctl-accent-glow);
+      var(--ctl-shadow-1),
+      0 0 0 var(--ctl-space-5) transparent;
   }
 }

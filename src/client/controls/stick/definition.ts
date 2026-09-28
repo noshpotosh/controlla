@@ -32,6 +32,8 @@ export const stick: ControlDefinition<StickProps> = {
     },
     { key: 'floating', label: 'Centre under thumb', type: 'boolean' },
   ],
-  minSize: { w: 5, h: 5 },
+  recommendedSize: { w: 5, h: 5 },
+  shapes: ['rounded', 'circle', 'square'],
+  appearances: ['plain', 'tinted'],
   rotateOutput: (v, r) => rotateVector(v as Vector, r),
 };

@@ -59,9 +59,9 @@ export function channelOf(type: WidgetType) {
   };
 }
 
-/** Smallest footprint in grid cells; legacy widgets get a safe default. */
-export const minSizeOf = (type: WidgetType) =>
-  byType.get(type)?.minSize ?? { w: 4, h: 4 };
+/** Comfortable footprint in grid cells; legacy widgets get a safe default. */
+export const recommendedSizeOf = (type: WidgetType) =>
+  byType.get(type)?.recommendedSize ?? { w: 4, h: 4 };
 
 export const usesPressSlot = (type: WidgetType) =>
   channelOf(type).channel !== 'value';

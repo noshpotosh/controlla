@@ -1,15 +1,17 @@
 // Rules for layouts. `validateLayout` is about the layout alone (designer,
-// save endpoint); `checkAssignment` is about a game using it.
+// save endpoint) and blocks saving; `layoutWarnings` is advice that doesn't;
+// `checkAssignment` is about a game using it.
 import type {
   ControllerRequirements,
   ControllerLayout,
   GridRect,
+  LayoutItem,
 } from '../api.ts';
 import {
   definitionFor,
   kindOf,
-  minSizeOf,
   PRESS_SLOTS,
+  recommendedSizeOf,
   usesPressSlot,
 } from '../registry.ts';
 import { isSideways } from './rotation.ts';
@@ -59,14 +61,6 @@ export function validateLayout(layout: ControllerLayout): LayoutIssue[] {
       r.y + r.h > rows
     )
       issues.push({ item: i, message: `${name} is outside the controller.` });
-    // A sideways control's own width runs along the grid's height.
-    const min = minSizeOf(item.type),
-      need = isSideways(item.rotation) ? { w: min.h, h: min.w } : min;
-    if (r.w < need.w || r.h < need.h)
-      issues.push({
-        item: i,
-        message: `${name} is too small (at least ${need.w}×${need.h}).`,
-      });
     if (overlaps(r, menu))
       issues.push({ item: i, message: `${name} covers the menu corner.` });
     for (let j = 0; j < i; j++)
@@ -84,6 +78,33 @@ export function validateLayout(layout: ControllerLayout): LayoutIssue[] {
       message: `${presses} press inputs (shake counts); a controller carries at most ${PRESS_SLOTS}.`,
     });
   return issues;
+}
+
+/** Recommended footprint in grid cells, turned with the item. */
+export function recommendedFootprint(
+  item: Pick<LayoutItem, 'type' | 'rotation'>,
+) {
+  // A sideways control's own width runs along the grid's height.
+  const size = recommendedSizeOf(item.type);
+  return isSideways(item.rotation) ? { w: size.h, h: size.w } : size;
+}
+
+/**
+ * Advice that never blocks saving: controls smaller than their recommended
+ * size still work, but are harder to hit and lose their caption.
+ */
+export function layoutWarnings(layout: ControllerLayout): LayoutIssue[] {
+  return layout.items.flatMap((item, i) => {
+    const need = recommendedFootprint(item);
+    return item.rect.w < need.w || item.rect.h < need.h
+      ? [
+          {
+            item: i,
+            message: `${item.label || item.name} is smaller than recommended (${need.w}×${need.h}); keep it for secondary actions.`,
+          },
+        ]
+      : [];
+  });
 }
 
 /** The layout control a game input binds to (same name unless remapped). */

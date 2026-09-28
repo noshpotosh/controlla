@@ -1,8 +1,10 @@
 'use client';
 // The designer's phone: the real ControllerSurface, with an editing overlay
-// (grid, menu corner, drag/resize handles) laid exactly over its grid.
+// (grid, menu corner, drag/resize handles, alignment guides) laid exactly
+// over its grid.
 import {
   useRef,
+  useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
@@ -18,11 +20,28 @@ import type { useReadings } from '../gallery/readings.tsx';
 import { menuRect } from '../../controls/layout/schema.ts';
 import { layoutWidgets } from '../../controls/layout/widgets.ts';
 import { SensorTile } from '../../controls/SensorTile.tsx';
-import { clampRect } from './model.ts';
+import {
+  alignmentGuides,
+  clampRect,
+  resizeRect,
+  type Guides,
+  type ResizeHandle,
+} from './model.ts';
 
 export const DRAG_TYPE = 'application/x-controlla-control';
 
-type Handle = 'move' | 'nw' | 'ne' | 'sw' | 'se';
+type Handle = 'move' | ResizeHandle;
+
+const HANDLES: readonly ResizeHandle[] = [
+  'nw',
+  'n',
+  'ne',
+  'e',
+  'se',
+  's',
+  'sw',
+  'w',
+];
 
 const pct = (r: GridRect, grid: ControllerLayout['grid']) => ({
   left: `${(r.x / grid.cols) * 100}%`,
@@ -35,6 +54,7 @@ export function Canvas({
   layout,
   selected,
   invalid,
+  warned,
   play,
   aspect,
   accent,
@@ -49,6 +69,8 @@ export function Canvas({
   layout: ControllerLayout;
   selected: number | null;
   invalid: Set<number>;
+  /** Items that work but are smaller than recommended. */
+  warned: Set<number>;
   play: boolean;
   aspect: number;
   accent: string;
@@ -62,6 +84,7 @@ export function Canvas({
   onDropControl: (type: WidgetType, cell: { x: number; y: number }) => void;
 }) {
   const overlay = useRef<HTMLDivElement>(null),
+    [drag, setDrag] = useState<{ index: number; guides: Guides } | null>(null),
     { grid } = layout;
 
   const cellAt = (clientX: number, clientY: number) => {
@@ -84,27 +107,25 @@ export function Canvas({
       start = layout.items[index].rect,
       sx = e.clientX,
       sy = e.clientY;
+    const others = layout.items
+      .filter((_, i) => i !== index)
+      .map((item) => item.rect);
     const move = (ev: PointerEvent) => {
       const dx = Math.round((ev.clientX - sx) / cw),
         dy = Math.round((ev.clientY - sy) / ch),
-        r = { ...start };
-      if (handle === 'move') {
-        r.x += dx;
-        r.y += dy;
-      } else {
-        // Corner handles: the opposite corner stays put.
-        if (handle.includes('w')) {
-          r.x = Math.min(start.x + dx, start.x + start.w - 1);
-          r.w = start.x + start.w - r.x;
-        } else r.w = Math.max(1, start.w + dx);
-        if (handle.includes('n')) {
-          r.y = Math.min(start.y + dy, start.y + start.h - 1);
-          r.h = start.y + start.h - r.y;
-        } else r.h = Math.max(1, start.h + dy);
-      }
-      onRect(index, clampRect(r, grid));
+        rect =
+          handle === 'move'
+            ? clampRect({ ...start, x: start.x + dx, y: start.y + dy }, grid)
+            : // The opposite edge stays put; ⇧ keeps the proportions.
+              resizeRect(start, handle, dx, dy, grid, {
+                lockAspect: ev.shiftKey,
+              });
+      setDrag({ index, guides: alignmentGuides(rect, others, grid) });
+      onRect(index, rect);
     };
+    setDrag({ index, guides: alignmentGuides(start, others, grid) });
     const up = () => {
+      setDrag(null);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
     };
@@ -148,12 +169,28 @@ export function Canvas({
           <div className="dz-menu" style={pct(menuRect(layout), grid)}>
             menu
           </div>
+          {drag?.guides.x.map((x) => (
+            <span
+              key={`x${x}`}
+              className="dz-guide dz-guide--x"
+              style={{ left: `${(x / grid.cols) * 100}%` }}
+            />
+          ))}
+          {drag?.guides.y.map((y) => (
+            <span
+              key={`y${y}`}
+              className="dz-guide dz-guide--y"
+              style={{ top: `${(y / grid.rows) * 100}%` }}
+            />
+          ))}
           {layout.items.map((item, i) => (
             <div
               key={`${item.name}-${i}`}
               className="dz-item"
               data-selected={selected === i || undefined}
               data-invalid={invalid.has(i) || undefined}
+              data-warn={warned.has(i) || undefined}
+              data-dragging={drag?.index === i || undefined}
               style={pct(item.rect, grid)}
               onPointerDown={(e) => startDrag(e, i, 'move')}
             >
@@ -161,9 +198,14 @@ export function Canvas({
                 {item.name}
                 {item.rotation ? ` · ${item.rotation}°` : ''}
               </span>
+              {drag?.index === i && (
+                <span className="dz-item__size">
+                  {item.rect.w}×{item.rect.h}
+                </span>
+              )}
               {selected === i && (
                 <>
-                  {(['nw', 'ne', 'sw', 'se'] as const).map((h) => (
+                  {HANDLES.map((h) => (
                     <span
                       key={h}
                       className={`dz-handle dz-handle--${h}`}

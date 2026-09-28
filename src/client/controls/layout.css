@@ -22,12 +22,11 @@
 .ctl-cell {
   position: absolute;
 }
-/* Each cell insets by half a gap (plus the lip) so neighbours never touch. */
+/* Each cell insets by half a gap so neighbours never touch. */
 .ctl-cell__box {
   container-type: size;
   position: absolute;
-  inset: calc(var(--ctl-gap) / 2) calc(var(--ctl-gap) / 2)
-    calc(var(--ctl-gap) / 2 + var(--ctl-depth));
+  inset: calc(var(--ctl-gap) / 2);
 }
 .ctl-cell__turn {
   position: absolute;

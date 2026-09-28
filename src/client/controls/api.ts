@@ -156,6 +156,18 @@ export type OutputKind =
   | 'text'
   | 'stroke';
 
+/**
+ * The silhouette a control's frame takes inside its cell. `circle` is the
+ * largest circle that fits; `capsule` rounds the short sides fully.
+ */
+export type ControlShape = 'rounded' | 'square' | 'circle' | 'capsule';
+
+/**
+ * How much colour a control carries at rest: `filled` is solid tone,
+ * `tinted` washes the surface with it, `plain` is a neutral surface.
+ */
+export type ControlAppearance = 'filled' | 'tinted' | 'plain';
+
 /** An editable prop, rendered by the designer's inspector. */
 export type Field = { key: string; label: string } & (
   | { type: 'number'; min: number; max: number; step: number }
@@ -184,8 +196,15 @@ export interface ControlDefinition<P extends object = object> {
   defaults: P;
   /** Props the designer can edit (the shared `hint` is always editable). */
   fields: readonly Field[];
-  /** Smallest footprint in layout grid cells (portrait 12×24 grid). */
-  minSize: { w: number; h: number };
+  /**
+   * Comfortable footprint in layout grid cells (portrait 12×24 grid). New
+   * controls start this size; smaller is allowed but flagged in the designer.
+   */
+  recommendedSize: { w: number; h: number };
+  /** Shapes the control supports; the first is its default. */
+  shapes: readonly ControlShape[];
+  /** Appearances the control supports; the first is its default. */
+  appearances: readonly ControlAppearance[];
   /**
    * Map a value from the control's own frame to the screen frame when the
    * control is placed rotated. Omit for values with no direction.

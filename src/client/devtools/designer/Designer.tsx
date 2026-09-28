@@ -17,7 +17,11 @@ import { layouts } from '../../controls/layouts/index.ts';
 import { useReadings } from '../gallery/readings.tsx';
 
 import { MENU_CORNERS, MOTION } from '../../controls/layout/schema.ts';
-import { validateLayout } from '../../controls/layout/validate.ts';
+import {
+  layoutWarnings,
+  validateLayout,
+  type LayoutIssue,
+} from '../../controls/layout/validate.ts';
 import { canSave, saveLayout } from './api.ts';
 import { Canvas } from './Canvas.tsx';
 import { Inspector } from './Inspector.tsx';
@@ -27,6 +31,7 @@ import {
   clampRect,
   removeItem,
   reorient,
+  resizeRect,
   rotateItem,
   updateItem,
 } from './model.ts';
@@ -59,6 +64,10 @@ export function Designer({ layoutId }: { layoutId: string | null }) {
   );
 }
 
+/** Indexes of the items a list of issues points at. */
+const itemsIn = (issues: LayoutIssue[]) =>
+  new Set(issues.flatMap((i) => (i.item === undefined ? [] : [i.item])));
+
 const ASPECTS = [
   { name: 'Tall (19.5:9)', value: 19.5 / 9 },
   { name: 'Classic (16:9)', value: 16 / 9 },
@@ -89,9 +98,9 @@ function Editor({
     [saveError, setSaveError] = useState(''),
     readings = useReadings();
   const issues = useMemo(() => validateLayout(layout), [layout]),
-    invalid = new Set(
-      issues.flatMap((i) => (i.item === undefined ? [] : [i.item])),
-    );
+    warnings = useMemo(() => layoutWarnings(layout), [layout]),
+    invalid = itemsIn(issues),
+    warned = itemsIn(warnings);
 
   /** Apply an edit as one undoable step. */
   const commit = (next: ControllerLayout | null) => {
@@ -139,7 +148,8 @@ function Editor({
             ? { kind: 'error', message: saveError }
             : { kind: 'pending' };
 
-  // Keyboard: arrows move (shift resizes), R rotates, Delete removes, ⌘Z undoes.
+  // Keyboard: arrows move, ⇧ resizes from the far edge, ⌥⇧ from the near
+  // edge; R rotates, Delete removes, ⌘Z undoes.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest('input, select, textarea')) return;
@@ -161,9 +171,12 @@ function Editor({
         e.preventDefault();
         const [dx, dy] = step[e.key],
           r = item.rect,
-          rect: GridRect = e.shiftKey
-            ? { ...r, w: r.w + dx, h: r.h + dy }
-            : { ...r, x: r.x + dx, y: r.y + dy };
+          rect: GridRect =
+            e.shiftKey && e.altKey
+              ? resizeRect(r, dx ? 'w' : 'n', dx, dy, layout.grid)
+              : e.shiftKey
+                ? { ...r, w: r.w + dx, h: r.h + dy }
+                : { ...r, x: r.x + dx, y: r.y + dy };
         commit(
           updateItem(layout, selected, {
             rect: clampRect(rect, layout.grid),
@@ -293,6 +306,7 @@ function Editor({
           layout={layout}
           selected={selected}
           invalid={invalid}
+          warned={warned}
           play={play}
           aspect={aspect}
           accent={COLORS[color]}
@@ -311,18 +325,21 @@ function Editor({
           {motionOn.length
             ? `Motion on: ${motionOn.join(', ')} · `
             : 'Touch only · '}
-          Drag to move · corners resize · R rotates · arrows nudge (⇧ resizes) ·
-          Delete removes · ⌘Z undoes
+          Drag to move · edges and corners resize (⇧ keeps proportions) · R
+          rotates · arrows nudge (⇧ resizes, ⌥⇧ from the near edge) · Delete
+          removes · ⌘Z undoes
         </p>
       </section>
       <Inspector
         layout={layout}
         index={selected}
         issues={issues}
+        warnings={warnings}
         readings={play ? readings.readings : null}
         onChange={(change: Partial<LayoutItem>) =>
           selected !== null && commit(updateItem(layout, selected, change))
         }
+        onApply={(edit) => selected !== null && commit(edit(layout, selected))}
       />
       {phone && (
         <dialog open className="dz-modal" aria-label="Test on phone">

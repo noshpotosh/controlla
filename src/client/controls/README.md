@@ -54,13 +54,13 @@ Run the dev server over HTTPS (`HTTPS=1 npm run dev`) and open **`/?role=designe
 3. **Place touch controls.** Drag them from the palette, or click one to drop it in the first free spot. The phone is an uninterrupted grid: 12×24 cells in portrait, 24×12 in landscape. The hatched corner is reserved for the in-game menu button, and you can move it with the top-bar menu.
 4. **Switch on motion** with the checkboxes under the palette.
 5. **Adjust controls:**
-   - drag to move, and drag a corner to resize (everything snaps to the grid)
+   - drag to move; drag an edge or corner to resize, down to a single cell (everything snaps to the grid, ⇧ keeps proportions, and guides show where edges and centres line up)
    - `R` rotates 90°
-   - arrow keys nudge, and ⇧ + arrows resize
+   - arrow keys nudge, ⇧ + arrows resize from the far edge, and ⌥⇧ + arrows from the near edge
    - Delete removes
    - ⌘Z undoes
-6. **Tune them in the inspector:** name (what game inputs bind to), label, which control it is, variant, props and rotation. Each control's editable props come from `fields` in its `definition.ts`. With nothing selected, the inspector shows which games use the layout and whether every one of their inputs has a control.
-7. **Fix the checks.** Items that overlap, stray off the grid, cover the menu, are smaller than their `minSize`, or share a name turn red and block saving.
+6. **Tune them in the inspector:** name (what game inputs bind to), label, which control it is, variant, shape, appearance, caption, props, rotation and size (S / M / L presets around the recommended size, or fill the free row or column). Each control's editable props come from `fields` in its `definition.ts`. With nothing selected, the inspector shows which games use the layout and whether every one of their inputs has a control.
+7. **Fix the checks.** Items that overlap, stray off the grid, cover the menu, or share a name turn red and block saving. Items smaller than their recommended size turn amber: that's advice, and the layout still saves.
 8. **Save.** Valid layouts autosave; commit the JSON. The generated `src/client/controls/layouts/index.ts` updates when layouts are created or deleted.
 9. **Test on a phone.** **Test on phone** shows a QR code for `/?role=preview&layout=<id>` on this computer's LAN address. The preview hot-reloads on every save, so the phone follows your edits live. If the phone is held the wrong way it asks you to rotate it, and tapping the menu corner shows what each control sends.
 
@@ -70,18 +70,18 @@ Run the dev server over HTTPS (`HTTPS=1 npm run dev`) and open **`/?role=designe
 
 Each control is a folder with the same files:
 
-| File            | Role                                                                                                                                                                                                                                                       |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `definition.ts` | Pure data: type, name, `channel` (`press` / `value` / `both`), output `kind`, `throttle`, documented `output`, default `hint`, `variants`, `defaults`, designer `fields`, `minSize` (grid cells), and `rotateOutput` for directional values. **No React.** |
-| `logic.ts`      | Pure gesture math (unit-tested in `tests/controls.test.ts`). Optional when there's none (e.g. button).                                                                                                                                                     |
-| `<Name>.tsx`    | The view: composes `ControlFrame` + `useTrackedPointer` and talks only to its `ControlPort`.                                                                                                                                                               |
-| `styles.css`    | Classes `.ctl-<type>__part`, using only `--ctl-*` tokens.                                                                                                                                                                                                  |
+| File            | Role                                                                                                                                                                                                                                                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `definition.ts` | Pure data: type, name, `channel` (`press` / `value` / `both`), output `kind`, `throttle`, documented `output`, default `hint`, `variants`, `defaults`, designer `fields`, `recommendedSize` (grid cells), supported `shapes` and `appearances` (first is the default), and `rotateOutput` for directional values. **No React.** |
+| `logic.ts`      | Pure gesture math (unit-tested in `tests/controls.test.ts`). Optional when there's none (e.g. button).                                                                                                                                                                                                                          |
+| `<Name>.tsx`    | The view: composes `ControlFrame` + `useTrackedPointer` and talks only to its `ControlPort`.                                                                                                                                                                                                                                    |
+| `styles.css`    | Classes `.ctl-<type>__part`, using only `--ctl-*` tokens.                                                                                                                                                                                                                                                                       |
 
 All room participants and the signaling server must use the same application protocol version. After an upgrade, reload screens and phones; version mismatches stop connection retries and show a reload message.
 
 The shared kit:
 
-- `kit/ControlFrame.tsx`: the shell that draws the caption, hint, active state, variant class and focus ring.
+- `kit/ControlFrame.tsx`: the shell that draws the material, shape, appearance, caption, hint, active state, variant class and focus ring.
 - `kit/useTrackedPointer.ts`: single-finger capture that always ends cleanly.
 - `kit/geometry.ts`: clamp, dead zone and direction snapping.
 - `kit/icons.ts`: the only icon vocabulary games may name.
@@ -108,13 +108,14 @@ This copies the folder under a new type, renaming symbols owned by the control, 
 
 ## Design rules
 
-Every control follows these rules. Review new controls against them in the gallery on a real phone.
+The full guide, with rationale, tokens and a spec per control, is [docs/design/CONTROLLER-DESIGN.md](../../../docs/design/CONTROLLER-DESIGN.md). In short, review new controls against these in the gallery on a real phone:
 
 1. **Tokens only.** Raw colours, sizes and timings live in [tokens.css](tokens.css). Controls use `var(--ctl-*)`.
-2. **The player's colour is the accent.** `--ctl-accent` is set from the player's roster colour, so each phone matches that player's cursor on the TV. Every active state uses the accent. Check all 8 colours with the gallery swatches.
-3. **Same chrome everywhere.** The caption is small caps in the top-left. The hint sits muted at the bottom and hides in short cells. Neither is ever part of the play area.
-4. **Every activation shows three cues together:** depth (the control sinks `--ctl-depth`), accent glow, and a short haptic (`port.haptic()`).
-5. **Big targets.** Nothing is smaller than `--ctl-touch-min` (64px). Layout cells are the target, not the glyph.
-6. **One finger per control.** Use `useTrackedPointer`, never raw pointer events, so cancels and unmounts always release inputs.
-7. **Glyphs, not words**, inside the play area. Icons come from `kit/icons.ts` (lucide).
-8. **Respect `prefers-reduced-motion`.** The frame stylesheet already zeroes animation durations.
+2. **The player's colour is the accent**, and it means "you're touching this". Controls rest in neutral graphite (filled buttons excepted), and engaged states use `--ctl-accent`, so each phone matches that player's cursor on the TV. Check all 8 colours with the gallery swatches.
+3. **Material, not plastic.** Hairline edge, specular top light, soft ambient shadow. No solid lips or bevels.
+4. **Every activation shows three cues together:** light (the accent edge, fill or ring), a press (discrete controls scale to `--ctl-press-scale`; tracking pads never move), and a short haptic (`port.haptic()`).
+5. **Same chrome everywhere.** The caption is a quiet sentence-case label top-left (centred on round shapes), and the hint sits faint at the bottom. Both hide as the control shrinks, and neither is part of the play area.
+6. **Any size, one family.** Radii and glyphs scale with the control, so it works from 1×1 to full width. The designer warns below `recommendedSize`; keep small controls for secondary actions.
+7. **One finger per control.** Use `useTrackedPointer`, never raw pointer events, so cancels and unmounts always release inputs.
+8. **Glyphs, not words**, inside the play area. Icons come from `kit/icons.ts` (lucide).
+9. **Respect `prefers-reduced-motion`.** The frame stylesheet already zeroes animation durations.

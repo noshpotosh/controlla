@@ -28,5 +28,7 @@ export const holdMeter: ControlDefinition<HoldMeterProps> = {
       step: 100,
     },
   ],
-  minSize: { w: 4, h: 4 },
+  recommendedSize: { w: 4, h: 4 },
+  shapes: ['rounded', 'circle', 'square'],
+  appearances: ['plain', 'tinted'],
 };

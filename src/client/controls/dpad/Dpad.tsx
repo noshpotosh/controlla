@@ -54,6 +54,8 @@ export function Dpad({ widget, port, props }: ControlViewProps<DpadProps>) {
       active={active}
       hint={props.hint}
       bare={props.bare}
+      shape={props.shape}
+      appearance={props.appearance}
       {...handlers}
     >
       <span className="ctl-dpad__cross">
@@ -63,7 +65,7 @@ export function Dpad({ widget, port, props }: ControlViewProps<DpadProps>) {
             className={`ctl-dpad__arm ctl-dpad__arm--${key}`}
             data-lit={(x && x === dir.x) || (y && y === dir.y) || undefined}
           >
-            <Icon strokeWidth={3} />
+            <Icon strokeWidth={2.25} />
           </span>
         ))}
         <span className="ctl-dpad__hub" />

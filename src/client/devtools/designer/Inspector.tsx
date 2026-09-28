@@ -1,5 +1,5 @@
 'use client';
-// Right rail: edit the selected control (name, look, props from its
+// Right rail: edit the selected control (name, look, size, props from its
 // definition's `fields`), or see which games use the layout.
 import { useState } from 'react';
 import { games as catalog } from '../../minigames/catalog.ts';
@@ -21,10 +21,20 @@ import { definitionFor, definitions } from '../../controls/registry.ts';
 
 import {
   checkAssignment,
+  recommendedFootprint,
   type LayoutIssue,
 } from '../../controls/layout/validate.ts';
 
 import { isControlName, ROTATIONS } from '../../controls/layout/schema.ts';
+import { fillAxis, sizePreset, type SizePreset } from './model.ts';
+
+/** A layout edit on the selected item, applied as one undoable step. */
+export type ItemEdit = (
+  layout: ControllerLayout,
+  index: number,
+) => ControllerLayout;
+
+const PRESETS: readonly SizePreset[] = ['S', 'M', 'L'];
 
 const HINT: Field = { key: 'hint', label: 'Hint', type: 'text' };
 
@@ -32,15 +42,21 @@ export function Inspector({
   layout,
   index,
   issues,
+  warnings,
   readings,
   onChange,
+  onApply,
 }: {
   layout: ControllerLayout;
   index: number | null;
+  /** Problems that block saving. */
   issues: LayoutIssue[];
+  /** Advice that doesn't. */
+  warnings: LayoutIssue[];
   /** While playing: what each control is sending. */
   readings: Record<string, Reading> | null;
   onChange: (change: Partial<LayoutItem>) => void;
+  onApply: (edit: ItemEdit) => void;
 }) {
   const item = index === null ? null : layout.items[index];
   return (
@@ -62,16 +78,26 @@ export function Inspector({
           item={item}
           layout={layout}
           onChange={onChange}
+          onApply={onApply}
         />
       ) : (
         <GamesPanel layout={layout} />
       )}
       <section>
         <h2>Checks</h2>
-        {issues.length ? (
+        {issues.length || warnings.length ? (
           <ul className="dz-issues">
             {issues.map((issue, i) => (
               <li key={i} data-selected={issue.item === index || undefined}>
+                {issue.message}
+              </li>
+            ))}
+            {warnings.map((issue, i) => (
+              <li
+                key={`w${i}`}
+                data-level="warning"
+                data-selected={issue.item === index || undefined}
+              >
                 {issue.message}
               </li>
             ))}
@@ -129,16 +155,21 @@ function ItemFields({
   item,
   layout,
   onChange,
+  onApply,
 }: {
   item: LayoutItem;
   layout: ControllerLayout;
   onChange: (change: Partial<LayoutItem>) => void;
+  onApply: (edit: ItemEdit) => void;
 }) {
   const definition = definitionFor(item.type),
-    props = { ...definition?.defaults, ...item.props } as Record<
-      string,
-      unknown
-    >,
+    props = {
+      shape: definition?.shapes[0],
+      appearance: definition?.appearances[0],
+      ...definition?.defaults,
+      ...item.props,
+    } as Record<string, unknown>,
+    recommended = recommendedFootprint(item),
     setProp = (key: string, value: unknown) =>
       onChange({ props: { ...item.props, [key]: value } }),
     [draftName, setDraftName] = useState(item.name),
@@ -181,14 +212,26 @@ function ItemFields({
         Control
         <select
           value={item.type}
-          onChange={(e) =>
-            // Props and variants belong to a control; start fresh on a swap.
+          onChange={(e) => {
+            // Props and variants belong to a control; start fresh on a swap,
+            // keeping the look where the new control supports it.
+            const type = e.target.value as LayoutItem['type'],
+              next = definitionFor(type),
+              kept = {
+                ...(next?.shapes.includes(item.props?.shape as never) && {
+                  shape: item.props?.shape,
+                }),
+                ...(next?.appearances.includes(
+                  item.props?.appearance as never,
+                ) && { appearance: item.props?.appearance }),
+                ...(item.props?.bare === true && { bare: true }),
+              };
             onChange({
-              type: e.target.value as LayoutItem['type'],
-              props: undefined,
+              type,
+              props: Object.keys(kept).length ? kept : undefined,
               variant: undefined,
-            })
-          }
+            });
+          }}
         >
           {definitions.map((d) => (
             <option key={d.type} value={d.type}>
@@ -211,6 +254,46 @@ function ItemFields({
           </select>
         </label>
       )}
+      {definition && (
+        <>
+          <div className="dz-label">Shape</div>
+          <div className="dz-seg dz-seg--fill">
+            {definition.shapes.map((shape) => (
+              <button
+                key={shape}
+                type="button"
+                title={shape}
+                aria-label={shape}
+                aria-pressed={props.shape === shape}
+                onClick={() => setProp('shape', shape)}
+              >
+                <span className="dz-shape" data-shape={shape} />
+              </button>
+            ))}
+          </div>
+          <div className="dz-label">Appearance</div>
+          <div className="dz-seg dz-seg--fill">
+            {definition.appearances.map((appearance) => (
+              <button
+                key={appearance}
+                type="button"
+                aria-pressed={props.appearance === appearance}
+                onClick={() => setProp('appearance', appearance)}
+              >
+                {appearance}
+              </button>
+            ))}
+          </div>
+          <label className="dz-check">
+            <input
+              type="checkbox"
+              checked={props.bare !== true}
+              onChange={(e) => setProp('bare', !e.target.checked || undefined)}
+            />
+            Show caption and hint
+          </label>
+        </>
+      )}
       {definition &&
         [...definition.fields, HINT].map((f) => (
           <FieldInput
@@ -232,6 +315,41 @@ function ItemFields({
             {r}°
           </button>
         ))}
+      </div>
+      <div className="dz-label">
+        Size · recommended {recommended.w}×{recommended.h}
+      </div>
+      <div className="dz-seg dz-seg--fill">
+        {PRESETS.map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            title={
+              preset === 'M'
+                ? 'Recommended size'
+                : preset === 'S'
+                  ? 'Compact (secondary actions)'
+                  : 'Generous'
+            }
+            onClick={() => onApply((l, i) => sizePreset(l, i, preset))}
+          >
+            {preset}
+          </button>
+        ))}
+        <button
+          type="button"
+          title="Stretch across the free space in this row"
+          onClick={() => onApply((l, i) => fillAxis(l, i, 'row'))}
+        >
+          ↔ Fill
+        </button>
+        <button
+          type="button"
+          title="Stretch down the free space in this column"
+          onClick={() => onApply((l, i) => fillAxis(l, i, 'column'))}
+        >
+          ↕ Fill
+        </button>
       </div>
       <div className="dz-label">Position (cells)</div>
       <div className="dz-rect">

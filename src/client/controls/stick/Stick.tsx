@@ -61,6 +61,8 @@ export function Stick({ widget, port, props }: ControlViewProps<StickProps>) {
       active={active}
       hint={props.hint}
       bare={props.bare}
+      shape={props.shape}
+      appearance={props.appearance}
       {...handlers}
     >
       <span className="ctl-stick__base" style={base}>

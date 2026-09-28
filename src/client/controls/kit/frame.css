@@ -1,68 +1,136 @@
-/* ControlFrame: the shared shell. Pads are recessed wells with a raised rim. */
+/*
+ * ControlFrame: the shared shell. Graphite material lit from above; shape and
+ * appearance come from data attributes. See docs/design/CONTROLLER-DESIGN.md.
+ */
 .ctl-frame {
+  /* The colour this control speaks in; variants may override. */
+  --ctl-tone: var(--ctl-accent);
+  --ctl-tone-ink: var(--ctl-accent-ink);
+  --ctl-frame-edge: var(--ctl-line);
   container-type: size;
   position: absolute;
   inset: 0;
-  min-width: var(--ctl-touch-min);
-  min-height: var(--ctl-touch-min);
   margin: 0;
   padding: 0;
   border: 0;
   font: inherit;
   color: var(--ctl-ink);
-  border-radius: var(--ctl-radius-lg);
-  background: var(--ctl-surface);
+  border-radius: var(--ctl-radius-control);
+  background: var(--ctl-sheen-soft), var(--ctl-surface);
   box-shadow:
-    inset 0 1px 0 var(--ctl-highlight),
-    0 var(--ctl-depth) 0 var(--ctl-surface-lip);
+    inset 0 0 0 var(--ctl-hairline) var(--ctl-frame-edge),
+    inset 0 var(--ctl-hairline) 0 var(--ctl-specular),
+    var(--ctl-shadow-1);
   overflow: hidden;
   touch-action: none;
   outline: none;
   -webkit-tap-highlight-color: transparent;
   transition:
-    box-shadow var(--ctl-spring-ms) ease,
-    transform var(--ctl-spring-ms) var(--ctl-ease-spring);
+    box-shadow var(--ctl-spring-ms) var(--ctl-ease-out),
+    background-color var(--ctl-press-ms) linear,
+    scale var(--ctl-spring-ms) var(--ctl-ease-spring);
 }
 .ctl-frame:focus-visible {
-  outline: 3px solid var(--ctl-accent);
-  outline-offset: 3px;
-}
-.ctl-frame[data-active] {
-  box-shadow:
-    inset 0 1px 0 var(--ctl-highlight),
-    inset 0 0 0 2px var(--ctl-accent-glow),
-    0 var(--ctl-depth) 0 var(--ctl-surface-lip);
+  outline: var(--ctl-stroke) solid var(--ctl-accent);
+  outline-offset: var(--ctl-space-1);
 }
 
+/* Shapes. The frame sits centred in its cell. */
+.ctl-frame[data-shape='square'] {
+  border-radius: var(--ctl-radius-square);
+}
+.ctl-frame[data-shape='capsule'] {
+  border-radius: var(--ctl-radius-pill);
+}
+.ctl-frame[data-shape='circle'] {
+  inset: 0;
+  margin: auto;
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
+  border-radius: 50%;
+}
+
+/* Appearances: how much tone the control carries at rest. */
+.ctl-frame[data-appearance='tinted'] {
+  --ctl-frame-edge: color-mix(in oklab, var(--ctl-tone) 30%, transparent);
+  background:
+    var(--ctl-sheen-soft),
+    color-mix(in oklab, var(--ctl-tone) var(--ctl-tint-mix), var(--ctl-surface));
+}
+.ctl-frame[data-appearance='filled'] {
+  --ctl-frame-edge: var(--ctl-line-strong);
+  background: var(--ctl-sheen), var(--ctl-tone);
+  color: var(--ctl-tone-ink);
+}
+
+/* Engaged: an accent edge and a soft halo, never a colour flood. */
+.ctl-frame[data-active] {
+  --ctl-frame-edge: var(--ctl-accent-edge);
+  box-shadow:
+    inset 0 0 0 var(--ctl-stroke) var(--ctl-frame-edge),
+    inset 0 var(--ctl-hairline) 0 var(--ctl-specular),
+    var(--ctl-shadow-1),
+    0 0 0 var(--ctl-space-1) var(--ctl-accent-soft);
+  transition-duration: var(--ctl-press-ms);
+}
+
+/* Chrome: a quiet caption top-left and a hint along the bottom. */
 .ctl-frame__label {
   position: absolute;
   top: var(--ctl-space-3);
   left: var(--ctl-space-4);
+  right: var(--ctl-space-4);
   z-index: 2;
   font-size: var(--ctl-font-label);
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--ctl-ink-muted);
   pointer-events: none;
   transition: color var(--ctl-press-ms) linear;
 }
 .ctl-frame[data-active] .ctl-frame__label {
-  color: var(--ctl-accent);
+  color: var(--ctl-ink);
 }
 .ctl-frame__hint {
   position: absolute;
   inset: auto var(--ctl-space-4) var(--ctl-space-3);
   z-index: 2;
   font-size: var(--ctl-font-hint);
+  line-height: 1.25;
   text-align: center;
-  color: var(--ctl-ink-muted);
+  color: var(--ctl-ink-faint);
   pointer-events: none;
 }
+.ctl-frame[data-appearance='filled'] .ctl-frame__label,
+.ctl-frame[data-appearance='filled'] .ctl-frame__hint {
+  color: inherit;
+  opacity: 0.62;
+}
+/* Round silhouettes centre their chrome. */
+.ctl-frame:is([data-shape='circle'], [data-shape='capsule']) .ctl-frame__label {
+  text-align: center;
+}
+.ctl-frame[data-shape='circle'] .ctl-frame__label {
+  top: 17%;
+}
+.ctl-frame[data-shape='circle'] .ctl-frame__hint {
+  display: none;
+}
 
-/* Too small for chrome: the play area gets every pixel. */
-@container (max-height: 110px) {
+/* Small controls give every pixel to the play area (values mirror
+ * --ctl-font-label/hint; container queries can't read custom properties). */
+@container (max-height: 132px) {
   .ctl-frame__hint {
+    display: none;
+  }
+}
+@container (max-height: 84px) or (max-width: 84px) {
+  .ctl-frame__label {
     display: none;
   }
 }
@@ -70,7 +138,7 @@
 /* A shared recessed well, used inside pads. */
 .ctl-well {
   background: var(--ctl-well);
-  box-shadow: var(--ctl-well-shadow);
+  box-shadow: var(--ctl-shadow-inset);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -87,13 +155,10 @@
   display: grid;
   place-items: center;
   background: var(--ctl-well);
-  box-shadow:
-    var(--ctl-well-shadow),
-    0 var(--ctl-depth) 0 var(--ctl-surface-lip);
 }
 .ctl-sensor__icon {
-  width: 34cqmin;
-  height: 34cqmin;
+  width: 30cqmin;
+  height: 30cqmin;
   color: var(--ctl-accent);
-  opacity: 0.8;
+  opacity: 0.85;
 }

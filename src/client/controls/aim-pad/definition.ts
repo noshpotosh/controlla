@@ -16,6 +16,8 @@ export const aimPad: ControlDefinition = {
   variants: [],
   defaults: {},
   fields: [],
-  minSize: { w: 5, h: 5 },
+  recommendedSize: { w: 5, h: 5 },
+  shapes: ['rounded', 'square', 'circle'],
+  appearances: ['plain', 'tinted'],
   rotateOutput: (value, rotation) => rotateVector(value as Vector, rotation),
 };

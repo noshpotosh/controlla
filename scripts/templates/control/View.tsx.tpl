@@ -24,6 +24,8 @@ export function __PASCAL__({
       active={active}
       hint={props.hint}
       bare={props.bare}
+      shape={props.shape}
+      appearance={props.appearance}
       {...handlers}
     >
       <span className="ctl-__TYPE____body" />

@@ -41,6 +41,12 @@ void test('every library control has one definition and a view', () => {
     assert.ok(views[d.type], `${d.type} has no view in views.ts`);
     assert.equal(definitionFor(d.type), d);
     assert.ok(d.displayName && d.description && d.output, `${d.type} docs`);
+    // The look is part of the contract: at least one shape and appearance
+    // (the first is the default), no duplicates, and a real footprint.
+    assert.ok(d.shapes.length && d.appearances.length, `${d.type} look`);
+    assert.equal(new Set(d.shapes).size, d.shapes.length);
+    assert.equal(new Set(d.appearances).size, d.appearances.length);
+    assert.ok(d.recommendedSize.w >= 1 && d.recommendedSize.h >= 1);
   }
   for (const type of Object.keys(views))
     assert.ok(

@@ -1,5 +1,12 @@
+/*
+ * Aim pad: a recessed field with a faint hairline grid and a precise
+ * reticle. The reticle stays where the finger left it.
+ */
 .ctl-aim-pad {
   background: var(--ctl-well);
+  box-shadow:
+    var(--ctl-shadow-inset),
+    inset 0 0 0 var(--ctl-hairline) var(--ctl-frame-edge);
 }
 .ctl-aim-pad__grid {
   position: absolute;
@@ -8,45 +15,48 @@
   background-image:
     linear-gradient(
       to right,
-      var(--ctl-line) calc(var(--ctl-space-1) / 4),
-      transparent calc(var(--ctl-space-1) / 4)
+      var(--ctl-line) var(--ctl-hairline),
+      transparent var(--ctl-hairline)
     ),
     linear-gradient(
       to bottom,
-      var(--ctl-line) calc(var(--ctl-space-1) / 4),
-      transparent calc(var(--ctl-space-1) / 4)
+      var(--ctl-line) var(--ctl-hairline),
+      transparent var(--ctl-hairline)
     );
   background-size: 25% 25%;
-  opacity: 0.5;
+  background-position: center;
 }
 .ctl-aim-pad__target {
+  --reticle: max(var(--ctl-space-5), 13cqmin);
   position: absolute;
-  width: var(--ctl-space-5);
-  height: var(--ctl-space-5);
-  border: calc(var(--ctl-space-1) / 2) solid var(--ctl-accent);
+  width: var(--reticle);
+  height: var(--reticle);
+  border: var(--ctl-stroke) solid var(--ctl-accent);
   border-radius: 50%;
   translate: -50% -50%;
-  background: var(--ctl-accent-soft);
-  box-shadow: 0 0 var(--ctl-space-4) var(--ctl-accent-glow);
+  box-shadow: 0 0 0 var(--ctl-space-1) var(--ctl-accent-soft);
+  opacity: 0.75;
   pointer-events: none;
+  transition:
+    scale var(--ctl-spring-ms) var(--ctl-ease-spring),
+    opacity var(--ctl-spring-ms) var(--ctl-ease-out),
+    box-shadow var(--ctl-spring-ms) var(--ctl-ease-out);
 }
-.ctl-aim-pad__target::before,
-.ctl-aim-pad__target::after {
+.ctl-aim-pad__target::before {
+  /* Centre dot. */
   content: '';
   position: absolute;
   left: 50%;
   top: 50%;
+  width: calc(var(--ctl-space-1) * 1.5);
+  height: calc(var(--ctl-space-1) * 1.5);
   translate: -50% -50%;
+  border-radius: 50%;
   background: var(--ctl-accent);
 }
-.ctl-aim-pad__target::before {
-  width: 150%;
-  height: calc(var(--ctl-space-1) / 2);
-}
-.ctl-aim-pad__target::after {
-  height: 150%;
-  width: calc(var(--ctl-space-1) / 2);
-}
 .ctl-aim-pad[data-active] .ctl-aim-pad__target {
-  background: var(--ctl-accent-glow);
+  scale: 1.15;
+  opacity: 1;
+  background: var(--ctl-accent-soft);
+  box-shadow: 0 0 var(--ctl-space-5) var(--ctl-accent-glow);
 }

@@ -8,17 +8,15 @@ import type {
   Orientation,
   Rotation,
 } from '../../controls/api.ts';
-import { minSizeOf } from '../../controls/registry.ts';
-import { isSideways } from '../../controls/layout/rotation.ts';
-
 import { GRID, menuRect } from '../../controls/layout/schema.ts';
-import { overlaps } from '../../controls/layout/validate.ts';
+import {
+  overlaps,
+  recommendedFootprint,
+} from '../../controls/layout/validate.ts';
 
-/** Minimum footprint for an item, accounting for rotation. */
-export function footprint(type: WidgetType, rotation: Rotation) {
-  const min = minSizeOf(type);
-  return isSideways(rotation) ? { w: min.h, h: min.w } : min;
-}
+/** Recommended footprint for an item, accounting for rotation. */
+export const footprint = (type: WidgetType, rotation: Rotation) =>
+  recommendedFootprint({ type, rotation });
 
 /** Keep a rect on the grid: at least 1×1, never past an edge. */
 export function clampRect(
@@ -78,13 +76,12 @@ export function addItem(
   at?: { x: number; y: number },
 ): { layout: ControllerLayout; index: number } | null {
   const size = footprint(type, 0),
-    // Start a little bigger than the minimum; most controls want room.
-    comfy = { w: Math.min(layout.grid.cols, size.w + 1), h: size.h + 1 },
-    wanted = at && clampRect({ ...at, ...comfy }, layout.grid),
+    wanted = at && clampRect({ ...at, ...size }, layout.grid),
     rect =
       (wanted && isFree(layout, wanted) && wanted) ||
-      findFreeSpot(layout, comfy) ||
-      findFreeSpot(layout, size);
+      findFreeSpot(layout, size) ||
+      // Crowded: squeeze in small; the designer flags it as undersized.
+      findFreeSpot(layout, sizePresetOf(size, 'S'));
   if (!rect) return null;
   const name = uniqueName(layout, type),
     item: LayoutItem = { name, type, rect, rotation: 0, label: title(name) };
@@ -155,4 +152,156 @@ export function reorient(
       ),
     })),
   };
+}
+
+/** Resize handles: four edges and four corners. */
+export type ResizeHandle = 'n' | 'e' | 's' | 'w' | 'nw' | 'ne' | 'sw' | 'se';
+
+/**
+ * Drag a resize handle by (dx, dy) cells. The opposite edge stays put, the
+ * rect never drops below 1×1 or leaves the grid, and `lockAspect` keeps the
+ * starting proportions (edge handles then grow the other axis about the
+ * centre).
+ */
+export function resizeRect(
+  start: GridRect,
+  handle: ResizeHandle,
+  dx: number,
+  dy: number,
+  grid: ControllerLayout['grid'],
+  { lockAspect = false } = {},
+): GridRect {
+  const west = handle.includes('w'),
+    east = handle.includes('e'),
+    north = handle.includes('n'),
+    south = handle.includes('s');
+  let w = east ? start.w + dx : west ? start.w - dx : start.w,
+    h = south ? start.h + dy : north ? start.h - dy : start.h;
+  if (lockAspect) {
+    const ratio = start.w / start.h,
+      horizontal = east || west,
+      vertical = north || south;
+    if (horizontal && vertical) {
+      // Corners follow whichever axis moved further, relatively.
+      if (Math.abs(w / start.w - 1) >= Math.abs(h / start.h - 1)) h = w / ratio;
+      else w = h * ratio;
+    } else if (horizontal) h = w / ratio;
+    else w = h * ratio;
+  }
+  // Never past the grid edge on the side that moves.
+  const maxW = west
+      ? start.x + start.w
+      : east
+        ? grid.cols - start.x
+        : grid.cols,
+    maxH = north ? start.y + start.h : south ? grid.rows - start.y : grid.rows;
+  w = Math.max(1, Math.min(maxW, Math.round(w)));
+  h = Math.max(1, Math.min(maxH, Math.round(h)));
+  return clampRect(
+    {
+      x: west
+        ? start.x + start.w - w
+        : east
+          ? start.x
+          : start.x + (start.w - w) / 2,
+      y: north
+        ? start.y + start.h - h
+        : south
+          ? start.y
+          : start.y + (start.h - h) / 2,
+      w,
+      h,
+    },
+    grid,
+  );
+}
+
+/** Grid lines (in cells) the rect shares with another item or the centre. */
+export interface Guides {
+  x: number[];
+  y: number[];
+}
+
+const edges = (from: number, size: number) => [
+  from,
+  from + size / 2,
+  from + size,
+];
+
+/** Where `rect`'s edges or centre line up with others' (or the surface's). */
+export function alignmentGuides(
+  rect: GridRect,
+  others: readonly GridRect[],
+  grid: ControllerLayout['grid'],
+): Guides {
+  const match = (mine: number[], theirs: number[]) =>
+    [...new Set(mine.filter((v) => theirs.includes(v)))].sort((a, b) => a - b);
+  return {
+    x: match(edges(rect.x, rect.w), [
+      grid.cols / 2,
+      ...others.flatMap((o) => edges(o.x, o.w)),
+    ]),
+    y: match(edges(rect.y, rect.h), [
+      grid.rows / 2,
+      ...others.flatMap((o) => edges(o.y, o.h)),
+    ]),
+  };
+}
+
+export type SizePreset = 'S' | 'M' | 'L';
+
+const PRESET_SCALE: Record<SizePreset, number> = { S: 0.6, M: 1, L: 1.5 };
+
+/** A size relative to the recommended one: S is compact, L is generous. */
+export const sizePresetOf = (
+  size: { w: number; h: number },
+  preset: SizePreset,
+) => ({
+  w: Math.max(1, Math.round(size.w * PRESET_SCALE[preset])),
+  h: Math.max(1, Math.round(size.h * PRESET_SCALE[preset])),
+});
+
+/** Resize an item to a preset, keeping its centre and staying on the grid. */
+export function sizePreset(
+  layout: ControllerLayout,
+  index: number,
+  preset: SizePreset,
+): ControllerLayout {
+  const item = layout.items[index],
+    size = sizePresetOf(recommendedFootprint(item), preset),
+    { x, y, w, h } = item.rect;
+  return updateItem(layout, index, {
+    rect: clampRect(
+      { x: x + (w - size.w) / 2, y: y + (h - size.h) / 2, ...size },
+      layout.grid,
+    ),
+  });
+}
+
+/**
+ * Stretch an item across its row (or down its column) as far as it can go
+ * without covering another control or the menu.
+ */
+export function fillAxis(
+  layout: ControllerLayout,
+  index: number,
+  axis: 'row' | 'column',
+): ControllerLayout {
+  const { rect } = layout.items[index],
+    free = (r: GridRect) => isFree(layout, r, index);
+  let { x, y, w, h } = rect;
+  if (axis === 'row') {
+    while (x > 0 && free({ x: x - 1, y, w: 1, h })) {
+      x--;
+      w++;
+    }
+    while (x + w < layout.grid.cols && free({ x: x + w, y, w: 1, h })) w++;
+  } else {
+    while (y > 0 && free({ x, y: y - 1, w, h: 1 })) {
+      y--;
+      h++;
+    }
+    while (y + h < layout.grid.rows && free({ x, y: y + h, w, h: 1 })) h++;
+  }
+  return updateItem(layout, index, { rect: { x, y, w, h } });
 }

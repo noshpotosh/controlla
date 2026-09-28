@@ -19,6 +19,7 @@ import {
 } from '../src/client/controls/layout/schema.ts';
 import {
   checkAssignment,
+  layoutWarnings,
   validateLayout,
 } from '../src/client/controls/layout/validate.ts';
 import {
@@ -38,9 +39,13 @@ import { definitionFor } from '../src/client/controls/registry.ts';
 import { dpadDirection } from '../src/client/controls/dpad/logic.ts';
 import {
   addItem,
+  alignmentGuides,
+  fillAxis,
   findFreeSpot,
   reorient,
+  resizeRect,
   rotateItem,
+  sizePreset,
 } from '../src/client/devtools/designer/model.ts';
 import {
   defaultCapabilities,
@@ -126,7 +131,7 @@ void test('the generated index imports each layout once, sorted', () => {
   assert.doesNotMatch(src, /bad/);
 });
 
-void test('validation: bounds, overlap, menu corner, size, names', () => {
+void test('validation: bounds, overlap, menu corner, names', () => {
   const check = (items: LayoutItem[]) =>
     messages(validateLayout(layoutOf(items)));
   assert.equal(check([top(), bottom()]), '');
@@ -142,16 +147,30 @@ void test('validation: bounds, overlap, menu corner, size, names', () => {
     check([item('a', 'button', { x: 8, y: 0, w: 4, h: 4 })]),
     /menu corner/,
   );
-  assert.match(
-    check([item('a', 'swipe-pad', { x: 0, y: 14, w: 2, h: 2 })]),
-    /too small/,
-  );
   assert.match(check([top('x'), bottom('x')]), /Two controls are named "x"/);
   assert.match(check([top(), bottom('bad name')]), /valid name/);
   // Motion inputs are toggled, never placed.
   assert.match(check([top('aim', 'pointer')]), /isn't a touch control/);
   const unnamed = { ...layoutOf([]), name: ' ' };
   assert.match(messages(validateLayout(unnamed)), /name/);
+});
+
+void test('undersized controls warn but never block', () => {
+  const small = layoutOf([item('a', 'swipe-pad', { x: 0, y: 14, w: 1, h: 1 })]);
+  assert.deepEqual(validateLayout(small), []);
+  assert.match(
+    messages(layoutWarnings(small)),
+    /smaller than recommended \(4×4\)/,
+  );
+  // Rotation turns the recommendation with the control.
+  const sideways = layoutOf([
+    item('a', 'swipe-pad', { x: 0, y: 10, w: 4, h: 3 }, 90),
+  ]);
+  assert.match(messages(layoutWarnings(sideways)), /\(4×4\)/);
+  assert.deepEqual(layoutWarnings(layoutOf([top(), bottom()])), []);
+  // Shipped layouts are all comfortably sized.
+  for (const layout of Object.values(layouts))
+    assert.deepEqual(layoutWarnings(layout), [], layout.id);
 });
 
 void test('validation: at most four press inputs, counting shake', () => {
@@ -325,4 +344,122 @@ void test('designer model: add, find space, rotate and reorient', () => {
   const wide = reorient(layoutOf([top()]), 'landscape');
   assert.deepEqual(wide.grid, { cols: 24, rows: 12 });
   assert.deepEqual(wide.items[0].rect, { x: 0, y: 1, w: 24, h: 5 });
+});
+
+void test('designer model: edge and corner resize, aspect lock', () => {
+  const grid = { cols: 12, rows: 24 },
+    start = { x: 4, y: 8, w: 4, h: 4 };
+  // Edges move one side only.
+  assert.deepEqual(resizeRect(start, 'e', 2, 5, grid), {
+    x: 4,
+    y: 8,
+    w: 6,
+    h: 4,
+  });
+  assert.deepEqual(resizeRect(start, 'w', -1, 0, grid), {
+    x: 3,
+    y: 8,
+    w: 5,
+    h: 4,
+  });
+  assert.deepEqual(resizeRect(start, 'n', 0, 2, grid), {
+    x: 4,
+    y: 10,
+    w: 4,
+    h: 2,
+  });
+  assert.deepEqual(resizeRect(start, 's', 0, 3, grid), {
+    x: 4,
+    y: 8,
+    w: 4,
+    h: 7,
+  });
+  // Corners keep the opposite corner; everything shrinks to 1×1 at most.
+  assert.deepEqual(resizeRect(start, 'nw', 9, 9, grid), {
+    x: 7,
+    y: 11,
+    w: 1,
+    h: 1,
+  });
+  assert.deepEqual(resizeRect(start, 'se', -9, -9, grid), {
+    x: 4,
+    y: 8,
+    w: 1,
+    h: 1,
+  });
+  // Never past the grid edge.
+  assert.deepEqual(resizeRect(start, 'e', 40, 0, grid), {
+    x: 4,
+    y: 8,
+    w: 8,
+    h: 4,
+  });
+  // ⇧: proportions hold; an edge grows the other axis about the centre.
+  assert.deepEqual(resizeRect(start, 'se', 4, 0, grid, { lockAspect: true }), {
+    x: 4,
+    y: 8,
+    w: 8,
+    h: 8,
+  });
+  assert.deepEqual(
+    resizeRect({ x: 4, y: 8, w: 4, h: 2 }, 'e', 2, 0, grid, {
+      lockAspect: true,
+    }),
+    { x: 4, y: 8, w: 6, h: 3 },
+  );
+  assert.deepEqual(resizeRect(start, 's', 0, 2, grid, { lockAspect: true }), {
+    x: 3,
+    y: 8,
+    w: 6,
+    h: 6,
+  });
+});
+
+void test('designer model: alignment guides', () => {
+  const grid = { cols: 12, rows: 24 },
+    others = [{ x: 0, y: 2, w: 6, h: 4 }];
+  assert.deepEqual(alignmentGuides({ x: 0, y: 8, w: 6, h: 4 }, others, grid), {
+    x: [0, 3, 6],
+    // Its bottom edge also meets the surface's horizontal centre.
+    y: [12],
+  });
+  // The surface centre is always a guide.
+  assert.deepEqual(alignmentGuides({ x: 4, y: 10, w: 4, h: 4 }, [], grid), {
+    x: [6],
+    y: [12],
+  });
+});
+
+void test('designer model: size presets and fill', () => {
+  const base = layoutOf([
+    item('fire', 'button', { x: 4, y: 10, w: 3, h: 3 }),
+    item('jump', 'button', { x: 9, y: 10, w: 3, h: 3 }),
+  ]);
+  // Recommended button is 3×3: S 2×2, L 5×5, each about the same centre.
+  assert.deepEqual(sizePreset(base, 0, 'S').items[0].rect, {
+    x: 5,
+    y: 11,
+    w: 2,
+    h: 2,
+  });
+  assert.deepEqual(sizePreset(base, 0, 'L').items[0].rect, {
+    x: 3,
+    y: 9,
+    w: 5,
+    h: 5,
+  });
+  assert.deepEqual(sizePreset(base, 0, 'M').items[0].rect, base.items[0].rect);
+  // Fill stops at neighbours and at the menu corner.
+  assert.deepEqual(fillAxis(base, 0, 'row').items[0].rect, {
+    x: 0,
+    y: 10,
+    w: 9,
+    h: 3,
+  });
+  assert.deepEqual(fillAxis(base, 1, 'column').items[1].rect, {
+    x: 9,
+    y: 2,
+    w: 3,
+    h: 22,
+  });
 });

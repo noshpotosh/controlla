@@ -28,6 +28,8 @@ export function Button({ widget, port, props }: ControlViewProps<ButtonProps>) {
       active={active}
       hint={props.hint}
       bare={props.bare}
+      shape={props.shape}
+      appearance={props.appearance}
       as="button"
       aria-pressed={active}
       onKeyDown={key(true)}
@@ -35,7 +37,7 @@ export function Button({ widget, port, props }: ControlViewProps<ButtonProps>) {
       {...handlers}
     >
       <span className="ctl-button__glyph">
-        {Icon ? <Icon strokeWidth={2.5} /> : widget.label.slice(0, 1)}
+        {Icon ? <Icon strokeWidth={2} /> : widget.label.slice(0, 1)}
       </span>
     </ControlFrame>
   );

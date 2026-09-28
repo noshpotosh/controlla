@@ -18,7 +18,7 @@ export function SensorTile({ widget }: { widget: Widget }) {
   return (
     <div className="ctl-frame ctl-sensor">
       <span className="ctl-frame__label">{widget.label}</span>
-      <Icon className="ctl-sensor__icon" strokeWidth={2} />
+      <Icon className="ctl-sensor__icon" strokeWidth={1.5} />
       <span className="ctl-frame__hint">
         {sensor?.hint ?? `${widget.type} (not in the library yet)`}
       </span>

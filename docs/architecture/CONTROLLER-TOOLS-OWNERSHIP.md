@@ -25,4 +25,4 @@ Production Tailwind scanning excludes the complete tool directory. Client, SSR, 
 
 Each stage is committed and pushed to the explicit topic branch. Reverting the migration commits restores the accepted shell baseline without protocol or data conversion. Retain this worktree and the shell branch until integration; no merge to `main` or deployment is included. Other worktrees and rebrand/menu changes are outside this series.
 
-The subsequent [shared contract slice](SHARED-CONTRACTS.md) inventories remaining core modules by actual browser/backend consumers and extracts the narrow shared boundary. Sensor-provider lifecycle, physical phone/TV/network acceptance, runtime decomposition, new games and visual redesign remain separate work.
+The subsequent [shared contract slice](SHARED-CONTRACTS.md) inventories remaining core modules by actual browser/backend consumers and extracts the narrow shared boundary. Sensor-provider lifecycle, physical phone/TV/network acceptance, runtime decomposition and new games remain separate work. The controller's visual design is specified in [the controller design guide](../design/CONTROLLER-DESIGN.md).

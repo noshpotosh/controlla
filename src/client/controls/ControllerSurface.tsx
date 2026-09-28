@@ -23,7 +23,13 @@ export function ControlView({
     <View
       widget={widget}
       port={port}
-      props={{ hint: definition.hint, ...definition.defaults, ...widget.props }}
+      props={{
+        hint: definition.hint,
+        shape: definition.shapes[0],
+        appearance: definition.appearances[0],
+        ...definition.defaults,
+        ...widget.props,
+      }}
     />
   );
 }

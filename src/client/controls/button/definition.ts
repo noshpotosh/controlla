@@ -9,7 +9,7 @@ export interface ButtonProps {
 export const button: ControlDefinition<ButtonProps> = {
   type: 'button',
   displayName: 'Button',
-  description: 'A big, chunky action button. Tap or hold.',
+  description: 'An action button. Tap or hold.',
   channel: 'press',
   kind: 'press',
   throttle: false,
@@ -18,5 +18,7 @@ export const button: ControlDefinition<ButtonProps> = {
   variants: ['accent', 'neutral', 'danger'],
   defaults: {},
   fields: [{ key: 'icon', label: 'Icon', type: 'icon' }],
-  minSize: { w: 3, h: 3 },
+  recommendedSize: { w: 3, h: 3 },
+  shapes: ['rounded', 'circle', 'capsule', 'square'],
+  appearances: ['filled', 'tinted', 'plain'],
 };

@@ -1,17 +1,24 @@
-/* Swipe pad: a dotted well that draws your stroke and flashes the result. */
+/*
+ * Swipe pad: a quiet dot field that draws a tapered stroke and confirms the
+ * swipe with a small chevron that travels the way you swiped.
+ */
 .ctl-swipe-pad {
   background: var(--ctl-well);
   box-shadow:
-    var(--ctl-well-shadow),
-    0 var(--ctl-depth) 0 var(--ctl-surface-lip);
+    var(--ctl-shadow-inset),
+    inset 0 0 0 var(--ctl-hairline) var(--ctl-frame-edge);
 }
 .ctl-swipe-pad__dots {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(var(--ctl-line) 1.5px, transparent 1.5px);
-  background-size: 22px 22px;
+  background-image: radial-gradient(
+    var(--ctl-line-strong) var(--ctl-dot),
+    transparent var(--ctl-dot)
+  );
+  background-size: var(--ctl-dot-pitch) var(--ctl-dot-pitch);
   background-position: center;
   opacity: 0.7;
+  transition: opacity var(--ctl-spring-ms) var(--ctl-ease-out);
 }
 .ctl-swipe-pad[data-active] .ctl-swipe-pad__dots {
   opacity: 1;
@@ -27,38 +34,41 @@
 .ctl-swipe-pad__trail line {
   stroke: var(--ctl-accent);
   stroke-linecap: round;
-  filter: drop-shadow(0 0 6px var(--ctl-accent-glow));
+  filter: drop-shadow(0 0 var(--ctl-space-1) var(--ctl-accent-glow));
 }
 .ctl-swipe-pad__flash {
   position: absolute;
   inset: 0;
   margin: auto;
-  width: 40cqmin;
-  height: 40cqmin;
+  width: max(var(--ctl-space-5), 24cqmin);
+  height: max(var(--ctl-space-5), 24cqmin);
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--ctl-accent);
+  background: var(--ctl-sheen), var(--ctl-accent);
   color: var(--ctl-accent-ink);
-  box-shadow: 0 0 40px var(--ctl-accent-glow);
+  box-shadow:
+    var(--ctl-shadow-2),
+    0 0 var(--ctl-space-5) var(--ctl-accent-glow);
   pointer-events: none;
-  animation: ctl-swipe-flash 420ms ease-out forwards;
+  animation: ctl-swipe-flash var(--ctl-flash-ms) var(--ctl-ease-out) forwards;
 }
 .ctl-swipe-pad__flash svg {
-  width: 60%;
-  height: 60%;
+  width: 58%;
+  height: 58%;
 }
+/* The flash is rotated to the swipe, so -y is always "the way you swiped". */
 @keyframes ctl-swipe-flash {
   0% {
     opacity: 0;
-    transform: scale(0.6);
+    transform: translateY(0) scale(0.7);
   }
-  25% {
+  30% {
     opacity: 1;
-    transform: scale(1.05);
+    transform: translateY(-6cqmin) scale(1);
   }
   100% {
     opacity: 0;
-    transform: scale(1.25);
+    transform: translateY(-16cqmin) scale(0.92);
   }
 }
