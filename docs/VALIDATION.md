@@ -1,5 +1,34 @@
 # Validation and acceptance ledger
 
+## Local-only tooling cleanup — 2026-09-28
+
+Cleanup branch `codex/local-dev-cleanup-0928` starts from fetched `develop`
+checkpoint `06d1f89`; implementation checkpoint `f2e199c` was validated in
+`.worktrees/local-dev-cleanup-0928` with its own fresh dependency installation.
+Sites/Cloudflare plugins, runtime bindings, dependencies, hosting manifest and
+production proxy example are removed. Local HTTPS acceptance tooling moved to
+`scripts/local-testing/`. Vite's standard WebSocket proxy replaces the custom
+socket interception; exact signaling origin checks remain enforced.
+
+- Fresh `npm ci`: passed; no Sites, Cloudflare Vite/types, Wrangler, Miniflare or
+  workerd packages in the installed dependency tree. Existing retained package
+  versions were not upgraded.
+- `npm test`: all 308 tests passed, including live signaling. `npm run typecheck`
+  and `npm run lint`: passed. `npm run build`: passed with client/SSR/RSC
+  gameplay and developer-tool exclusion assertions; no hosting manifest or
+  Wrangler configuration emitted. Build runs locally and publishes nothing.
+- Desktop browser at HTTP port 3017 with isolated signaling on 8917: homepage
+  hydrated, host room created, simulated phone joined, host roster showed one
+  player, and layout designer loaded. Host console had no warnings/errors.
+- HTTPS on the same isolated frontend: homepage, LAN discovery and game harness
+  returned 200; WSS host join returned welcome; an unapproved Origin received
+  403. The client trusted only the generated local certificate for this check;
+  TLS verification stayed enabled.
+- Validation processes and browser tabs were stopped. Existing independent
+  device-testing processes, worktrees and saved design artifacts were preserved.
+  Physical phone motion, certificate trust on iOS, multitouch and latency were
+  not retested by this tooling cleanup.
+
 ## Local iPhone acceptance preparation — 2026-09-28
 
 Use the [local iPhone runbook](acceptance/LOCAL-IPHONE.md) and

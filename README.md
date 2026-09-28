@@ -14,8 +14,6 @@ cd controlla
 npm ci
 ```
 
-On Linux installations where Sharp detects an incompatible global libvips, use `SHARP_IGNORE_GLOBAL_LIBVIPS=1 npm ci`.
-
 Both processes must stay running. From the project directory:
 
 **Terminal 1 — room signaling and relay service (port 8787):**
