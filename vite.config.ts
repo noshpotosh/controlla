@@ -10,13 +10,16 @@ import { resolve, sep } from 'node:path';
 import type { Duplex } from 'node:stream';
 import { defineConfig, type Plugin } from 'vite';
 import hostingConfig from './.openai/hosting.json' with { type: 'json' };
-import { isMotionTrace } from './src/core/motion/trace.ts';
-import { renderLayoutIndex } from './src/controls/layout/index-file.ts';
+import nextConfig from './next.config.ts';
+import { isMotionTrace } from './src/client/controls/motion/trace.ts';
+import { developmentEntry } from './scripts/development-entry.ts';
+import { productionBundleBoundary } from './scripts/production-boundary.ts';
+import { renderLayoutIndex } from './src/client/controls/layout/index-file.ts';
 import {
   isControllerLayout,
   layoutFileName,
-} from './src/controls/layout/schema.ts';
-import { validateLayout } from './src/controls/layout/validate.ts';
+} from './src/client/controls/layout/schema.ts';
+import { validateLayout } from './src/client/controls/layout/validate.ts';
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   '00000000-0000-4000-8000-000000000000';
@@ -138,13 +141,13 @@ const motionTraceUpload = (): Plugin => ({
   },
 });
 
-// Dev-only: the controller designer's layout library lives in src/layouts,
+// Dev-only: the controller designer's layout library lives in src/client/controls/layouts,
 // one JSON file per layout, plus a generated index.ts listing them. The index
 // is regenerated only when a layout is created or deleted, so ordinary saves
 // just hot-reload that one file (which is how phone previews update live).
 // Nothing here imports the layouts themselves: Vite restarts the dev server
 // when a config dependency changes.
-const LAYOUT_DIR = 'src/layouts';
+const LAYOUT_DIR = 'src/client/controls/layouts';
 const MAX_LAYOUT_BYTES = 64 * 1024;
 const controllerLayouts = (): Plugin => ({
   name: 'controlla-controller-layouts',
@@ -270,7 +273,12 @@ const localBindingConfig = {
     : [],
 };
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ command }) => {
+  const entry = developmentEntry(
+    import.meta.dirname,
+    command,
+    nextConfig.pageExtensions,
+  );
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= 'false';
@@ -281,6 +289,7 @@ export default defineConfig(async () => {
   const { cloudflare } = await import('@cloudflare/vite-plugin');
 
   return {
+    resolve: { alias: entry.alias },
     css: { postcss: { plugins: [tailwindcss()] } },
     server: {
       // vinext dev ignores --host, so bind every interface here for phones.
@@ -294,7 +303,10 @@ export default defineConfig(async () => {
       motionTraceUpload(),
       controllerLayouts(),
       ...(useHttps ? [basicSsl()] : []),
-      vinext(),
+      productionBundleBoundary(),
+      vinext({
+        nextConfig: { ...nextConfig, pageExtensions: entry.pageExtensions },
+      }),
       sites(),
       cloudflare({
         viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },

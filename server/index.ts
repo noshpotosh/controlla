@@ -1,3 +1,8 @@
+import {
+  APP_PROTOCOL_VERSION,
+  PROTOCOL_MISMATCH,
+  PROTOCOL_RELOAD_MESSAGE,
+} from '../src/shared/app-protocol.ts';
 import { createServer } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { RoomRegistry, RateLimiter, type Room } from './rooms.ts';
@@ -44,7 +49,8 @@ const roster = (room: Room) => {
 wss.on('connection', (ws, req) => {
   let room: Room | undefined,
     id: string | undefined,
-    alive = true;
+    alive = true,
+    rejectedProtocol = false;
   const budget = new RateLimiter(1500, 1000);
   const ip = req.socket.remoteAddress ?? 'unknown';
   const joinTimeout = setTimeout(() => {
@@ -62,6 +68,7 @@ wss.on('connection', (ws, req) => {
     alive = true;
   });
   ws.on('message', (raw) => {
+    if (rejectedProtocol) return;
     try {
       if (!budget.allow('socket')) throw new Error('Message rate exceeded');
       const msg = JSON.parse(
@@ -75,6 +82,16 @@ wss.on('connection', (ws, req) => {
       if (!msg || typeof msg.type !== 'string')
         throw new Error('Invalid message');
       if (msg.type === 'join' && !id) {
+        if (msg.protocolVersion !== APP_PROTOCOL_VERSION) {
+          rejectedProtocol = true;
+          send(ws, {
+            type: 'error',
+            code: PROTOCOL_MISMATCH,
+            message: PROTOCOL_RELOAD_MESSAGE,
+          });
+          ws.close(1008, 'App version mismatch');
+          return;
+        }
         if (!joins.allow(ip) || !globalJoins.allow('global'))
           throw new Error('Too many join attempts. Wait a minute.');
         const result = registry.join(msg);
@@ -84,7 +101,12 @@ wss.on('connection', (ws, req) => {
         sockets.set(id, ws);
         previous?.close(1000, 'Replaced by resumed device');
         clearTimeout(joinTimeout);
-        send(ws, { type: 'welcome', identity: result.identity, iceServers });
+        send(ws, {
+          type: 'welcome',
+          protocolVersion: APP_PROTOCOL_VERSION,
+          identity: result.identity,
+          iceServers,
+        });
         roster(room);
         return;
       }

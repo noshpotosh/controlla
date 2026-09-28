@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { replayTilt, segmentReport } from './replay.ts';
-import { axisAngle, inverse, rotate } from '../src/core/calibration.ts';
+import {
+  axisAngle,
+  inverse,
+  rotate,
+} from '../src/client/controls/motion/calibration.ts';
 import {
   RingBuffer,
   isMotionTrace,
@@ -9,7 +13,7 @@ import {
   type MotionTrace,
   type RawMotionSample,
   type Vec3,
-} from '../src/core/motion/trace.ts';
+} from '../src/client/controls/motion/trace.ts';
 
 /** Start screen-up, then rotate with matching gravity at 60 Hz. */
 function samples(

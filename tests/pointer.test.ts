@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { GyroPointer, PointerSmoother } from '../src/core/pointer.ts';
+import {
+  GyroPointer,
+  PointerSmoother,
+} from '../src/client/controls/motion/pointer.ts';
 
 void test('small stationary tremors are attenuated without biasing the aim', () => {
   const filter = new PointerSmoother();

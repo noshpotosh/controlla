@@ -1,4 +1,4 @@
-import type { ControlDefinition } from '../types.ts';
+import type { ControlDefinition } from '../api.ts';
 
 export interface __PASCAL__Props {
   /** Example tunable prop; rename or remove. Defaults go in `defaults`. */

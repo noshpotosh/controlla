@@ -1,5 +1,14 @@
+import { pointerSpec, steeringSpec, controlSpecs } from './fixtures/games.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import type {
+  ControllerLayout,
+  LayoutItem,
+  Rotation,
+  LayoutPreset,
+  Capabilities,
+  ControllerSpec,
+} from '../src/client/controls/api.ts';
 import {
   asControllerLayout,
   emptyLayout,
@@ -7,45 +16,39 @@ import {
   layoutFileName,
   menuRect,
   slugify,
-  type ControllerLayout,
-  type LayoutItem,
-  type Rotation,
-} from '../src/controls/layout/schema.ts';
+} from '../src/client/controls/layout/schema.ts';
 import {
   checkAssignment,
   validateLayout,
-} from '../src/controls/layout/validate.ts';
+} from '../src/client/controls/layout/validate.ts';
 import {
   rotateDirection,
   rotateVector,
   toLocal,
-} from '../src/controls/layout/rotation.ts';
-import { renderLayoutIndex } from '../src/controls/layout/index-file.ts';
-import { layoutWidgets } from '../src/controls/layout/widgets.ts';
+} from '../src/client/controls/layout/rotation.ts';
+import { renderLayoutIndex } from '../src/client/controls/layout/index-file.ts';
+import { layoutWidgets } from '../src/client/controls/layout/widgets.ts';
+
 import {
   gameDefaultLayout,
   LAYOUTS,
   templateLayout,
-  type LayoutPreset,
-} from '../src/controls/layouts.ts';
-import { definitionFor } from '../src/controls/registry.ts';
-import { dpadDirection } from '../src/controls/dpad/logic.ts';
+} from '../src/client/controls/layouts.ts';
+import { definitionFor } from '../src/client/controls/registry.ts';
+import { dpadDirection } from '../src/client/controls/dpad/logic.ts';
 import {
   addItem,
   findFreeSpot,
   reorient,
   rotateItem,
-} from '../src/controls/designer/model.ts';
+} from '../src/client/devtools/designer/model.ts';
 import {
   defaultCapabilities,
   gameLayout,
-  labManifest,
-  manifests,
-  raceManifest,
   resolveConfig,
-} from '../src/core/config.ts';
-import type { Capabilities, Manifest } from '../src/core/types.ts';
-import { layouts } from '../src/layouts/index.ts';
+} from '../src/client/controls/resolve.ts';
+
+import { layouts } from '../src/client/controls/layouts/index.ts';
 
 const layoutOf = (
   items: LayoutItem[],
@@ -78,7 +81,7 @@ void test('the library: every layout is valid and every game fits its layout', (
     assert.ok(isControllerLayout(layout), layout.id);
     assert.deepEqual(validateLayout(layout), [], layout.id);
   }
-  for (const m of manifests)
+  for (const m of controlSpecs)
     assert.deepEqual(checkAssignment(m, gameLayout(m)), [], m.id);
 });
 
@@ -170,7 +173,7 @@ void test('validation: at most four press inputs, counting shake', () => {
 
 void test('assignment: inputs bind to controls by name, or to motion', () => {
   // Tilt Rally: steer prefers tilt; boost needs a swipe.
-  const fits = (l: ControllerLayout, m: Manifest = raceManifest) =>
+  const fits = (l: ControllerLayout, m: ControllerSpec = steeringSpec) =>
     messages(checkAssignment(m, l));
   assert.equal(
     fits(layoutOf([top(), bottom()])),
@@ -190,14 +193,14 @@ void test('assignment: inputs bind to controls by name, or to motion', () => {
   );
   // `bind` maps an input onto a differently named control.
   const bound = {
-    ...raceManifest,
+    ...steeringSpec,
     controller: { layout: 'x', bind: { boost: 'go' } },
   };
   assert.equal(fits(layoutOf([top(), bottom('go')]), bound), '');
 });
 
 void test('resolveConfig: motion when on and available, else the same-named touch control', () => {
-  const lab = resolveConfig(labManifest, defaultCapabilities(), 1);
+  const lab = resolveConfig(pointerSpec, defaultCapabilities(), 1);
   assert.deepEqual(
     lab.widgets.map((w) => [w.action, w.type]),
     [
@@ -206,7 +209,7 @@ void test('resolveConfig: motion when on and available, else the same-named touc
     ],
   );
   assert.deepEqual(lab.substitutions, ['aim: pointer → stick']);
-  const aimed = resolveConfig(labManifest, withMotion(), 1);
+  const aimed = resolveConfig(pointerSpec, withMotion(), 1);
   assert.equal(aimed.widgets[0].type, 'pointer');
   assert.deepEqual(
     aimed.widgets[0].rect,
@@ -221,7 +224,7 @@ void test('resolveConfig: motion when on and available, else the same-named touc
   };
   try {
     const touch = resolveConfig(
-      { ...labManifest, controller: { layout: 'aim-touch' } },
+      { ...pointerSpec, controller: { layout: 'aim-touch' } },
       withMotion(),
       1,
     );
@@ -233,7 +236,7 @@ void test('resolveConfig: motion when on and available, else the same-named touc
   assert.throws(
     () =>
       resolveConfig(
-        { ...labManifest, controller: { layout: 'nope' } },
+        { ...pointerSpec, controller: { layout: 'nope' } },
         withMotion(),
         1,
       ),
@@ -277,7 +280,7 @@ void test('templates and game defaults are valid in both orientations', () => {
       assert.deepEqual(validateLayout(layout), [], `${preset} ${o}`);
     }
   // A game with no layout: touch inputs placed, motion switched on, fallback placed.
-  const fallback = gameDefaultLayout(labManifest);
+  const fallback = gameDefaultLayout(pointerSpec);
   assert.deepEqual(fallback.motion, {
     pointer: true,
     tilt: false,
@@ -291,7 +294,7 @@ void test('templates and game defaults are valid in both orientations', () => {
     ],
   );
   assert.deepEqual(validateLayout(fallback), []);
-  assert.deepEqual(checkAssignment(labManifest, fallback), []);
+  assert.deepEqual(checkAssignment(pointerSpec, fallback), []);
 });
 
 void test('designer model: add, find space, rotate and reorient', () => {

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Controlla local acceptance preflight</title>
+  <body>
+    <h1>Local acceptance preflight</h1>
+    <p id="secure"></p>
+    <p id="motion"></p>
+    <p>This page checks browser availability only. Grant motion in the game and verify real samples there.</p>
+    <p><a href="/">Open Controlla</a></p>
+    <script>
+      document.getElementById('secure').textContent =
+        `Secure context: ${window.isSecureContext ? 'YES' : 'NO — stop and fix certificate trust'}`;
+      document.getElementById('motion').textContent =
+        `Motion API present: ${'DeviceMotionEvent' in window ? 'YES (permission and samples still unverified)' : 'NO'}`;
+    </script>
+  </body>
+</html>

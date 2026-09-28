@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 2,
+  "id": "aim-and-pulse",
+  "name": "Aim and pulse",
+  "orientation": "portrait",
+  "grid": {
+    "cols": 12,
+    "rows": 24
+  },
+  "menu": "top-right",
+  "motion": {
+    "pointer": true,
+    "tilt": false,
+    "shake": false
+  },
+  "items": [
+    {
+      "name": "aim",
+      "type": "aim-pad",
+      "label": "Aim",
+      "rect": {
+        "x": 0,
+        "y": 2,
+        "w": 12,
+        "h": 13
+      },
+      "rotation": 0
+    },
+    {
+      "name": "pulse",
+      "type": "button",
+      "label": "PULSE",
+      "rect": {
+        "x": 0,
+        "y": 15,
+        "w": 12,
+        "h": 9
+      },
+      "rotation": 0,
+      "props": {
+        "icon": "fire"
+      }
+    }
+  ]
+}

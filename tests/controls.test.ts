@@ -1,3 +1,4 @@
+import { pointerSpec, steeringSpec } from './fixtures/games.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -6,31 +7,32 @@ import {
   definitionFor,
   PRESS_SLOTS,
   usesPressSlot,
-} from '../src/controls/registry.ts';
-import { views } from '../src/controls/views.ts';
+} from '../src/client/controls/registry.ts';
+import { views } from '../src/client/controls/views.ts';
+import type { LayoutPreset } from '../src/client/controls/api.ts';
 import {
   assignSlots,
   defaultLayout,
   LAYOUTS,
-  type LayoutPreset,
-} from '../src/controls/layouts.ts';
+} from '../src/client/controls/layouts.ts';
 import {
   deadzone,
   radialClamp,
   snapDirection,
-} from '../src/controls/kit/geometry.ts';
-import { dpadDirection } from '../src/controls/dpad/logic.ts';
-import { clampOrigin, stickVector } from '../src/controls/stick/logic.ts';
-import { classifySwipe } from '../src/controls/swipe-pad/logic.ts';
-import { chargeAt } from '../src/controls/hold-meter/logic.ts';
+} from '../src/client/controls/kit/geometry.ts';
+import { dpadDirection } from '../src/client/controls/dpad/logic.ts';
+import {
+  clampOrigin,
+  stickVector,
+} from '../src/client/controls/stick/logic.ts';
+import { classifySwipe } from '../src/client/controls/swipe-pad/logic.ts';
+import { chargeAt } from '../src/client/controls/hold-meter/logic.ts';
 import {
   defaultCapabilities,
-  labManifest,
-  raceManifest,
   resolveConfig,
-} from '../src/core/config.ts';
-import { layouts } from '../src/layouts/index.ts';
-import { emptyLayout } from '../src/controls/layout/schema.ts';
+} from '../src/client/controls/resolve.ts';
+import { layouts } from '../src/client/controls/layouts/index.ts';
+import { emptyLayout } from '../src/client/controls/layout/schema.ts';
 
 void test('every library control has one definition and a view', () => {
   const types = definitions.map((d) => d.type);
@@ -153,7 +155,7 @@ void test('presets assign slots in order and refuse to overflow', () => {
 
 void test('resolveConfig lays out the built-in games from their layouts', () => {
   const c = defaultCapabilities();
-  const lab = resolveConfig(labManifest, c, 1);
+  const lab = resolveConfig(pointerSpec, c, 1);
   assert.equal(lab.orientation, 'portrait');
   assert.equal(lab.menu, 'top-right');
   assert.deepEqual(
@@ -166,7 +168,7 @@ void test('resolveConfig lays out the built-in games from their layouts', () => 
   // Grid cells become normalized rects.
   assert.deepEqual(lab.widgets[0].rect, [0, 2 / 24, 1, 13 / 24]);
   assert.deepEqual(lab.widgets[1].props, { icon: 'fire' });
-  const race = resolveConfig(raceManifest, c, 2);
+  const race = resolveConfig(steeringSpec, c, 2);
   assert.equal(race.widgets[1].type, 'swipe-pad');
 });
 
@@ -191,11 +193,15 @@ void test('resolveConfig rejects more press controls than the frame carries', ()
     assert.throws(
       () =>
         resolveConfig(
-          { ...labManifest, inputs, controller: { layout: 'five-buttons' } },
+          {
+            ...pointerSpec,
+            inputs,
+            controller: { layout: 'five-buttons' },
+          },
           defaultCapabilities(),
           1,
         ),
-      /more than 4 press/,
+      /at most 4/,
     );
   } finally {
     delete layouts['five-buttons'];

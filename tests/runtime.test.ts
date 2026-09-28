@@ -1,15 +1,19 @@
+import {
+  harvestPosition,
+  type NeonHarvestState,
+} from '../src/client/minigames/neon-harvest/game.ts';
+import { pointerSpec } from './fixtures/games.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import WebSocket from 'ws';
-import { Runtime } from '../src/client/runtime.ts';
+import { Runtime } from '../src/client/runtime/runtime.ts';
 import {
   defaultCapabilities,
-  labManifest,
   resolveConfig,
-} from '../src/core/config.ts';
-import { decodeInput } from '../src/core/protocol.ts';
-import type { Identity } from '../src/core/types.ts';
+} from '../src/client/controls/resolve.ts';
+import { decodeInput } from '../src/client/engine/protocol.ts';
+import type { Identity } from '../src/shared/room.ts';
 
 // Executes the real role routing and Session on actual WebSockets. Browser APIs
 // are minimal mocks: this is deliberately NOT a WebRTC or mobile-browser test.
@@ -160,17 +164,36 @@ void test(
         .point.x.toFixed(1),
       '0.7',
     );
-    host.startGame('latency-lab', 'reaction');
+    host.startGame('neon-harvest', 'standard');
     await wait(() => host.renderState()?.phase === 'running', 6000);
+    await wait(
+      () => venue.screenPort.advanceFrame().snapshot?.phase === 'running',
+    );
+    assert.equal(
+      venue.screenPort.advanceFrame().snapshot?.roundId,
+      host.screenPort.advanceFrame().snapshot?.roundId,
+    );
+    assert.ok(host.snapshotMetrics().lastBytes > 0);
+    assert.ok(venue.snapshotMetrics().lastBytes > 0);
     await wait(() => {
-      const state = host.renderState();
-      return (
-        !!state && state.promptId > 0 && host.time() > state.targetAt + 100
+      const round = host.renderState();
+      const state = round?.state as NeonHarvestState | null;
+      return !!state?.nodes.some(
+        (n) => n.kind !== 'mine' && host.time() > n.bornAt + 300,
       );
-    }, 4000);
-    b.press('fire', true);
-    b.press('fire', false);
-    await wait(() => (host.renderState()?.scores[bId] ?? 0) > 0);
+    });
+    const node = (host.renderState()!.state as NeonHarvestState).nodes.find(
+      (n) => n.kind !== 'mine',
+    )!;
+    const point = harvestPosition(node, host.time());
+    b.setPoint({ x: point.x, y: point.y });
+    b.press('pulse', true);
+    b.press('pulse', false);
+    await wait(
+      () =>
+        ((host.renderState()?.state as NeonHarvestState | null)?.scores[bId] ??
+          0) > 0,
+    );
     const token = b.view.identity!.token;
     b.close();
     await wait(() =>
@@ -229,8 +252,12 @@ void test('controller maintains 60 Hz despite timer rounding and skips missed fr
     venueId: 'host',
     hostId: 'host',
   } as Identity;
+  runtime.network.onWelcome(runtime.view.identity);
   runtime.view.status = 'Connected';
-  runtime.view.config = resolveConfig(labManifest, defaultCapabilities(), 1);
+  Reflect.get(runtime, 'controllerMessage').call(runtime, {
+    type: 'config',
+    config: resolveConfig(pointerSpec, defaultCapabilities(), 1),
+  });
   const frames: number[] = [];
   t.mock.method(
     runtime.network,

@@ -1,4 +1,4 @@
-/* __TITLE__: use only --ctl-* tokens (src/controls/tokens.css). */
+/* __TITLE__: use only --ctl-* tokens (src/client/controls/tokens.css). */
 .ctl-__TYPE____body {
   position: absolute;
   inset: 25%;

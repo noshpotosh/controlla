@@ -9,6 +9,6 @@
     "yarn.lock",
     "bun.lock",
     "bun.lockb",
-    "src/layouts/index.ts"
+    "src/client/controls/layouts/index.ts"
   ]
 }

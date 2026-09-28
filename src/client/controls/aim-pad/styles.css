@@ -1,0 +1,52 @@
+.ctl-aim-pad {
+  background: var(--ctl-well);
+}
+.ctl-aim-pad__grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(
+      to right,
+      var(--ctl-line) calc(var(--ctl-space-1) / 4),
+      transparent calc(var(--ctl-space-1) / 4)
+    ),
+    linear-gradient(
+      to bottom,
+      var(--ctl-line) calc(var(--ctl-space-1) / 4),
+      transparent calc(var(--ctl-space-1) / 4)
+    );
+  background-size: 25% 25%;
+  opacity: 0.5;
+}
+.ctl-aim-pad__target {
+  position: absolute;
+  width: var(--ctl-space-5);
+  height: var(--ctl-space-5);
+  border: calc(var(--ctl-space-1) / 2) solid var(--ctl-accent);
+  border-radius: 50%;
+  translate: -50% -50%;
+  background: var(--ctl-accent-soft);
+  box-shadow: 0 0 var(--ctl-space-4) var(--ctl-accent-glow);
+  pointer-events: none;
+}
+.ctl-aim-pad__target::before,
+.ctl-aim-pad__target::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  background: var(--ctl-accent);
+}
+.ctl-aim-pad__target::before {
+  width: 150%;
+  height: calc(var(--ctl-space-1) / 2);
+}
+.ctl-aim-pad__target::after {
+  height: 150%;
+  width: calc(var(--ctl-space-1) / 2);
+}
+.ctl-aim-pad[data-active] .ctl-aim-pad__target {
+  background: var(--ctl-accent-glow);
+}

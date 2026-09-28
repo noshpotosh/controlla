@@ -1,7 +1,13 @@
-@import 'tailwindcss';
+@import 'tailwindcss' source(none);
 @import 'tw-animate-css';
-@import '../src/controls/controls.css';
+@import '../src/client/controls/controls.css';
 @import '../src/client/controller.css';
+@source './';
+@source '../components';
+@source '../src/client';
+@source '../src/client/controls';
+@source not './dev';
+@source not '../src/client/devtools';
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -378,7 +384,7 @@ footer {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-/* Legacy widgets not yet ported to src/controls; styled to sit beside them. */
+/* Legacy widgets not yet ported to src/client/controls; styled to sit beside them. */
 .widget {
   position: absolute;
   border: 0;
@@ -437,71 +443,6 @@ footer {
   font-size: 13px;
   font-weight: 400;
   opacity: 0.75;
-}
-.motion-lab {
-  padding: 20px;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 14px;
-}
-.motion-lab-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.motion-lab-name {
-  display: grid;
-  gap: 6px;
-  font-weight: 700;
-}
-.motion-lab-step {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  text-align: center;
-}
-.motion-lab-step h1 {
-  font-size: 26px;
-}
-.motion-lab-countdown {
-  font-size: 32px;
-  font-weight: 800;
-  color: var(--primary);
-}
-.motion-lab-tap {
-  min-height: 140px;
-}
-.motion-lab-live {
-  display: grid;
-  gap: 10px;
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.motion-lab-bars {
-  display: grid;
-  gap: 4px;
-  font-size: 13px;
-  font-weight: 700;
-}
-.motion-lab-bar {
-  display: grid;
-  grid-template-columns: 48px 1fr 72px;
-  align-items: center;
-  gap: 8px;
-  font-weight: 400;
-}
-.motion-lab-bar i {
-  display: block;
-  height: 8px;
-  border-radius: 4px;
-  background: var(--primary);
-  transition: width 80ms linear;
-}
-.motion-lab-bar small {
-  text-align: right;
-  color: var(--muted-foreground);
 }
 .results-list {
   display: grid;
@@ -901,44 +842,11 @@ body {
     animation: none !important;
   }
 }
-/* Home page shortcuts to the controller tools. */
-.tool-links {
-  display: flex;
-  gap: 8px;
-}
-.tool-links button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--muted);
-  color: var(--foreground);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.tool-links button:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-.tool-links svg {
-  width: 14px;
-  height: 14px;
-}
+
 @media (max-width: 800px) {
   .topbar {
     flex-wrap: wrap;
     height: auto;
     padding: 16px 0;
-  }
-  .tool-links {
-    width: 100%;
-  }
-  .tool-links button {
-    flex: 1;
-    justify-content: center;
   }
 }

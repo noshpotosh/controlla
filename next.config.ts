@@ -1,4 +1,4 @@
-import type { NextConfig } from 'next';
+import type { NextConfig } from 'vinext';
 import { networkInterfaces } from 'node:os';
 
 // Phones load the dev server through this machine's LAN address. Over HTTPS

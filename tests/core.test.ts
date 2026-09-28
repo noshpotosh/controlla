@@ -1,3 +1,11 @@
+import { games } from '../src/client/minigames/catalog.ts';
+import type { GameDescriptor } from '../src/client/api/index.ts';
+import {
+  pointerSpec,
+  steeringSpec,
+  buttonProbe,
+  type ProbeState,
+} from './fixtures/games.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -7,30 +15,32 @@ import {
   TIME_WRAP_MS,
   SequenceWindow,
   newer,
-} from '../src/core/protocol.ts';
+} from '../src/client/engine/protocol.ts';
 import {
   ClockSync,
   Equalizer,
   Samples,
   ContinuousBuffer,
-} from '../src/core/timing.ts';
-import { SnapshotBuffer, SnapshotEncoder } from '../src/core/snapshots.ts';
+} from '../src/client/engine/timing.ts';
+import {
+  SnapshotTimeline,
+  SnapshotEncoder,
+  type SnapshotPolicy,
+} from '../src/client/engine/replication.ts';
 import {
   defaultCapabilities,
-  labManifest,
-  raceManifest,
   resolveConfig,
-} from '../src/core/config.ts';
-import { PartyGame } from '../src/games/engine.ts';
-import { SessionAuthority } from '../src/core/session.ts';
+} from '../src/client/controls/resolve.ts';
+import { SessionAuthority } from '../src/client/engine/session.ts';
+import type { RoundSnapshot } from '../src/client/api/index.ts';
+import type { ControllerConfig } from '../src/client/controls/api.ts';
+import type { InputFrame } from '../src/client/engine/protocol.ts';
 import type {
-  InputFrame,
-  Player,
   Snapshot,
-  Message,
-  ControllerConfig,
   WireSnapshot,
-} from '../src/core/types.ts';
+} from '../src/client/engine/replication.ts';
+import type { Message } from '../src/client/engine/messages.ts';
+import type { Player } from '../src/shared/room.ts';
 const frame = (time = 1000): InputFrame => ({
   seq: 65535,
   time,
@@ -140,27 +150,27 @@ void test('continuous buffer bounds extrapolation even after a stall', () => {
 void test('permission denial chooses stick per player, never a dead pointer', () => {
   const c = defaultCapabilities();
   c.sensors.gyro = { present: true, permission: 'denied' };
-  const config = resolveConfig(labManifest, c, 4);
+  const config = resolveConfig(pointerSpec, c, 4);
   assert.equal(config.sensors.pointer.enabled, false);
   assert.equal(config.widgets[0].type, 'stick');
   assert.equal(config.widgets[0].space, 'normalized');
-  assert.equal(resolveConfig(raceManifest, c, 5).widgets[0].space, 'signed');
+  assert.equal(resolveConfig(steeringSpec, c, 5).widgets[0].space, 'signed');
   assert.equal(config.substitutions.length, 1);
   c.sensors.gyro.permission = 'granted';
   c.sensors.accel = { present: true, permission: 'granted' };
-  assert.equal(resolveConfig(labManifest, c, 5).sensors.pointer.enabled, true);
+  assert.equal(resolveConfig(pointerSpec, c, 5).sensors.pointer.enabled, true);
   assert.equal(
-    resolveConfig(raceManifest, c, 6).sensors.pointer.enabled,
+    resolveConfig(steeringSpec, c, 6).sensors.pointer.enabled,
     false,
   );
-  assert.equal(resolveConfig(raceManifest, c, 6).sensors.tilt.enabled, true);
+  assert.equal(resolveConfig(steeringSpec, c, 6).sensors.tilt.enabled, true);
 });
 void test('required motion without fallback gives an actionable failure', () => {
   assert.throws(
     () =>
       resolveConfig(
         {
-          ...labManifest,
+          ...pointerSpec,
           // No layout, so no touch control can stand in for the pointer.
           controller: undefined,
           inputs: { aim: { required: true, prefer: 'pointer' } },
@@ -171,18 +181,38 @@ void test('required motion without fallback gives an actionable failure', () => 
     /Motion access is off/,
   );
 });
-const snapshot = (id: number, time: number, x: number): Snapshot => {
-  const g = new PartyGame('latency-lab');
-  g.configure(players);
-  g.start(0, 'tracking');
-  g.state.phase = 'running';
-  g.state.cursors.a = { x, y: 0.5 };
-  g.state.scores.a = id * 10;
-  return { id, time, state: g.snapshot() };
+const probePolicy: SnapshotPolicy<ProbeState> = {
+  valid: (value): value is ProbeState => buttonProbe.isState(value),
+  interpolate(before, after, ratio) {
+    for (const id in before.cursors)
+      if (after.cursors[id])
+        before.cursors[id] = {
+          x:
+            before.cursors[id].x +
+            (after.cursors[id].x - before.cursors[id].x) * ratio,
+          y: before.cursors[id].y,
+        };
+    return before;
+  },
 };
+const snapshot = (
+  id: number,
+  time: number,
+  x: number,
+): Snapshot<ProbeState> => ({
+  id,
+  time,
+  state: {
+    scores: { a: id * 10 },
+    cursors: { a: { x, y: 0.5 } },
+    actions: [],
+    elapsed: time,
+    flag: false,
+  },
+});
 void test('delta compression uses only acknowledged bases and recovers missing bases', () => {
-  const enc = new SnapshotEncoder(),
-    buf = new SnapshotBuffer(),
+  const enc = new SnapshotEncoder<ProbeState>(),
+    buf = new SnapshotTimeline(probePolicy),
     a = snapshot(1, 100, 0.2),
     b = snapshot(2, 140, 0.4);
   enc.add(a);
@@ -193,12 +223,12 @@ void test('delta compression uses only acknowledged bases and recovers missing b
   enc.add(b);
   const delta = enc.forPeer('v', b);
   assert.equal(delta.base, 1);
-  assert.equal(new SnapshotBuffer().receive(delta), false);
+  assert.equal(new SnapshotTimeline(probePolicy).receive(delta), false);
   assert.equal(buf.receive(delta), true);
   assert.equal(buf.history.get(2)!.state.cursors.a.x, 0.4);
 });
 void test('snapshot interpolation blends positions, not scores, and never exposes the future', () => {
-  const buf = new SnapshotBuffer();
+  const buf = new SnapshotTimeline(probePolicy);
   for (const s of [snapshot(1, 100, 0.2), snapshot(2, 200, 0.8)])
     buf.receive({ id: s.id, time: s.time, base: null, patch: s.state });
   assert.equal(buf.sample(99), null);
@@ -209,56 +239,16 @@ void test('snapshot interpolation blends positions, not scores, and never expose
   assert.equal(buf.history.get(1)!.state.cursors.a.x, 0.2);
 });
 void test('reordered snapshots do not regress presentation', () => {
-  const buf = new SnapshotBuffer();
+  const buf = new SnapshotTimeline(probePolicy);
   for (const s of [snapshot(2, 200, 0.8), snapshot(1, 100, 0.2)])
     buf.receive({ id: s.id, time: s.time, base: null, patch: s.state });
   almost(buf.sample(150)!.cursors.a.x, 0.5);
 });
-void test('reaction scoring depends on action timestamp, not packet arrival', () => {
-  const game = new PartyGame('latency-lab');
-  game.configure(players);
-  game.start(0, 'fairness');
-  game.frame({}, [], 4100, 16, 100);
-  const target = game.state.targetAt;
-  game.frame(
-    {},
-    [
-      {
-        playerId: 'b',
-        generation: 1,
-        button: 0,
-        counter: 1,
-        time: target + 300,
-        x: 0.5,
-        y: 0.5,
-      },
-      {
-        playerId: 'a',
-        generation: 1,
-        button: 0,
-        counter: 1,
-        time: target + 250,
-        x: 0.5,
-        y: 0.5,
-      },
-    ],
-    target + 600,
-    16,
-    100,
+void test('session gates start on configuration ACK and rejects stale generation', (t) => {
+  (games as GameDescriptor[]).push(buttonProbe);
+  t.after(() =>
+    (games as GameDescriptor[]).splice(games.indexOf(buttonProbe), 1),
   );
-  assert.equal(game.state.scores.a, 750);
-  assert.equal(game.state.scores.b, 700);
-});
-void test('game round ends with bounded, structured-clone-able results', () => {
-  const game = new PartyGame('tilt-rally');
-  game.configure(players);
-  game.start(0, 'rally');
-  game.frame({}, [], 34000, 16, 0);
-  assert.equal(game.state.phase, 'results');
-  assert.equal(game.state.results.length, 2);
-  assert.deepEqual(structuredClone(game.snapshot()), game.snapshot());
-});
-void test('session gates start on configuration ACK and rejects stale generation', () => {
   const configs: Message[] = [];
   const session = new SessionAuthority('host', {
     toPlayer: (id, m) => {
@@ -276,21 +266,41 @@ void test('session gates start on configuration ACK and rejects stale generation
       { id: 'remote', name: 'Remote', connected: true },
     ],
   });
-  session.start('latency-lab', 'reaction');
-  assert.throws(() => session.start('tilt-rally', 'rally'));
-  const generation = configs.at(-1)!.config.generation;
-  assert.equal(generation, 1);
-  session.input('a', encodeInput(frame()));
+  session.start(buttonProbe.id, 'standard');
+  assert.throws(() => session.start(buttonProbe.id, 'standard'));
+  const generation = configs.filter((m) => m.id === 'a').at(-1)!
+    .config.generation;
+  assert.ok(generation > configs[0].config.generation);
+  session.input('a', encodeInput({ ...frame(performance.now()), generation }));
   assert.equal(session.playerMetrics.size, 0);
-  for (const p of players) session.control(p.id, { type: 'ready', generation });
+  for (const p of players)
+    session.control(p.id, {
+      type: 'ready',
+      generation: configs.filter((m) => m.id === p.id).at(-1)!.config
+        .generation,
+    });
+  session.input(
+    'a',
+    encodeInput({
+      ...frame(performance.now()),
+      generation: configs[0].config.generation,
+    }),
+  );
+  assert.equal(session.playerMetrics.size, 0);
+  session.input('a', encodeInput({ ...frame(performance.now()), generation }));
+  assert.equal(session.playerMetrics.size, 1);
   session.tick();
   assert.doesNotThrow(() => structuredClone(session.summary()));
 });
 void test('lost input frames recover an edge once and preserve its original timestamp', (t) => {
+  (games as GameDescriptor[]).push(buttonProbe);
+  t.after(() =>
+    (games as GameDescriptor[]).splice(games.indexOf(buttonProbe), 1),
+  );
   let clock = 0;
   t.mock.method(performance, 'now', () => clock);
   const configs: Record<string, ControllerConfig> = {},
-    snapshots: WireSnapshot[] = [];
+    snapshots: WireSnapshot<RoundSnapshot<ProbeState>>[] = [];
   const session = new SessionAuthority('host', {
     toPlayer: (id, m) => {
       if (m.type === 'config') configs[id] = m.config;
@@ -307,7 +317,7 @@ void test('lost input frames recover an edge once and preserve its original time
       { id: 'remote', name: 'Remote', connected: true },
     ],
   });
-  session.start('latency-lab', 'strobe');
+  session.start(buttonProbe.id, 'standard');
   for (const p of players)
     session.control(p.id, {
       type: 'ready',
@@ -337,37 +347,9 @@ void test('lost input frames recover an edge once and preserve its original time
   });
   clock = 4250;
   session.tick();
-  assert.equal(snapshots.at(-1)!.patch.flash, true);
+  assert.equal(snapshots.at(-1)!.patch.state?.flag, true);
   clock = 4300;
   session.input('a', encodeInput({ ...f, seq: 3, time: 4300 }));
   session.tick();
-  assert.equal(snapshots.at(-1)!.patch.flash, true);
-});
-void test('pause policy shifts the timeline and ends with partial results after grace', () => {
-  const game = new PartyGame('latency-lab', 'pause');
-  game.load();
-  assert.equal(game.ready(), true);
-  game.configure(players);
-  game.start(0, 'reaction');
-  game.frame({}, [], 4000, 16, 0);
-  const end = game.state.endAt;
-  game.onPlayerDropped('a', 4000);
-  game.frame({}, [], 4016, 16, 0);
-  assert.equal(game.state.endAt, end + 16);
-  game.frame({}, [], 64001, 16, 0);
-  assert.equal(game.state.phase, 'results');
-  assert.equal(game.state.results.length, 2);
-});
-void test('substitute policy moves a disconnected avatar and stops on return', () => {
-  const game = new PartyGame('tilt-rally', 'substitute');
-  game.configure(players);
-  game.start(0, 'rally');
-  game.onPlayerDropped('a', 3000);
-  for (let time = 4000; time < 5600; time += 16)
-    game.frame({}, [], time, 16, 0);
-  assert.ok(game.state.scores.a > 0);
-  const score = game.state.scores.a;
-  game.onPlayerReturned('a');
-  game.frame({}, [], 5616, 16, 0);
-  assert.equal(game.state.scores.a, score);
+  assert.equal(snapshots.at(-1)!.patch.state?.flag, true);
 });

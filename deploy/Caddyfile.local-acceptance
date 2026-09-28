@@ -1,0 +1,36 @@
+# Temporary LAN-only proxy; see docs/acceptance/LOCAL-IPHONE.md.
+# Required: CONTROLLA_LAN_IP, CONTROLLA_ACCEPTANCE_PUBLIC, private XDG_DATA_HOME.
+{
+	admin off
+	auto_https disable_redirects
+	skip_install_trust
+}
+
+https://{$CONTROLLA_LAN_IP}:8443 {
+	bind {$CONTROLLA_LAN_IP}
+	tls internal
+	handle /signal {
+		reverse_proxy 127.0.0.1:8906
+	}
+	handle /__acceptance {
+		root * {$CONTROLLA_ACCEPTANCE_PUBLIC}
+		rewrite * /preflight.html
+		file_server
+	}
+	handle {
+		reverse_proxy 127.0.0.1:3006
+	}
+}
+
+# Distribute only the PUBLIC root certificate, never CA keys.
+http://{$CONTROLLA_LAN_IP}:8086 {
+	bind {$CONTROLLA_LAN_IP}
+	handle /controlla-test-root.crt {
+		root * {$CONTROLLA_ACCEPTANCE_PUBLIC}
+		header Content-Type application/x-x509-ca-cert
+		file_server
+	}
+	handle {
+		respond "Certificate endpoint only" 404
+	}
+}
