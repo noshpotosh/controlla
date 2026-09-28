@@ -17,10 +17,8 @@ import {
   steeringProbe,
   type ProbeState,
 } from './fixtures/games.ts';
-import {
-  resolveController,
-  capabilityProfile,
-} from '../src/experiments/architecture/input.ts';
+import { resolveController } from '../src/client/engine/input.ts';
+import { capabilityProfile } from '../src/experiments/architecture/input.ts';
 import { createScreen } from '../src/experiments/architecture/screen.ts';
 import { SessionProgress } from '../src/experiments/architecture/session.ts';
 import { driveSimulatedPlayers } from '../src/experiments/architecture/simulation.ts';

@@ -6,30 +6,40 @@ On the development server, open **`/?role=gallery`** on a phone to play with eve
 
 ## Using controls in a game
 
-Controllers are **layouts**: a library of named touch layouts in [src/layouts](../layouts), designed at `/?role=designer`. Layouts don't belong to games. A game picks one by name, and each of its inputs drives the layout control with the same name:
+A **control** is a primitive; a **layout** composes controls; an **action** is the game input name. Layouts live in [src/layouts](../layouts) and are designed at `/?role=designer`. Games declare controller requirements in `GameDescriptor.controls`, using the public [game API](../client/api/index.ts):
 
 ```ts
-export const racer: Manifest = {
-  // …
+import type { ControllerRequirements } from '../../api/index.ts';
+
+const controls: ControllerRequirements = {
   inputs: {
-    steer: { prefer: 'tilt', fallback: 'stick', required: true },
-    boost: { prefer: 'swipe-pad', required: true },
+    aim: { prefer: 'pointer', fallback: 'aim-pad', required: true },
+    pulse: { prefer: 'button', required: true },
   },
-  controller: { layout: 'steer-and-boost' }, // src/layouts/steer-and-boost.json
+  controller: { layout: 'aim-and-pulse' },
 };
+// Set the game's descriptor.controls to these requirements.
 ```
 
+The engine's `controllerSpec(descriptor)` adapter passes only the identity and controller requirements to the resolver. Its `ControllerSpec` has no scoring, lifecycle or snapshot policy. The shared [controls API](api.ts) owns this type, `WidgetType`, layouts, capabilities, resolved configurations, control definitions, output values and `ControlPort`; it has no runtime or UI imports. [types.ts](types.ts) contains the view props used by React controls.
+
 - **Touch inputs** (`button`, `stick`, `aim-pad`, `dpad`, `swipe-pad`, `hold-meter`) need a control of the same **kind** (vector, press, swipe, charge…) with the input's name. A D-pad can stand in for a stick, but a button can't.
-- **Motion inputs** (`pointer`, `tilt`, `shake`) are switched on per layout with checkboxes; they have no on-screen control. If the layout switches the motion on and the phone allows it, the motion input drives the game. Otherwise a touch control with the input's name stands in, so `steer` above falls back to the layout's `steer` stick. (Richer motion fallbacks are still to be designed.)
-- **Different names:** use `controller: { layout: 'x', bind: { boost: 'a' } }`.
+- **Motion inputs** (`pointer`, `tilt`, `shake`) are switched on per layout with checkboxes; they have no on-screen control. If the layout switches the motion on and the phone allows it, the motion input drives the game. Otherwise a touch control with the input's name stands in, so `aim` above falls back to the layout's `aim` pad. (Richer motion fallbacks are still to be designed.)
+- **Different names:** use `controller: { layout: 'x', bind: { pulse: 'a' } }` inside the descriptor's `controls`.
 - **No layout chosen:** the game gets a generated default from its inputs.
+
+[`resolveConfig(spec, capabilities, generation)`](resolve.ts) is the validated entry point: it selects or generates a layout, checks the layout and named bindings, resolves permissions/fallbacks, then checks transport capacity before returning a complete configuration. Required inputs without an available fallback fail through the existing configuration-error path.
+
+The binary frame supports **one resolved motion vector**: at most one action may resolve to `pointer` or `tilt`, including repeated actions using the same sensor. A conflict names the actions and throws; it never disables an action or silently substitutes a fallback. Unused motion toggles do not count. Multiple touch vectors are valid, including denied-motion fallbacks alongside one available motion action. Shake uses the existing four-press-slot budget. Application protocol 4, layout schema 2, resolved configuration schema 1, and the binary frame stay unchanged.
 
 The designer shows which games use each layout, and flags inputs a layout can't satisfy. The test suite checks this for every game too.
 
-The game then receives:
+Games receive semantic input through `GameInput`:
 
-- **Press-channel controls** (`button`, `swipe-pad`, `hold-meter`, plus `shake`) as timestamped `Press` edges, across four slots. A controller can have at most 4.
-- **Values** in `InputFrame.values[action]`, typed with `StickOutput`, `DpadOutput`, `SwipeOutput` and `HoldOutput` from [types.ts](types.ts). Rotated controls report in the frame the player sees, so a D-pad turned 90° still says "right" when the player presses the arm pointing right.
+- `input.values[playerId][action]` contains a detached `{ value, time, observedAt? }` sample. `time` preserves capture time; `observedAt` records a validated observation of a held value when available.
+- `input.actions` contains accepted press actions with a name, source timestamp and captured aim. A value-bearing press includes its own detached `value`.
+
+Game authors use the public game API, which reexports output shapes such as `StickOutput`, `DpadOutput`, `SwipeOutput` and `HoldOutput`. They do not consume `InputFrame`, press slots, configuration generations or transport packets. Control views emit raw values through `ControlPort`; the controller/session adapters rotate, validate and map those values to semantic actions. Aim from a signed touch control is normalized before reaching the game.
 
 **Aim pad** maps the entire control rectangle to signed `{x, y}` coordinates from −1 to 1. It starts at the center, retains its last accepted position on release, cancel, lost capture, or unmount, and emits no activation. Arrow keys move the retained position; Home explicitly centers it. The reusable `aim-and-pulse` layout pairs it with a separate `pulse` button and can substitute it for motion aim. Runtime suspension still clears cached input and retires the port like other controls.
 
@@ -76,7 +86,7 @@ The shared kit:
 - `kit/geometry.ts`: clamp, dead zone and direction snapping.
 - `kit/icons.ts`: the only icon vocabulary games may name.
 
-`registry.ts` (pure) and `views.ts` (React) list every control. The runtime reads `channel` and `throttle` from the registry, so a new control needs no runtime changes. Throttled values retain the latest sample's original generation, sequence and authority-clock timestamp. Values are cloned at sampling and validated at the authority. Ports belong to one configuration; retired callbacks are inert. A value-bearing activation carries its own detached `Press.value`, rather than depending on the latest continuous value reaching the host first. Only press-only controls use binary edge recovery; the binary frame retains four slots.
+`registry.ts` (pure) and `views.ts` (React) list every control. The controller/session adapter owns configuration acknowledgement, packet generations and stale-input checks. The runtime reads `channel` and `throttle` from the registry, so a new control needs no runtime changes when it uses an existing output shape. Throttled values retain the latest sample's original generation, sequence and authority-clock timestamp. Values are cloned at sampling and validated at the authority. Ports belong to one configuration; retired callbacks are inert. A value-bearing activation carries its own detached `Press.value`, rather than depending on the latest continuous value reaching the host first. Only press-only controls use binary edge recovery; the binary frame retains four slots.
 
 ## Adding a control
 
@@ -84,7 +94,7 @@ The shared kit:
 npm run control:new -- my-control
 ```
 
-This scaffolds the four files and registers the control in `registry.ts`, `views.ts`, `controls.css`, the `WidgetType` union and [docs/INPUTS.md](../../docs/INPUTS.md). Then fill in the definition, build the view, and check it in the gallery. To show named demo options in the gallery, add an `OPTIONS` entry in [gallery/Gallery.tsx](gallery/Gallery.tsx).
+This scaffolds the four files and registers the control in `registry.ts`, `views.ts`, `controls.css`, the `WidgetType` union in [api.ts](api.ts), and [docs/INPUTS.md](../../docs/INPUTS.md). It does not modify core types or runtime code. Keep the `/* control-generator:imports */` marker after the control stylesheet imports so future controls can register there. Duplicate types fail before creating files. Then fill in the definition, build the view, and check it in the gallery. To show named demo options in the gallery, add an `OPTIONS` entry in [the development gallery](gallery/Gallery.tsx).
 
 ## Copying a control for a special case
 
@@ -92,7 +102,7 @@ This scaffolds the four files and registers the control in `registry.ts`, `views
 npm run control:new -- big-red-button --from button
 ```
 
-This copies the folder under a new type, renaming the component, class prefix and definition. The original is untouched.
+This copies the folder under a new type, renaming symbols owned by the control, its component file, class prefix and definition. Shared imports and output types keep their names; the original is untouched.
 
 **Fork only when behaviour or output changes.** A different look or tuning belongs on the existing control as a `variant` (listed in the definition, styled with `.ctl-<type>.ctl--<variant>`) or a prop in `defaults`. Games pick those per input.
 

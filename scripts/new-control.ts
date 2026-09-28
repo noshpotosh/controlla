@@ -6,7 +6,8 @@
 // Copies never touch the original. See src/controls/README.md.
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
+import ts from 'typescript';
 
 const root = resolve(import.meta.dirname, '..'),
   controls = join(root, 'src/controls'),
@@ -32,17 +33,118 @@ const pascal = (t: string) =>
   title = (t: string) =>
     t.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
 
+/** Rename declarations from this control, preserving shared imports and aliases. */
+function copyRenamer(
+  sourceDirectory: string,
+  files: string[],
+  from: string,
+  type: string,
+) {
+  const program = ts.createProgram(
+    files
+      .filter((file) => /\.[cm]?[jt]sx?$/.test(file))
+      .map((file) => join(sourceDirectory, file)),
+    {
+      target: ts.ScriptTarget.ESNext,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      jsx: ts.JsxEmit.ReactJSX,
+      allowImportingTsExtensions: true,
+      skipLibCheck: true,
+      noEmit: true,
+    },
+  );
+  const checker = program.getTypeChecker();
+  const rename = (name: string) =>
+    name === camel(from)
+      ? camel(type)
+      : name.replaceAll(pascal(from), pascal(type));
+  return (file: string, text: string): string => {
+    const source = program.getSourceFile(join(sourceDirectory, file));
+    if (!source) return text.replaceAll(pascal(from), pascal(type));
+    const edits: { start: number; end: number; text: string }[] = [];
+    const visit = (node: ts.Node): void => {
+      if (ts.isIdentifier(node) && rename(node.text) !== node.text) {
+        let symbol = checker.getSymbolAtLocation(node);
+        if (symbol && symbol.flags & ts.SymbolFlags.Alias)
+          symbol = checker.getAliasedSymbol(symbol);
+        if (
+          symbol?.declarations?.some((declaration) =>
+            declaration
+              .getSourceFile()
+              .fileName.startsWith(sourceDirectory + sep),
+          )
+        )
+          edits.push({
+            start: node.getStart(source),
+            end: node.end,
+            text: rename(node.text),
+          });
+      } else if (ts.isStringLiteralLike(node) && node.text.startsWith('./')) {
+        const parent = node.parent;
+        const modulePath =
+          ts.isImportDeclaration(parent) ||
+          ts.isExportDeclaration(parent) ||
+          (ts.isCallExpression(parent) &&
+            (parent.expression.kind === ts.SyntaxKind.ImportKeyword ||
+              (ts.isIdentifier(parent.expression) &&
+                parent.expression.text === 'require'))) ||
+          (ts.isLiteralTypeNode(parent) && ts.isImportTypeNode(parent.parent));
+        const path = node.text.replaceAll(pascal(from), pascal(type));
+        if (modulePath && path !== node.text)
+          edits.push({
+            start: node.getStart(source) + 1,
+            end: node.end - 1,
+            text: path,
+          });
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    for (const edit of edits.sort((a, b) => b.start - a.start))
+      text = text.slice(0, edit.start) + edit.text + text.slice(edit.end);
+    return text;
+  };
+}
+
+/** Register the literal union without depending on its last member or formatting. */
+function registerWidgetType(source: string, type: string): string {
+  const declaration = /\bexport\s+type\s+WidgetType\s*=\s*([^;]+);/.exec(
+    source,
+  );
+  if (!declaration) return fail('no WidgetType union in src/controls/api.ts');
+  const members = declaration[1]
+    .split('|')
+    .map((member) => member.trim())
+    .filter(Boolean);
+  if (
+    !members.length ||
+    members.some((member) => !/^(['"])[a-z][a-z0-9-]*\1$/.test(member))
+  )
+    fail('WidgetType in src/controls/api.ts must be a literal union');
+  if (members.some((member) => member.slice(1, -1) === type))
+    fail(`control type "${type}" is already registered in src/controls/api.ts`);
+  return source.replace(
+    declaration[0],
+    `export type WidgetType =\n${[...members, `'${type}'`].map((member) => `  | ${member}`).join('\n')};`,
+  );
+}
+
+// Check the registration before creating files so a duplicate is a no-op even
+// when its control directory has not been created yet (for example, motion types).
+const apiFile = join(controls, 'api.ts');
+const updatedApi = registerWidgetType(await readFile(apiFile, 'utf8'), type);
+
 const dir = join(controls, type);
 await mkdir(dir);
 if (from) {
-  for (const file of await readdir(join(controls, from))) {
-    let text = await readFile(join(controls, from, file), 'utf8');
-    text = text
-      .replaceAll(`ctl-${from}`, `ctl-${type}`)
-      .replaceAll(pascal(from), pascal(type));
+  const files = await readdir(join(controls, from));
+  const rename = copyRenamer(join(controls, from), files, from, type);
+  for (const file of files) {
+    const original = await readFile(join(controls, from, file), 'utf8');
+    let text = rename(file, original).replaceAll(`ctl-${from}`, `ctl-${type}`);
     if (file === 'definition.ts')
       text = text
-        .replace(`export const ${camel(from)}:`, `export const ${camel(type)}:`)
         .replace(`type: '${from}'`, `type: '${type}'`)
         .replace(/displayName: '[^']*'/, `displayName: '${title(type)}'`);
     await writeFile(join(dir, file.replace(pascal(from), pascal(type))), text);
@@ -100,16 +202,17 @@ const inserts: [string, string | RegExp, string][] = [
   ],
   [
     'src/controls/controls.css',
-    "@import './gallery/",
+    '/* control-generator:imports */',
     `@import './${type}/styles.css';\n`,
   ],
-  ['src/core/types.ts', "  | 'text';", `  | '${type}'\n`],
   ['docs/INPUTS.md', /\n\n## Motion/, `| \`${type}\` | TODO | TODO |  |\n`],
 ];
 console.log(
   `Created src/controls/${type}/${from ? ` (copied from ${from})` : ''}`,
 );
 for (const [path, marker, line] of inserts) await insert(path, marker, line);
+await writeFile(apiFile, updatedApi);
+console.log('  ✓ src/controls/api.ts');
 console.log(`
 Next:
   1. Fill in src/controls/${type}/definition.ts (description, channel, output).

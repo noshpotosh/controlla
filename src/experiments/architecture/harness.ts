@@ -11,7 +11,8 @@ import type {
   Progress,
   RoundSnapshot,
 } from './api.ts';
-import { capabilityProfile, resolveController } from './input.ts';
+import { resolveController } from '../../client/engine/input.ts';
+import { capabilityProfile } from './input.ts';
 import { SessionProgress } from '../../client/engine/progress.ts';
 import { RoundRunner } from '../../client/engine/round.ts';
 import { snapshotPolicy } from '../../client/engine/snapshots.ts';
