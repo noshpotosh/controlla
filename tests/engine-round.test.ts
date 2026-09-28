@@ -218,7 +218,7 @@ void test('a final batch validates all events and emits one framework end cue', 
 void test('all shipped descriptors are catalog entries with validated modes', () => {
   assert.deepEqual(
     games.map((g) => g.id),
-    ['neon-harvest'],
+    ['neon-harvest', 'whack-a-mole'],
   );
   assert.equal(findGame('missing'), undefined);
   for (const game of games) {

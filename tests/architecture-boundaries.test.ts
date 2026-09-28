@@ -14,7 +14,11 @@ import { SessionProgress } from '../src/client/engine/progress.ts';
 // Tests run from the package directory, like the existing file-backed tests.
 const root = resolve(process.cwd());
 const harness = join(root, 'src/client/devtools/game-harness');
-const targetDirectory = join(root, 'src/client/minigames/neon-harvest');
+const minigames = join(root, 'src/client/minigames');
+/** Every shipped game owns one folder under minigames/. */
+const gameDirectories = readdirSync(minigames, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => join(minigames, entry.name));
 const api = join(root, 'src/client/api/index.ts');
 const catalog = join(root, 'src/client/minigames/catalog.ts');
 const config = ts.readConfigFile(join(root, 'tsconfig.json'), (file) =>
@@ -449,43 +453,48 @@ void test('shared contracts compile with ECMAScript alone, without DOM or Node a
     );
 });
 
-void test('Neon Harvest production modules import only their own folder or the author API', () => {
-  const files = productionFiles(targetDirectory);
-  assert.ok(files.length >= 3, 'descriptor, game and renderer are present');
-  for (const file of files) {
-    for (const edge of imports(file)) {
-      assert.ok(
-        edge.resolved &&
-          (within(edge.resolved, targetDirectory) || edge.resolved === api),
-        `${relative(root, file)} imports ${edge.specifier} outside the author boundary`,
-      );
+void test('game production modules import only their own folder or the author API', () => {
+  assert.ok(gameDirectories.length >= 2, 'every shipped game has a folder');
+  for (const directory of gameDirectories) {
+    const files = productionFiles(directory);
+    assert.ok(files.length >= 3, 'descriptor, game and renderer are present');
+    for (const file of files) {
+      for (const edge of imports(file)) {
+        assert.ok(
+          edge.resolved &&
+            (within(edge.resolved, directory) || edge.resolved === api),
+          `${relative(root, file)} imports ${edge.specifier} outside the author boundary`,
+        );
+      }
     }
+    const runtime = dependencies(join(directory, 'index.ts'));
+    assert.ok(
+      [...runtime].every((file) => within(file, directory) || file === api),
+    );
   }
   assert.equal(
     imports(api).filter((edge) => !edge.typeOnly).length,
     0,
     'the author API has no runtime imports',
   );
-  const runtime = dependencies(join(targetDirectory, 'index.ts'));
-  assert.ok(
-    [...runtime].every((file) => within(file, targetDirectory) || file === api),
-  );
 });
 
-void test('the catalog is the only production module that imports Neon Harvest', () => {
-  const incoming = [
+void test('the catalog is the only production module that imports a game', () => {
+  const sources = [
     ...productionFiles(join(root, 'src')),
     ...productionFiles(join(root, 'app')),
-  ]
-    .filter((file) => !within(file, targetDirectory) && !within(file, harness))
-    .flatMap((file) =>
-      imports(file)
-        .filter(
-          (edge) => edge.resolved && within(edge.resolved, targetDirectory),
-        )
-        .map(() => file),
-    );
-  assert.deepEqual(incoming, [catalog]);
+  ];
+  for (const directory of gameDirectories) {
+    const incoming = sources
+      .filter((file) => !within(file, directory) && !within(file, harness))
+      .flatMap((file) =>
+        imports(file)
+          .filter((edge) => edge.resolved && within(edge.resolved, directory))
+          .map(() => file),
+      );
+    assert.deepEqual(incoming, [catalog], relative(root, directory));
+  }
+  assert.equal(new Set(games.map((game) => game.id)).size, games.length);
   assert.equal(games.filter((game) => game.id === neonHarvest.id).length, 1);
   assert.ok(
     games.includes(neonHarvest),
@@ -506,7 +515,7 @@ void test('game and harness dependency graphs stay outside shell, network owners
   ].map((path) => join(root, path));
   const entries = [
     join(harness, 'harness.ts'),
-    join(targetDirectory, 'index.ts'),
+    ...gameDirectories.map((directory) => join(directory, 'index.ts')),
   ];
   for (const entry of entries) {
     for (const file of dependencies(entry, true)) {

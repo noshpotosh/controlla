@@ -132,6 +132,12 @@ function room(t: TestContext) {
   };
 }
 
+/** Each shipped game's statistics keys, sorted. */
+const statKeys: Record<string, string[]> = {
+  'neon-harvest': ['bestChain', 'collected', 'mineHits'],
+  'whack-a-mole': ['bestStreak', 'bombs', 'golden', 'hits', 'misses'],
+};
+
 void test('live catalog runs every mode through the generic host/remote boundary and retains game statistics', (t) => {
   const r = room(t);
   for (const game of games) {
@@ -159,14 +165,13 @@ void test('live catalog runs every mode through the generic host/remote boundary
         'snapshots do not carry report history',
       );
       for (const result of r.authority.summary().completed.at(-1)!.results)
-        assert.deepEqual(Object.keys(result.stats).sort(), [
-          'bestChain',
-          'collected',
-          'mineHits',
-        ]);
+        assert.deepEqual(Object.keys(result.stats).sort(), statKeys[game.id]);
     }
   }
-  assert.equal(r.authority.summary().completed.length, 1);
+  assert.equal(
+    r.authority.summary().completed.length,
+    games.reduce((total, game) => total + game.modes.length, 0),
+  );
   assert.deepEqual(r.hydration.view(), r.authority.summary().progress);
   assert.deepEqual(r.warnings, []);
 });
