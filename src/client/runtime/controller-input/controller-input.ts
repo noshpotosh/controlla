@@ -1,6 +1,14 @@
-import type { ControlPort, ControllerConfig, Widget } from '../../controls/api.ts';
+import type {
+  ControlPort,
+  ControllerConfig,
+  Widget,
+} from '../../controls/api.ts';
 import type { MotionSnapshot } from '../../controls/motion/contracts.ts';
-import { channelOf, PRESS_SLOTS, usesPressSlot } from '../../controls/registry.ts';
+import {
+  channelOf,
+  PRESS_SLOTS,
+  usesPressSlot,
+} from '../../controls/registry.ts';
 import {
   parseActivationValue,
   parseControlValue,
@@ -36,6 +44,7 @@ const WIDGET_THROTTLE_MS = 30;
 export class ControllerInput {
   private config: ControllerConfig | null = null;
   private active = false;
+  private adjustingAim = false;
   private terminal = false;
   private epoch = 0;
   private lastSend = 0;
@@ -71,14 +80,31 @@ export class ControllerInput {
   getSnapshot() {
     return Object.freeze({
       epoch: this.epoch,
+      adjustingAim: this.adjustingAim,
       point: Object.freeze(this.previewPoint()),
       sensitivity: this.gyroPointer.gain,
       recenters: this.recenters,
     });
   }
 
+  getConfiguration() {
+    return this.config ? structuredClone(this.config) : null;
+  }
+  beginAdjustAim() {
+    if (!this.terminal) this.adjustingAim = true;
+  }
+  finishAdjustAim() {
+    if (!this.terminal) this.adjustingAim = false;
+  }
   configure(config: ControllerConfig) {
-    if (this.terminal) return;
+    if (
+      this.terminal ||
+      !config ||
+      config.schemaVersion !== 1 ||
+      !Array.isArray(config.widgets) ||
+      config.widgets.length > 24
+    )
+      return false;
     const changed =
       this.config?.generation !== config.generation ||
       this.config?.configId !== config.configId;
@@ -98,6 +124,7 @@ export class ControllerInput {
           ? { x: 0.5, y: 0.5 }
           : { x: 0, y: 0 };
     }
+    return true;
   }
   setRefreshRate(refreshRate: number) {
     if (this.terminal) return;

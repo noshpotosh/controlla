@@ -386,12 +386,11 @@ export class Runtime {
     if (msg.type === 'clockReply') this.clockReply(msg);
     else if (msg.type === 'config') {
       const config = msg.config as ControllerConfig;
-      if (config.schemaVersion !== 1 || config.widgets.length > 24) {
+      if (!this.input.configure(config)) {
         this.warn('Unsupported controller configuration');
         return;
       }
-      this.view.config = config;
-      this.input.configure(config);
+      this.view.config = this.input.getConfiguration();
       this.syncInput();
       this.applySensorConfig();
       this.sendUp({ type: 'ready', generation: config.generation });
@@ -499,7 +498,10 @@ export class Runtime {
         !document.hidden &&
         !this.pageSuspended,
     );
-    this.view.inputEpoch = this.input.getSnapshot().epoch;
+    const input = this.input.getSnapshot();
+    this.view.inputEpoch = input.epoch;
+    this.view.adjustingAim = input.adjustingAim;
+    this.view.sensitivity = input.sensitivity;
   }
   previewPoint() {
     return this.input.previewPoint();
@@ -511,19 +513,11 @@ export class Runtime {
     this.syncInput();
     return this.input.portFor(widget, generation);
   }
-  action(
-    action: string,
-    raw: unknown,
-    generation = this.view.config?.generation,
-  ) {
+  action(action: string, raw: unknown, generation?: number) {
     this.syncInput();
     this.input.action(action, raw, generation);
   }
-  press(
-    action: string,
-    down: boolean,
-    generation = this.view.config?.generation,
-  ) {
+  press(action: string, down: boolean, generation?: number) {
     this.syncInput();
     this.input.press(action, down, generation);
   }
@@ -537,12 +531,12 @@ export class Runtime {
       return;
     }
     this.view.warning = '';
-    this.view.adjustingAim = true;
+    this.input.beginAdjustAim();
     this.motion.start();
     this.notify();
   }
   finishAdjustAim() {
-    this.view.adjustingAim = false;
+    this.input.finishAdjustAim();
     this.notify();
   }
   /** Screen widths per radian of turn; takes effect immediately. */

@@ -324,3 +324,26 @@ void test('configuration and status cannot be mutated through caller-owned objec
   point.x = -1;
   assert.equal(f.input.previewPoint().x, 1);
 });
+
+void test('configuration and aim settings remain input-owned detached projections', () => {
+  const h = fixture();
+  const config = h.input.getConfiguration()!;
+  config.widgets.length = 0;
+  assert.notEqual(h.input.getConfiguration()!.widgets.length, 0);
+  assert.equal(
+    h.input.configure({
+      ...configuration(),
+      schemaVersion: 99,
+    } as unknown as ControllerConfig),
+    false,
+  );
+  assert.equal(h.input.getConfiguration()!.schemaVersion, 1);
+  h.input.beginAdjustAim();
+  assert.equal(h.input.getSnapshot().adjustingAim, true);
+  h.input.finishAdjustAim();
+  assert.equal(h.input.getSnapshot().adjustingAim, false);
+  h.input.dispose();
+  h.input.beginAdjustAim();
+  assert.equal(h.input.getSnapshot().adjustingAim, false);
+  assert.equal(h.input.configure(configuration()), false);
+});
