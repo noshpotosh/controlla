@@ -51,8 +51,12 @@ function setup(t: TestContext) {
         frames.push(decodeInput(data as ArrayBuffer, clock));
     },
   );
-  const invoke = (key: string, ...args: unknown[]) =>
-    Reflect.get(runtime, key).apply(runtime, args);
+  Reflect.get(runtime, 'resources').start();
+  const invoke = (key: string, ...args: unknown[]) => {
+    if (key === 'pageHide' || key === 'pageShow')
+      return window.dispatchEvent(new Event(key.toLowerCase()));
+    return Reflect.get(runtime, key).apply(runtime, args);
+  };
   return {
     f,
     runtime,

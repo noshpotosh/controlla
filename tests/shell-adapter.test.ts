@@ -170,8 +170,9 @@ void test('phone ports retain configuration generation and local epoch, and stop
   const current = session.phone.portFor(runtime.view.config!.widgets[0], 2);
   current.value({ x: 0.4, y: 0.6 });
   assert.equal(values().at(-1)!.generation, 2);
-  Reflect.get(runtime, 'pageHide').call(runtime);
-  Reflect.get(runtime, 'pageShow').call(runtime);
+  Reflect.get(runtime, 'resources').start();
+  window.dispatchEvent(new Event('pagehide'));
+  window.dispatchEvent(new Event('pageshow'));
   current.value({ x: 0, y: 0 });
   assert.equal(values().length, 2);
   const resumed = session.phone.portFor(runtime.view.config!.widgets[0], 2);

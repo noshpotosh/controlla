@@ -1,3 +1,7 @@
+import { BrowserResources } from './browser/browser-resources.ts';
+import type { BrowserEnvironment } from './browser/contracts.ts';
+import { downloadSummary } from './browser/download.ts';
+import { Diagnostics } from './diagnostics/diagnostics.ts';
 import { Network } from '../transport/network.ts';
 import type { LinkStats, Transport } from '../transport/contracts.ts';
 import { ClockSync, now } from '../engine/timing.ts';
@@ -10,12 +14,7 @@ import { catalogSnapshotPolicy } from '../engine/snapshots.ts';
 import { completedResults } from '../engine/progress.ts';
 import { freezeSnapshot } from '../game-screen/screen.ts';
 import type { ScreenPort, ScreenFrame } from '../game-screen/port.ts';
-import type {
-  Progress,
-  ReadonlyDeep,
-  RoundSnapshot,
-  PresentationEvent,
-} from '../api/index.ts';
+import type { Progress, ReadonlyDeep, RoundSnapshot } from '../api/index.ts';
 import { SessionAuthority } from '../engine/session.ts';
 import { Motion } from '../controls/motion/provider.ts';
 import type { MotionStatus } from '../controls/motion/contracts.ts';
@@ -87,12 +86,13 @@ export class Runtime {
   private stopped = false;
   private lastUi = 0;
   private readonly router: SessionRouter;
-  private pageSuspended = false;
+  private readonly resources: BrowserResources;
+  private readonly diagnostic: Diagnostics;
+  private offMotion: () => void;
+  private started = false;
+  private connectionEpoch = 0;
+  private probeTimers = new Set<ReturnType<typeof setTimeout>>();
   private motionCapabilitiesKey = '';
-  private audio: AudioContext | null = null;
-  private wake: WakeLockSentinel | null = null;
-  private wakePending = false;
-  private disconnects: { at: number; status: string }[] = [];
   private bootId = crypto.randomUUID();
   view: RuntimeView = {
     identity: null,
@@ -127,7 +127,56 @@ export class Runtime {
     public options: JoinOptions,
     motion = new Motion(),
     transport?: Transport,
+    browserEnvironment?: BrowserEnvironment,
   ) {
+    this.resources = new BrowserResources(
+      {
+        lifecycle: (suspended, warnHost) =>
+          this.visibility(suspended, warnHost),
+        shouldWarnBeforeUnload: () =>
+          !this.stopped &&
+          !this.view.ended &&
+          this.view.identity?.role === 'host',
+        wakeChanged: (held) => {
+          this.view.wakeLock = held;
+          if (!this.stopped) this.notify();
+        },
+      },
+      browserEnvironment,
+    );
+    this.diagnostic = new Diagnostics({
+      stats: () => this.network.stats(),
+      snapshot: () => ({
+        identity: this.view.identity
+          ? {
+              role: this.view.identity.role,
+              hostId: this.view.identity.hostId,
+              venueId: this.view.identity.venueId,
+              room: this.view.identity.room,
+            }
+          : null,
+        clock: {
+          offset: this.clock.offset,
+          error: this.clock.error,
+          rtt: this.clock.rtts.summary(),
+        },
+        sensorHz: this.motion.rateHz,
+        pointer: {
+          gain: this.input.getSnapshot().sensitivity,
+          recenters: this.input.getSnapshot().recenters,
+        },
+        path: this.view.controllerPath,
+        metrics: this.playback.metrics(),
+        completed: this.playback.completedResults(),
+        progress: this.playback.getProgress(),
+        authority: this.authority?.summary() ?? this.endedAuthoritySummary,
+      }),
+      publish: (links, message) => {
+        this.view.links = links;
+        if (message) this.sendUp(message);
+        this.notify();
+      },
+    });
     this.playback = new DisplayPlayback(
       catalogSnapshotPolicy(games),
       (gameId, mode) =>
@@ -145,7 +194,7 @@ export class Runtime {
             this.notify();
           }
         },
-        playEvent: (event) => this.playEvent(event),
+        playEvent: (event) => this.resources.playEvent(event),
       },
     );
     this.router = new SessionRouter(
@@ -195,23 +244,32 @@ export class Runtime {
     this.network.onWelcome = (i) => this.welcome(i);
     this.network.onRoster = (r) => this.roster(r);
     this.network.onMessage = (f, c, d) => this.receive(f, c, d);
-    this.network.onWarning = (m) => this.warn(m);
+    this.network.onWarning = (m) => {
+      if (!this.stopped && !this.view.ended) this.warn(m);
+    };
     this.network.onStatus = (s) => {
+      if (this.stopped || this.view.ended) return;
       this.view.status = s;
       if (s === 'Reconnecting…' || s === 'Reload required') {
         this.motion.suspend();
         this.playback.disconnect();
         this.router.disconnect();
         this.input.setActive(false);
-        this.disconnects.push({ at: Date.now(), status: s });
+        this.cancelProbes();
+        this.diagnostic.disconnect(s, Date.now());
       }
       this.notify();
     };
-    this.motion.subscribe(() => this.motionChanged());
-    if (document.hidden) this.motion.suspend();
+    this.offMotion = this.motion.subscribe(() => this.motionChanged());
+    if (this.resources.suspended) this.motion.suspend();
     this.motionChanged();
     this.network.onEnded = (reason) => {
+      if (this.stopped || this.view.ended) return;
       this.view.ended = true;
+      this.stopScheduling();
+      this.diagnostic.dispose();
+      this.resources.dispose();
+      this.offMotion();
       this.playback.end();
       this.input.end();
       this.router.end();
@@ -256,20 +314,27 @@ export class Runtime {
     for (const fn of this.listeners) fn();
   }
   warn(message: string) {
+    if (this.stopped) return;
     this.view.warning = message;
     this.notify();
   }
   start() {
+    if (this.started || this.stopped || this.view.ended) return;
+    this.started = true;
+    this.resources.start();
     this.network.connect();
+    if (this.stopped || this.view.ended) return;
     this.loop = setInterval(() => this.tick(), 1000 / 120);
-    this.diagnosticsTimer = setInterval(() => void this.diagnostics(), 2000);
+    this.diagnosticsTimer = setInterval(
+      () => void this.diagnostic.poll(),
+      2000,
+    );
     this.syncTimer = setInterval(() => this.probe(), 1500);
-    document.addEventListener('visibilitychange', this.visibility);
-    window.addEventListener('beforeunload', this.beforeUnload);
-    window.addEventListener('pagehide', this.pageHide);
-    window.addEventListener('pageshow', this.pageShow);
   }
   private welcome(identity: Identity) {
+    if (this.stopped || this.view.ended) return;
+    this.cancelProbes();
+    this.diagnostic.invalidate();
     this.router.welcome(identity);
     // A request sent on the previous connection may never have reached authority.
     // The next missing-base update must be able to request a fresh snapshot again.
@@ -298,13 +363,19 @@ export class Runtime {
           this.toVenue(id, 'events', { type: 'event', event }),
         warning: (msg) => this.warn(msg),
       });
-    for (let i = 0; i < 10; i++)
-      setTimeout(() => {
-        if (!this.stopped) this.probe();
+    const epoch = this.connectionEpoch;
+    for (let i = 0; i < 10; i++) {
+      const timer = setTimeout(() => {
+        this.probeTimers.delete(timer);
+        if (!this.stopped && !this.view.ended && epoch === this.connectionEpoch)
+          this.probe();
       }, i * 80);
+      this.probeTimers.add(timer);
+    }
     this.notify();
   }
   private roster(roster: Roster) {
+    if (this.stopped || this.view.ended) return;
     this.view.roster = roster;
     this.router.setRoster(roster);
     this.authority?.setRoster(roster);
@@ -318,7 +389,7 @@ export class Runtime {
         this.input.setActive(false);
       } else {
         this.view.status = 'Connected';
-        if (!document.hidden && !this.pageSuspended) this.motion.resume();
+        if (!this.resources.suspended) this.motion.resume();
         this.sendUp({ type: 'hello', bootId: this.bootId });
         this.sendUp({
           type: 'capabilities',
@@ -379,7 +450,8 @@ export class Runtime {
     else if (msg.type === 'phase') this.acceptPhase(msg);
     else if (msg.type === 'progressBatch') this.acceptProgress(msg);
     else if (msg.type === 'telemetry') {
-      this.view.telemetry = msg;
+      this.diagnostic.acceptTelemetry(msg);
+      this.view.telemetry = structuredClone(msg);
       this.notify();
     }
   }
@@ -424,8 +496,7 @@ export class Runtime {
       me?.role === 'controller' &&
       this.view.config &&
       this.view.status === 'Connected' &&
-      !document.hidden &&
-      !this.pageSuspended
+      !this.resources.suspended
     ) {
       this.view.controllerPath = this.router.updateControllerRoute();
       this.input.tick(this.motion.getSnapshot());
@@ -444,44 +515,7 @@ export class Runtime {
     this.motionChanged();
   }
   async unlock() {
-    if (this.stopped || this.view.ended) return;
-    try {
-      this.audio ??= new AudioContext();
-      await this.audio.resume();
-    } catch {
-      /* Audio may be unavailable. */
-    }
-    if (!this.stopped && !this.view.ended) await this.acquireWake();
-  }
-  private async acquireWake() {
-    if (
-      this.stopped ||
-      this.view.ended ||
-      this.wakePending ||
-      this.wake ||
-      !('wakeLock' in navigator)
-    )
-      return;
-    this.wakePending = true;
-    try {
-      const wake = await navigator.wakeLock.request('screen');
-      if (this.stopped || this.view.ended) {
-        await wake.release();
-        return;
-      }
-      this.wake = wake;
-      this.view.wakeLock = true;
-      wake.addEventListener('release', () => {
-        if (this.wake === wake) {
-          this.wake = null;
-          this.view.wakeLock = false;
-        }
-      });
-    } catch {
-      this.view.wakeLock = false;
-    } finally {
-      this.wakePending = false;
-    }
+    await this.resources.unlock();
   }
   private syncInput() {
     this.input.setActive(
@@ -489,8 +523,7 @@ export class Runtime {
         !this.view.ended &&
         this.view.identity?.role === 'controller' &&
         this.view.status === 'Connected' &&
-        !document.hidden &&
-        !this.pageSuspended,
+        !this.resources.suspended,
     );
     const input = this.input.getSnapshot();
     this.view.inputEpoch = input.epoch;
@@ -582,126 +615,46 @@ export class Runtime {
   cursors() {
     return this.playback.cursors.cursors(now());
   }
-  private playEvent(event: PresentationEvent) {
-    if (!['hit', 'prompt', 'end'].includes(event.kind)) return;
-    if (!this.audio || this.audio.state !== 'running') return;
-    try {
-      const oscillator = this.audio.createOscillator(),
-        gain = this.audio.createGain();
-      oscillator.frequency.value =
-        event.kind === 'hit' ? 680 : event.kind === 'prompt' ? 420 : 250;
-      gain.gain.setValueAtTime(0.04, this.audio.currentTime);
-      gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        this.audio.currentTime + 0.1,
-      );
-      oscillator.connect(gain);
-      gain.connect(this.audio.destination);
-      oscillator.start();
-      oscillator.stop(this.audio.currentTime + 0.12);
-    } catch {
-      /* Closed audio context. */
-    }
-  }
-  private async diagnostics() {
-    if (this.view.ended) return;
-    this.view.links = await this.network.stats();
-    if (this.view.identity?.role === 'controller') {
-      this.sendUp({
-        type: 'clockStats',
-        offset: this.clock.offset,
-        error: Number.isFinite(this.clock.error) ? this.clock.error : null,
-        rtt: this.clock.rtts.summary(),
-        sensorHz: this.motion.rateHz,
-        pointerGain: this.view.sensitivity,
-        recenters: this.input.getSnapshot().recenters,
-        transport:
-          this.view.links[
-            this.view.controllerPath === 'direct-to-session'
-              ? this.view.identity.hostId
-              : this.view.identity.venueId
-          ] ?? null,
-        path: this.view.controllerPath,
-      });
-    }
-    this.notify();
-  }
   setPanelLatency(value: number | null) {
+    this.diagnostic.setPanelLatency(value);
     this.view.panelLatency = value;
     this.notify();
   }
   exportSummary() {
-    const metrics = this.snapshotMetrics();
-    const summary = {
-      version: 2,
-      at: new Date().toISOString(),
-      room: this.view.identity?.room,
-      softwareOnly: true,
-      motionToPhotonCameraMs: this.view.panelLatency,
-      snapshots: {
-        delay: metrics.oneWay,
-        lastBytes: metrics.lastBytes,
-        deltaRatio: metrics.deltaRatio,
-        starvations: metrics.starvations,
-      },
-      telemetry: this.view.telemetry,
-      links: this.view.links,
-      disconnects: this.disconnects,
-      pointer: {
-        gain: this.view.sensitivity,
-        recenters: this.input.getSnapshot().recenters,
-      },
-      completed: this.view.history,
-      progress: this.view.progress,
-      authority: this.authority?.summary() ?? this.endedAuthoritySummary,
-    };
-    const url = URL.createObjectURL(
-      new Blob([JSON.stringify(summary, null, 2)], {
-        type: 'application/json',
-      }),
-    );
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `controlla-${this.view.identity?.room ?? 'session'}.json`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadSummary(this.diagnostic.report(), this.view.identity?.room);
   }
-  private beforeUnload = (event: BeforeUnloadEvent) => {
-    if (this.view.identity?.role === 'host' && !this.view.ended) {
-      event.preventDefault();
-      // oxlint-disable-next-line typescript/no-deprecated -- legacy Safari beforeunload compatibility
-      event.returnValue = '';
-    }
-  };
-  private pageHide = () => {
-    this.pageSuspended = true;
-    this.input.setActive(false);
-    this.motion.suspend();
-    this.notify();
-  };
-  private pageShow = () => {
-    this.pageSuspended = false;
-    this.visibility();
-  };
-  private visibility = () => {
+  private visibility(suspended: boolean, warnHost: boolean) {
     if (this.stopped || this.view.ended) return;
-    if (document.hidden || this.pageSuspended) {
+    if (suspended) {
       this.input.setActive(false);
       this.motion.suspend();
-      if (this.view.identity?.role === 'host')
+      if (warnHost && this.view.identity?.role === 'host')
         this.warn(
           'Keep the host screen visible. Background throttling affects everyone.',
         );
     } else {
       this.motion.resume();
-      void this.acquireWake();
+      void this.resources.acquireWake();
       this.applySensorConfig();
       this.probe();
       this.sendUp({ type: 'hello', bootId: this.bootId });
     }
     this.notify();
-  };
+  }
+  private cancelProbes() {
+    this.connectionEpoch++;
+    for (const timer of this.probeTimers) clearTimeout(timer);
+    this.probeTimers.clear();
+  }
+  private stopScheduling() {
+    this.cancelProbes();
+    if (this.loop) clearInterval(this.loop);
+    if (this.syncTimer) clearInterval(this.syncTimer);
+    if (this.diagnosticsTimer) clearInterval(this.diagnosticsTimer);
+    this.loop = this.syncTimer = this.diagnosticsTimer = null;
+  }
   close() {
+    if (this.stopped) return;
     this.stopped = true;
     this.playback.dispose();
     this.input.dispose();
@@ -712,18 +665,10 @@ export class Runtime {
     this.authority?.dispose();
     this.authority = null;
     this.motion.dispose();
-    if (this.loop) clearInterval(this.loop);
-    if (this.syncTimer) clearInterval(this.syncTimer);
-    if (this.diagnosticsTimer) clearInterval(this.diagnosticsTimer);
-    void this.wake?.release();
-    this.wake = null;
-    this.view.wakeLock = false;
-    // close() can run twice (React strict mode, hot reload); closing again throws.
-    if (this.audio && this.audio.state !== 'closed')
-      void this.audio.close().catch(() => {});
-    document.removeEventListener('visibilitychange', this.visibility);
-    window.removeEventListener('beforeunload', this.beforeUnload);
-    window.removeEventListener('pagehide', this.pageHide);
-    window.removeEventListener('pageshow', this.pageShow);
+    this.stopScheduling();
+    this.offMotion();
+    this.diagnostic.dispose();
+    this.resources.dispose();
+    this.listeners.clear();
   }
 }
