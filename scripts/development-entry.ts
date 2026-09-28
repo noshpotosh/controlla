@@ -11,7 +11,7 @@ export function developmentEntry(
       '@controlla/app-entry': resolve(
         root,
         command === 'serve'
-          ? 'src/devtools/DevelopmentApp.tsx'
+          ? 'src/client/devtools/DevelopmentApp.tsx'
           : 'src/client/shell/App.tsx',
       ),
     },

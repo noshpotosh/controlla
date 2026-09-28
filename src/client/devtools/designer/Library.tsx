@@ -3,29 +3,29 @@
 // Create, open, duplicate or delete layouts here.
 import { useState } from 'react';
 import { Copy, Pencil, Plus, Smartphone, Trash2 } from 'lucide-react';
-import { games as catalog } from '../../client/minigames/catalog.ts';
+import { games as catalog } from '../../minigames/catalog.ts';
 import type {
   ControllerSpec,
   ControllerLayout,
   Orientation,
   LayoutPreset,
-} from '../api.ts';
+} from '../../../controls/api.ts';
 const specs: ControllerSpec[] = catalog.map(({ id, name, controls }) => ({
   id,
   name,
   ...controls,
 }));
-import { COLORS } from '../../core/types.ts';
-import { layouts } from '../../layouts/index.ts';
-import { ControllerSurface } from '../ControllerSurface.tsx';
+import { COLORS } from '../../../core/types.ts';
+import { layouts } from '../../../layouts/index.ts';
+import { ControllerSurface } from '../../../controls/ControllerSurface.tsx';
 
-import { MOTION, slugify } from '../layout/schema.ts';
-import { checkAssignment } from '../layout/validate.ts';
-import { layoutWidgets } from '../layout/widgets.ts';
+import { MOTION, slugify } from '../../../controls/layout/schema.ts';
+import { checkAssignment } from '../../../controls/layout/validate.ts';
+import { layoutWidgets } from '../../../controls/layout/widgets.ts';
 
-import { LAYOUTS, templateLayout } from '../layouts.ts';
-import { emptyLayout } from '../layout/schema.ts';
-import { SensorTile } from '../SensorTile.tsx';
+import { LAYOUTS, templateLayout } from '../../../controls/layouts.ts';
+import { emptyLayout } from '../../../controls/layout/schema.ts';
+import { SensorTile } from '../../../controls/SensorTile.tsx';
 import { canSave, createLayout, deleteLayout } from './api.ts';
 
 const noopPort = { value() {}, press() {}, haptic() {} };

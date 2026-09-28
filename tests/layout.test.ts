@@ -1,8 +1,4 @@
-import {
-  pointerSpec,
-  steeringSpec,
-  controlSpecs,
-} from './fixtures/games.ts';
+import { pointerSpec, steeringSpec, controlSpecs } from './fixtures/games.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type {
@@ -45,7 +41,7 @@ import {
   findFreeSpot,
   reorient,
   rotateItem,
-} from '../src/controls/designer/model.ts';
+} from '../src/client/devtools/designer/model.ts';
 import {
   defaultCapabilities,
   gameLayout,

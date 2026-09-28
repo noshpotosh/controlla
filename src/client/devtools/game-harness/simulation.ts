@@ -1,6 +1,6 @@
-import { kindOf, usesPressSlot } from '../../controls/registry.ts';
+import { kindOf, usesPressSlot } from '../../../controls/registry.ts';
 import type { GameHarness } from './harness.ts';
-import type { Point } from './api.ts';
+import type { Point } from '../../api/index.ts';
 
 /** Generic scripted players exercise the selected controls without knowing a game ID. */
 export function driveSimulatedPlayers(harness: GameHarness, mouse?: Point) {

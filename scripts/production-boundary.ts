@@ -20,7 +20,7 @@ export interface Artifact {
 export const auditDirectory = '.vinext/production-bundle';
 const environments = ['client', 'ssr', 'rsc'];
 const forbiddenModule =
-  /(?:^|\/)(?:src\/games\/|src\/client\/minigames\/(?:legacy|latency-lab|tilt-rally|target-practice)\/|src\/devtools\/|src\/experiments\/architecture\/|src\/controls\/(?:designer|gallery|preview)\/|src\/client\/MotionLab\.tsx(?:\?|$)|app\/dev\/)/;
+  /(?:^|\/)(?:src\/games\/|src\/client\/minigames\/(?:legacy|latency-lab|tilt-rally|target-practice)\/|src\/client\/devtools\/|src\/devtools\/|src\/experiments\/architecture\/|src\/controls\/(?:designer|gallery|preview)\/|src\/client\/MotionLab\.tsx(?:\?|$)|app\/dev\/)/;
 const forbiddenCss =
   /\.(?:architecture-harness|ctl-gallery|ctl-preview-pick|ctl-rotate|motion-lab|tool-links|dz)(?=[_-]|[^\w-]|$)/;
 const forbiddenArtifact =

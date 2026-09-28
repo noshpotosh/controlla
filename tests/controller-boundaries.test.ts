@@ -11,7 +11,7 @@ const resolver = join(controls, 'resolve.ts');
 const layouts = join(root, 'src/layouts');
 const legacyConfig = join(root, 'src/core/config.ts');
 const tools = ['designer', 'gallery', 'preview'].map((name) =>
-  join(controls, name),
+  join(root, 'src/client/devtools', name),
 );
 const within = (file: string, directory: string) =>
   file === directory || file.startsWith(directory + sep);
@@ -343,7 +343,7 @@ void test('legacy resolver, Manifest bridge and moved contract exports are remov
     ),
   );
   const experimental = exportsOf(
-    join(root, 'src/experiments/architecture/input.ts'),
+    join(root, 'src/client/devtools/game-harness/input.ts'),
   );
   for (const name of [
     'controllerManifest',

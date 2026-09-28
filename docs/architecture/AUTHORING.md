@@ -47,7 +47,7 @@ Game/mode choices come from the catalog. The current catalog contains only `neon
 7. **Run headless, then register once.** From a script at the repository root:
 
    ```ts
-   import { GameHarness } from './src/experiments/architecture/harness.ts';
+   import { GameHarness } from './src/client/devtools/game-harness/harness.ts';
    import { neonHarvest } from './src/client/minigames/neon-harvest/index.ts';
 
    const harness = new GameHarness(neonHarvest, {

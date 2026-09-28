@@ -1,14 +1,9 @@
 /* Loaded only by development entries; production globals never scan tools. */
 @import 'tailwindcss/utilities.css' source(none);
-@import '../controls/gallery/gallery.css';
-@import '../controls/designer/designer.css';
-@reference '../../app/globals.css';
+@import './gallery/gallery.css';
+@import './designer/designer.css';
+@reference '../../../app/globals.css';
 @source './';
-@source '../controls/gallery';
-@source '../controls/designer';
-@source '../controls/preview';
-@source '../client/MotionLab.tsx';
-@source '../experiments/architecture';
 
 .motion-lab {
   padding: 20px;

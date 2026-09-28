@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Outcome } from '../src/client/api/index.ts';
-import { SessionProgress } from '../src/experiments/architecture/session.ts';
+import { SessionProgress } from '../src/client/engine/progress.ts';
 
 const pair = (): Outcome[] => [
   { playerId: 'a', placement: 1, score: 5 },

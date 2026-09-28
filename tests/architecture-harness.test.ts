@@ -5,23 +5,23 @@ import type {
   GameContext,
   Presentation,
   RoundSnapshot,
-} from '../src/experiments/architecture/api.ts';
-import { games } from '../src/experiments/architecture/catalog.ts';
+} from '../src/client/api/index.ts';
+import { games } from '../src/client/minigames/catalog.ts';
 import {
   GameHarness,
   simulatedPlayers,
   snapshotPolicy,
-} from '../src/experiments/architecture/harness.ts';
+} from '../src/client/devtools/game-harness/harness.ts';
 import {
   buttonProbe,
   steeringProbe,
   type ProbeState,
 } from './fixtures/games.ts';
 import { resolveController } from '../src/client/engine/input.ts';
-import { capabilityProfile } from '../src/experiments/architecture/input.ts';
-import { createScreen } from '../src/experiments/architecture/screen.ts';
-import { SessionProgress } from '../src/experiments/architecture/session.ts';
-import { driveSimulatedPlayers } from '../src/experiments/architecture/simulation.ts';
+import { capabilityProfile } from '../src/client/devtools/game-harness/input.ts';
+import { createScreen } from '../src/client/game-screen/screen.ts';
+import { SessionProgress } from '../src/client/engine/progress.ts';
+import { driveSimulatedPlayers } from '../src/client/devtools/game-harness/simulation.ts';
 import { SnapshotEncoder, SnapshotTimeline } from '../src/core/snapshots.ts';
 
 void test('registered games run headlessly and host/remote share the production snapshot timeline', async () => {

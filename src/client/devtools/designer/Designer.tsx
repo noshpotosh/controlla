@@ -11,13 +11,13 @@ import type {
   LayoutItem,
   MenuCorner,
   Orientation,
-} from '../api.ts';
-import { COLORS } from '../../core/types.ts';
-import { layouts } from '../../layouts/index.ts';
+} from '../../../controls/api.ts';
+import { COLORS } from '../../../core/types.ts';
+import { layouts } from '../../../layouts/index.ts';
 import { useReadings } from '../gallery/readings.tsx';
 
-import { MENU_CORNERS, MOTION } from '../layout/schema.ts';
-import { validateLayout } from '../layout/validate.ts';
+import { MENU_CORNERS, MOTION } from '../../../controls/layout/schema.ts';
+import { validateLayout } from '../../../controls/layout/validate.ts';
 import { canSave, saveLayout } from './api.ts';
 import { Canvas } from './Canvas.tsx';
 import { Inspector } from './Inspector.tsx';

@@ -1,7 +1,7 @@
-import { SnapshotEncoder, SnapshotTimeline } from '../../core/snapshots.ts';
-import { channelOf, usesPressSlot } from '../../controls/registry.ts';
-import type { ControllerConfig } from '../../controls/api.ts';
-import type { WireSnapshot } from '../../core/types.ts';
+import { SnapshotEncoder, SnapshotTimeline } from '../../../core/snapshots.ts';
+import { channelOf, usesPressSlot } from '../../../controls/registry.ts';
+import type { ControllerConfig } from '../../../controls/api.ts';
+import type { WireSnapshot } from '../../../core/types.ts';
 import type {
   Action,
   GameDescriptor,
@@ -10,13 +10,13 @@ import type {
   Point,
   Progress,
   RoundSnapshot,
-} from './api.ts';
-import { resolveController } from '../../client/engine/input.ts';
+} from '../../api/index.ts';
+import { resolveController } from '../../engine/input.ts';
 import { capabilityProfile } from './input.ts';
-import { SessionProgress } from '../../client/engine/progress.ts';
-import { RoundRunner } from '../../client/engine/round.ts';
-import { snapshotPolicy } from '../../client/engine/snapshots.ts';
-export { snapshotPolicy } from '../../client/engine/snapshots.ts';
+import { SessionProgress } from '../../engine/progress.ts';
+import { RoundRunner } from '../../engine/round.ts';
+import { snapshotPolicy } from '../../engine/snapshots.ts';
+export { snapshotPolicy } from '../../engine/snapshots.ts';
 
 export const simulatedPlayers: Player[] = [
   {

@@ -1,6 +1,6 @@
 // Discover colocated game tests so adding a game needs no second registration.
 import { readdir } from 'node:fs/promises';
-import '../src/experiments/architecture/controller.test.ts';
+import '../src/client/devtools/game-harness/controller.test.ts';
 
 async function loadExamples(directory: URL): Promise<void> {
   const entries = await readdir(directory, { withFileTypes: true });

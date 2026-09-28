@@ -4,14 +4,14 @@
 // hot-reloads this page, so the phone tracks your edits live.
 import { useEffect, useState } from 'react';
 import { Menu, X } from 'lucide-react';
-import { COLORS } from '../../core/types.ts';
-import { layouts } from '../../layouts/index.ts';
-import { ControllerSurface } from '../ControllerSurface.tsx';
+import { COLORS } from '../../../core/types.ts';
+import { layouts } from '../../../layouts/index.ts';
+import { ControllerSurface } from '../../../controls/ControllerSurface.tsx';
 import { Readout, useReadings } from '../gallery/readings.tsx';
-import { layoutWidgets } from '../layout/widgets.ts';
-import type { Orientation } from '../api.ts';
-import { MOTION } from '../layout/schema.ts';
-import { SensorTile } from '../SensorTile.tsx';
+import { layoutWidgets } from '../../../controls/layout/widgets.ts';
+import type { Orientation } from '../../../controls/api.ts';
+import { MOTION } from '../../../controls/layout/schema.ts';
+import { SensorTile } from '../../../controls/SensorTile.tsx';
 
 function useOrientation(): Orientation {
   const query = '(orientation: landscape)';

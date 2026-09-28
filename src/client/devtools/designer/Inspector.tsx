@@ -2,26 +2,29 @@
 // Right rail: edit the selected control (name, look, props from its
 // definition's `fields`), or see which games use the layout.
 import { useState } from 'react';
-import { games as catalog } from '../../client/minigames/catalog.ts';
+import { games as catalog } from '../../minigames/catalog.ts';
 import type {
   ControllerSpec,
   Field,
   ControllerLayout,
   LayoutItem,
   Rotation,
-} from '../api.ts';
+} from '../../../controls/api.ts';
 const specs: ControllerSpec[] = catalog.map(({ id, name, controls }) => ({
   id,
   name,
   ...controls,
 }));
 import { Readout, type Reading } from '../gallery/readings.tsx';
-import { ICONS } from '../kit/icons.ts';
-import { definitionFor, definitions } from '../registry.ts';
+import { ICONS } from '../../../controls/kit/icons.ts';
+import { definitionFor, definitions } from '../../../controls/registry.ts';
 
-import { checkAssignment, type LayoutIssue } from '../layout/validate.ts';
+import {
+  checkAssignment,
+  type LayoutIssue,
+} from '../../../controls/layout/validate.ts';
 
-import { isControlName, ROTATIONS } from '../layout/schema.ts';
+import { isControlName, ROTATIONS } from '../../../controls/layout/schema.ts';
 
 const HINT: Field = { key: 'hint', label: 'Hint', type: 'text' };
 

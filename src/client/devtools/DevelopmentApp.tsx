@@ -1,11 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Gamepad2, LayoutGrid } from 'lucide-react';
-import App from '../client/shell/App.tsx';
-import { MotionLab } from '../client/MotionLab.tsx';
-import { Designer } from '../controls/designer/Designer.tsx';
-import { Gallery } from '../controls/gallery/Gallery.tsx';
-import { Preview } from '../controls/preview/Preview.tsx';
+import App from '../shell/App.tsx';
+import { MotionLab } from './motion-lab/MotionLab.tsx';
+import { Designer } from './designer/Designer.tsx';
+import { Gallery } from './gallery/Gallery.tsx';
+import { Preview } from './preview/Preview.tsx';
 import { toolRequest } from './routing.ts';
 import './developer-tools.css';
 

@@ -11,18 +11,18 @@ import type {
   GameDescriptor,
   GameInput,
   Presentation,
-} from '../src/experiments/architecture/api.ts';
+} from '../src/client/api/index.ts';
 import {
   GameHarness,
   simulatedPlayers,
-} from '../src/experiments/architecture/harness.ts';
+} from '../src/client/devtools/game-harness/harness.ts';
 import {
   buttonProbe,
   steeringProbe,
   type ProbeState as InputProbeState,
 } from './fixtures/games.ts';
 import { games } from '../src/client/minigames/catalog.ts';
-import { createScreen } from '../src/experiments/architecture/screen.ts';
+import { createScreen } from '../src/client/game-screen/screen.ts';
 
 void test('terminal actions are judged together by timestamp, with a strict arrival cutoff', async () => {
   const harness = new GameHarness(buttonProbe);

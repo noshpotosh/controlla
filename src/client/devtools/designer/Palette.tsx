@@ -1,10 +1,10 @@
 'use client';
 // Left rail: touch controls to place (drag onto the phone, or click to drop
 // one in the first free spot), and the motion inputs this layout switches on.
-import type { WidgetType, MotionInput } from '../api.ts';
-import { definitions } from '../registry.ts';
+import type { WidgetType, MotionInput } from '../../../controls/api.ts';
+import { definitions } from '../../../controls/registry.ts';
 
-import { MOTION } from '../layout/schema.ts';
+import { MOTION } from '../../../controls/layout/schema.ts';
 import { DRAG_TYPE } from './Canvas.tsx';
 
 const MOTION_HELP: Record<MotionInput, string> = {

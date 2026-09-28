@@ -2,13 +2,17 @@
 // /?role=gallery — every control and layout, live, with a readout of exactly
 // what a game would receive. Needs no room: controls talk to a mock port.
 import { useState, type CSSProperties } from 'react';
-import type { Widget, LayoutPreset, ControlDefinition } from '../api.ts';
-import { COLORS } from '../../core/types.ts';
-import { ControllerSurface } from '../ControllerSurface.tsx';
-import { layoutWidgets } from '../layout/widgets.ts';
+import type {
+  Widget,
+  LayoutPreset,
+  ControlDefinition,
+} from '../../../controls/api.ts';
+import { COLORS } from '../../../core/types.ts';
+import { ControllerSurface } from '../../../controls/ControllerSurface.tsx';
+import { layoutWidgets } from '../../../controls/layout/widgets.ts';
 
-import { LAYOUTS, templateLayout } from '../layouts.ts';
-import { definitions } from '../registry.ts';
+import { LAYOUTS, templateLayout } from '../../../controls/layouts.ts';
+import { definitions } from '../../../controls/registry.ts';
 
 import { Readout, useReadings } from './readings.tsx';
 

@@ -20,7 +20,7 @@ import {
 } from '../src/client/minigames/catalog.ts';
 import { buttonProbe } from './fixtures/games.ts';
 import { neonHarvest } from '../src/client/minigames/neon-harvest/index.ts';
-import { simulatedPlayers } from '../src/experiments/architecture/harness.ts';
+import { simulatedPlayers } from '../src/client/devtools/game-harness/harness.ts';
 
 const players = structuredClone(simulatedPlayers.slice(0, 2));
 function fixture(

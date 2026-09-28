@@ -1,14 +1,14 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usesPressSlot } from '../../controls/registry.ts';
-import type { Point, RoundProgress, RoundSnapshot } from './api.ts';
-import { games } from './catalog.ts';
+import { usesPressSlot } from '../../../controls/registry.ts';
+import type { Point, RoundProgress, RoundSnapshot } from '../../api/index.ts';
+import { games } from '../../minigames/catalog.ts';
 import { ControllerProbe } from './ControllerProbe.tsx';
 import { GameHarness } from './harness.ts';
-import { createPresenter } from '../../client/game-screen/presenter.ts';
+import { createPresenter } from '../../game-screen/presenter.ts';
 import { driveSimulatedPlayers } from './simulation.ts';
-import { SessionProgress } from './session.ts';
+import { SessionProgress } from '../../engine/progress.ts';
 import './harness.css';
 
 interface View {

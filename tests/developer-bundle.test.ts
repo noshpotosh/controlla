@@ -10,7 +10,7 @@ import {
   type Artifact,
   type BundleReport,
 } from '../scripts/production-boundary.ts';
-import { toolRequest } from '../src/devtools/routing.ts';
+import { toolRequest } from '../src/client/devtools/routing.ts';
 import { motionDiagnostics } from '../src/client/shell/runtime-adapter.ts';
 import { RingBuffer, type RawMotionSample } from '../src/core/motion/trace.ts';
 import { defaultCapabilities } from '../src/controls/resolve.ts';
@@ -25,7 +25,7 @@ void test('build selection excludes dev routes before Vinext scans client import
   );
   assert.equal(
     development.alias['@controlla/app-entry'],
-    resolve(root, 'src/devtools/DevelopmentApp.tsx'),
+    resolve(root, 'src/client/devtools/DevelopmentApp.tsx'),
   );
   const route = 'app/dev/game-harness/page.dev.tsx';
   assert.ok(readFileSync(route, 'utf8').includes('HarnessPreview'));
@@ -64,17 +64,17 @@ void test('development wrapper preserves existing query URLs and leaves gameplay
 void test('production guard rejects tool modules in every environment including query-suffixed lazy modules', () => {
   for (const environment of ['client', 'ssr', 'rsc']) {
     for (const id of [
-      'src/devtools/DevelopmentApp.tsx',
+      'src/client/devtools/DevelopmentApp.tsx',
       'src/games/engine.ts',
       'src/client/minigames/legacy/adapter.ts',
       'src/client/minigames/latency-lab/index.ts',
       'src/client/minigames/tilt-rally/index.ts',
       'src/client/minigames/target-practice/index.ts',
-      'src/controls/designer/Designer.tsx',
-      'src/controls/gallery/Gallery.tsx',
-      'src/controls/preview/Preview.tsx',
-      'src/client/MotionLab.tsx?client-reference',
-      'src/experiments/architecture/harness.ts',
+      'src/client/devtools/designer/Designer.tsx',
+      'src/client/devtools/gallery/Gallery.tsx',
+      'src/client/devtools/preview/Preview.tsx',
+      'src/client/devtools/motion-lab/MotionLab.tsx?client-reference',
+      'src/client/devtools/game-harness/harness.ts',
       'app/dev/game-harness/page.dev.tsx',
     ])
       assert.throws(

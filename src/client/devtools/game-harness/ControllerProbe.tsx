@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { ControllerSurface } from '../../controls/ControllerSurface.tsx';
+import { ControllerSurface } from '../../../controls/ControllerSurface.tsx';
 import {
   PreviewPorts,
   exportProbeLayout,

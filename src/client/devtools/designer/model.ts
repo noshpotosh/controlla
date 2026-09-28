@@ -7,12 +7,12 @@ import type {
   LayoutItem,
   Orientation,
   Rotation,
-} from '../api.ts';
-import { minSizeOf } from '../registry.ts';
-import { isSideways } from '../layout/rotation.ts';
+} from '../../../controls/api.ts';
+import { minSizeOf } from '../../../controls/registry.ts';
+import { isSideways } from '../../../controls/layout/rotation.ts';
 
-import { GRID, menuRect } from '../layout/schema.ts';
-import { overlaps } from '../layout/validate.ts';
+import { GRID, menuRect } from '../../../controls/layout/schema.ts';
+import { overlaps } from '../../../controls/layout/validate.ts';
 
 /** Minimum footprint for an item, accounting for rotation. */
 export function footprint(type: WidgetType, rotation: Rotation) {

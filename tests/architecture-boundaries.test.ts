@@ -3,16 +3,16 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { test } from 'node:test';
 import ts from 'typescript';
-import type { RoundSnapshot } from '../src/experiments/architecture/api.ts';
-import { games } from '../src/experiments/architecture/catalog.ts';
+import type { RoundSnapshot } from '../src/client/api/index.ts';
+import { games } from '../src/client/minigames/catalog.ts';
 import { neonHarvest } from '../src/client/minigames/neon-harvest/index.ts';
 import type { NeonHarvestState } from '../src/client/minigames/neon-harvest/game.ts';
-import { createScreen } from '../src/experiments/architecture/screen.ts';
-import { SessionProgress } from '../src/experiments/architecture/session.ts';
+import { createScreen } from '../src/client/game-screen/screen.ts';
+import { SessionProgress } from '../src/client/engine/progress.ts';
 
 // Tests run from the package directory, like the existing file-backed tests.
 const root = resolve(process.cwd());
-const spike = join(root, 'src/experiments/architecture');
+const harness = join(root, 'src/client/devtools/game-harness');
 const targetDirectory = join(root, 'src/client/minigames/neon-harvest');
 const api = join(root, 'src/client/api/index.ts');
 const catalog = join(root, 'src/client/minigames/catalog.ts');
@@ -193,7 +193,7 @@ void test('the catalog is the only production module that imports Neon Harvest',
     ...productionFiles(join(root, 'src')),
     ...productionFiles(join(root, 'app')),
   ]
-    .filter((file) => !within(file, targetDirectory) && !within(file, spike))
+    .filter((file) => !within(file, targetDirectory) && !within(file, harness))
     .flatMap((file) =>
       imports(file)
         .filter(
@@ -213,14 +213,14 @@ void test('game and harness dependency graphs stay outside shell, network owners
   const forbidden = [
     'src/client/shell',
     'src/client/runtime.ts',
-    'src/client/devtools',
     'server',
-    'src/controls/designer',
-    'src/controls/gallery',
-    'src/controls/preview',
+    'src/client/devtools/motion-lab',
+    'src/client/devtools/designer',
+    'src/client/devtools/gallery',
+    'src/client/devtools/preview',
   ].map((path) => join(root, path));
   const entries = [
-    join(spike, 'harness.ts'),
+    join(harness, 'harness.ts'),
     join(targetDirectory, 'index.ts'),
   ];
   for (const entry of entries) {
@@ -242,18 +242,20 @@ void test('game and harness dependency graphs stay outside shell, network owners
     true,
   )) {
     assert.ok(
-      !within(file, spike),
-      `the shipped shell reaches the architecture spike: ${relative(root, file)}`,
+      !within(file, harness),
+      `the shipped shell reaches the game harness: ${relative(root, file)}`,
     );
   }
   const screenForbidden = [
     ...forbidden,
-    join(spike, 'session.ts'),
-    join(spike, 'harness.ts'),
+    join(root, 'src/client/engine/progress.ts'),
+    join(harness, 'harness.ts'),
     join(root, 'src/games'),
-    join(spike, 'games'),
+    join(harness, 'games'),
   ];
-  for (const file of dependencies(join(spike, 'screen.ts'))) {
+  for (const file of dependencies(
+    join(root, 'src/client/game-screen/screen.ts'),
+  )) {
     assert.ok(
       !screenForbidden.some((directory) => within(file, directory)),
       `screen reaches authority or a concrete game: ${relative(root, file)}`,
@@ -421,13 +423,13 @@ function assertShellLeaf(entry: string, overrides = new Map<string, string>()) {
       'src/client/minigames',
       'src/core/session.ts',
       'src/core/pointer.ts',
-      'src/devtools',
-      'src/client/MotionLab.tsx',
+      'src/client/devtools',
+      'src/client/devtools/motion-lab/MotionLab.tsx',
       'src/experiments',
       'server',
-      'src/controls/designer',
-      'src/controls/gallery',
-      'src/controls/preview',
+      'src/client/devtools/designer',
+      'src/client/devtools/gallery',
+      'src/client/devtools/preview',
     ].map((path) => join(root, path)),
   ];
   for (const file of dependencies(entry, true, overrides)) {
@@ -456,7 +458,7 @@ void test('shell boundary rejects direct, type-only, alias, re-export and dynami
     "import './runtime-adapter.ts';",
     "export { default } from './App.tsx';",
     "import { games } from '../minigames/catalog.ts';",
-    "import '../MotionLab.tsx';",
+    "import '../devtools/motion-lab/MotionLab.tsx';",
   ]) {
     assert.throws(
       () => assertShellLeaf(entry, new Map([[entry, source]])),
@@ -541,9 +543,9 @@ void test('engine, screen, controls and backend cannot depend back on the shell;
   ].filter(
     (file) =>
       ![
-        'src/controls/designer',
-        'src/controls/gallery',
-        'src/controls/preview',
+        'src/client/devtools/designer',
+        'src/client/devtools/gallery',
+        'src/client/devtools/preview',
       ].some((path) => within(file, join(root, path))),
   );
   for (const entry of entries)
@@ -590,7 +592,71 @@ void test('shell composition can assemble catalog, screen and ports but cannot b
     "export * from '@/src/core/session.ts';",
     "const load = () => import('../network.ts');",
     "import '../motion.ts';",
-    "export * from '../../devtools/DevelopmentApp.tsx';",
+    "export * from '../devtools/DevelopmentApp.tsx';",
   ])
     assert.throws(() => assertShellComposition(source), /composition bypasses/);
+});
+
+const devtools = join(root, 'src/client/devtools');
+function assertNoDeveloperDependencies(
+  entry: string,
+  overrides = new Map<string, string>(),
+) {
+  for (const file of dependencies(entry, true, overrides))
+    assert.ok(
+      !within(file, devtools),
+      `${relative(root, entry)} reaches developer tools: ${relative(root, file)}`,
+    );
+}
+void test('all production source graphs exclude developer tools, including erased type edges', () => {
+  const entries = ['src', 'app', 'server']
+    .flatMap((directory) => productionFiles(join(root, directory)))
+    .filter(
+      (file) => !within(file, devtools) && !within(file, join(root, 'app/dev')),
+    );
+  assert.ok(
+    productionFiles(devtools).length > 10,
+    'the relocated tool graph is present',
+  );
+  for (const entry of entries) assertNoDeveloperDependencies(entry);
+  for (const old of [
+    'src/devtools',
+    'src/experiments/architecture',
+    'src/controls/designer',
+    'src/controls/gallery',
+    'src/controls/preview',
+    'src/client/MotionLab.tsx',
+  ])
+    assert.equal(
+      existsSync(join(root, old)),
+      false,
+      `${old} must not remain as a compatibility forward`,
+    );
+});
+void test('production tool exclusion rejects import forms and transitive helpers at the new paths', () => {
+  const entry = join(root, 'src/client/network.ts');
+  const helper = join(root, 'src/core/timing.ts');
+  for (const injected of [
+    "import './devtools/routing.ts';",
+    "import type { HarnessOptions } from './devtools/game-harness/harness.ts';",
+    "type T = import('./devtools/game-harness/harness.ts').HarnessOptions;",
+    "export * from '@/src/client/devtools/routing.ts';",
+    "const lazy = () => import('./devtools/routing.ts');",
+  ]) {
+    assert.throws(
+      () => assertNoDeveloperDependencies(entry, new Map([[entry, injected]])),
+      /reaches developer tools/,
+    );
+    assert.throws(
+      () =>
+        assertNoDeveloperDependencies(
+          entry,
+          new Map([
+            [entry, "export * from '../core/timing.ts';"],
+            [helper, injected.replaceAll('./devtools/', '../client/devtools/')],
+          ]),
+        ),
+      /reaches developer tools/,
+    );
+  }
 });

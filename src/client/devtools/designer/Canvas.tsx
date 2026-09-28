@@ -7,13 +7,17 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { RotateCw, Trash2 } from 'lucide-react';
-import type { WidgetType, ControllerLayout, GridRect } from '../api.ts';
-import { ControllerSurface } from '../ControllerSurface.tsx';
+import type {
+  WidgetType,
+  ControllerLayout,
+  GridRect,
+} from '../../../controls/api.ts';
+import { ControllerSurface } from '../../../controls/ControllerSurface.tsx';
 import type { useReadings } from '../gallery/readings.tsx';
 
-import { menuRect } from '../layout/schema.ts';
-import { layoutWidgets } from '../layout/widgets.ts';
-import { SensorTile } from '../SensorTile.tsx';
+import { menuRect } from '../../../controls/layout/schema.ts';
+import { layoutWidgets } from '../../../controls/layout/widgets.ts';
+import { SensorTile } from '../../../controls/SensorTile.tsx';
 import { clampRect } from './model.ts';
 
 export const DRAG_TYPE = 'application/x-controlla-control';

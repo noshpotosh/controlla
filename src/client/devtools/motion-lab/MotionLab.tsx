@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input';
 import type {
   ControllerPanelProps,
   MotionDiagnosticsPort,
-} from './shell/extensions.ts';
+} from '../../shell/extensions.ts';
 import type {
   MotionTrace,
   RawMotionSample,
   TraceSegment,
   Vec3,
-} from '../core/motion/trace.ts';
+} from '../../../core/motion/trace.ts';
 
 interface Step {
   label: string;
