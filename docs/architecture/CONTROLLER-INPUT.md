@@ -10,6 +10,8 @@ The injected environment provides local/authority clocks and asynchronous timeou
 
 Runtime retains its existing shell-facing methods as delegations. It owns transport routing and venue fallback, trusted configuration admission and ready ACKs, capability negotiation, page visibility and connection state, sensitivity persistence, sensor permissions/sampling, audio/wake lock, received cursor admission, playback composition, authority and progress. Runtime projects input epochs into the existing shell view before notifying subscribers.
 
+The subsequent [session-routing slice](SESSION-ROUTING.md) moves message routing and received cursor admission out of Runtime. Fallback selection, ready ACKs and lifecycle composition remain Runtime-owned.
+
 ## Lifecycle and compatibility
 
 Configuration generation or config-ID changes retire old ports and pending values and reset generation-specific sequences. Repeated configuration preserves the current lifetime. Inactivity retires ports, pending timers and held state while retaining same-generation sequence history. Resuming cannot revive retained ports or burst old frames. End/disposal are permanent and idempotent, including late timer callbacks and haptics. A timer also checks the pending-entry identity so a canceled callback cannot flush newer work for the same action.

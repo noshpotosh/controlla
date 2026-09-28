@@ -252,6 +252,7 @@ void test('controller maintains 60 Hz despite timer rounding and skips missed fr
     venueId: 'host',
     hostId: 'host',
   } as Identity;
+  runtime.network.onWelcome(runtime.view.identity);
   runtime.view.status = 'Connected';
   Reflect.get(runtime, 'controllerMessage').call(runtime, {
     type: 'config',

@@ -103,6 +103,7 @@ const modules = [
   'src/client/shell/DiagnosticsPanel.tsx',
   'src/client/runtime.ts',
   'src/client/controller-input/controller-input.ts',
+  'src/client/session-routing/session-router.ts',
   'src/client/GameCanvas.tsx',
   'src/client/shell/ControllerMenu.tsx',
   'src/client/controls/ControllerSurface.tsx',
