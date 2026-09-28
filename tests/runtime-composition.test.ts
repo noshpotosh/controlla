@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { Runtime } from '../src/client/runtime/runtime.ts';
+import {
+  Runtime,
+  runtimeBootId,
+} from '../src/client/runtime/runtime.ts';
 import type {
   Transport,
   LinkStats,
@@ -51,6 +54,14 @@ const identity: Identity = {
   room: 'TEST',
   token: 'fixture',
 };
+
+void test('runtime boot IDs fall back outside secure browser contexts', () => {
+  const first = runtimeBootId(null),
+    second = runtimeBootId(null);
+  assert.match(first, /^boot-[a-z0-9]+-\d+-[a-z0-9]+$/);
+  assert.notEqual(first, second);
+});
+
 void test('injected transport starts once and all callbacks, probes and statistics retire on end/close', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
   const network = new FakeTransport(),
