@@ -981,7 +981,10 @@ void test('production tool exclusion rejects import forms and transitive helpers
           entry,
           new Map([
             [entry, "export * from '@/src/client/engine/timing.ts';"],
-            [helper, injected.replaceAll('@/src/client/devtools/', '../devtools/')],
+            [
+              helper,
+              injected.replaceAll('@/src/client/devtools/', '../devtools/'),
+            ],
           ]),
         ),
       /reaches developer tools/,
@@ -1051,6 +1054,10 @@ const playbackDirectory = join(root, 'src/client/runtime/playback');
 function assertPlaybackBoundary(overrides = new Map<string, string>()) {
   const allowed = [
     'src/client/engine/replication.ts',
+    'src/client/engine/history.ts',
+    'src/client/engine/progress.ts',
+    'src/client/engine/messages.ts',
+    'src/client/engine/protocol.ts',
     'src/client/engine/timing.ts',
     'src/client/game-screen/port.ts',
     'src/client/game-screen/screen.ts',
@@ -1111,7 +1118,10 @@ void test('playback rejects direct, erased, indirect, opaque and external depend
   }
 });
 
-const controllerInputDirectory = join(root, 'src/client/runtime/controller-input');
+const controllerInputDirectory = join(
+  root,
+  'src/client/runtime/controller-input',
+);
 function assertControllerInputBoundary(overrides = new Map<string, string>()) {
   const allowed = [
     'src/client/controls/api.ts',
@@ -1237,9 +1247,13 @@ void test('controller input rejects erased, indirect, dynamic, external and brow
   }
 });
 
-const sessionRoutingDirectory = join(root, 'src/client/runtime/session-routing');
+const sessionRoutingDirectory = join(
+  root,
+  'src/client/runtime/session-routing',
+);
 function assertSessionRoutingBoundary(overrides = new Map<string, string>()) {
   const allowed = [
+    'src/client/runtime/cursor-contracts.ts',
     'src/shared/room.ts',
     'src/core/types.ts',
     'src/client/engine/messages.ts',

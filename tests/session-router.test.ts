@@ -1,3 +1,4 @@
+import { CursorPlayback } from '../src/client/runtime/playback/cursor-playback.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { SessionRouter } from '../src/client/runtime/session-routing/session-router.ts';
@@ -46,6 +47,7 @@ function fixture(role: Role = 'host') {
       { id: 'venue', name: 'Venue', connected: true },
     ],
   };
+  const cursors = new CursorPlayback();
   const router = new SessionRouter(
     {
       localTime: () => time,
@@ -53,6 +55,14 @@ function fixture(role: Role = 'host') {
       defer: (fn) => queued.push(fn),
     },
     {
+      cursors: {
+        roster: (id, roster) => cursors.setRoster(id, roster),
+        configure: (id, message) => cursors.configure(id, message),
+        input: (player, frame, at, local) =>
+          cursors.input(player, frame, at, local),
+        control: (player, message) => cursors.control(player, message),
+        clear: () => cursors.clear(),
+      },
       send: (to, channel, data) => sent.push({ to, channel, data }),
       authorityInput: (id, data) => input.push({ id, data }),
       authorityControl: (id, message) => control.push({ id, message }),
@@ -94,6 +104,7 @@ function fixture(role: Role = 'host') {
   };
   return {
     router,
+    cursors: () => cursors.cursors(time),
     identity,
     roster,
     sent,
@@ -249,7 +260,7 @@ void test('malformed direct frames are rejected but valid stale cursor frames st
   h.router.receive('local', 'input', h.frame({ time: 10200 }));
   h.router.receive('local', 'input', h.frame({ generation: 6 }));
   assert.equal(h.input.length, 3);
-  assert.equal(h.router.cursors().length, 0);
+  assert.equal(h.cursors().length, 0);
 });
 
 for (const role of ['host', 'display'] as const)
@@ -257,11 +268,11 @@ for (const role of ['host', 'display'] as const)
     const h = fixture(role);
     h.router.receive(h.local, 'input', h.frame());
     h.router.receive(h.local, 'ctrl', { type: 'ready', generation: 7 });
-    assert.equal(h.router.cursors().length, 0);
+    assert.equal(h.cursors().length, 0);
     h.ready();
     h.router.receive(h.local, 'input', h.frame({ seq: 65535 }));
     h.router.receive(h.local, 'input', h.frame({ seq: 0, x: 0.5 }));
-    const snapshot = h.router.cursors();
+    const snapshot = h.cursors();
     assert.equal(snapshot[0].point.x, 0.5);
     assert.throws(() => {
       (snapshot[0].point as { x: number }).x = 0;
@@ -269,25 +280,25 @@ for (const role of ['host', 'display'] as const)
     h.router.receive(h.local, 'input', h.frame({ seq: 65535 }));
     h.at(10900);
     h.router.receive(h.local, 'input', h.frame({ seq: 0 }));
-    assert.equal(h.router.cursors()[0].point.x, 0.5);
+    assert.equal(h.cursors()[0].point.x, 0.5);
     h.at(11000);
-    assert.equal(h.router.cursors().length, 0);
+    assert.equal(h.cursors().length, 0);
     assert.equal(snapshot[0].point.x, 0.5);
     h.router.receive(h.local, 'input', h.frame({ seq: 1 }));
     h.router.receive(h.local, 'ctrl', { type: 'hello' });
     h.router.receive(h.local, 'input', h.frame({ seq: 2 }));
-    assert.equal(h.router.cursors().length, 0);
+    assert.equal(h.cursors().length, 0);
     h.ready();
     h.router.receive(h.local, 'input', h.frame({ seq: 2 }));
-    assert.equal(h.router.cursors().length, 1);
+    assert.equal(h.cursors().length, 1);
     h.roster.players.find((p) => p.id === h.local)!.connected = false;
     h.router.setRoster(h.roster);
-    assert.equal(h.router.cursors().length, 0);
+    assert.equal(h.cursors().length, 0);
     h.roster.players.find((p) => p.id === h.local)!.connected = true;
     h.router.setRoster(h.roster);
     h.router.receive(h.local, 'ctrl', { type: 'ready', generation: 7 });
     h.router.receive(h.local, 'input', h.frame({ seq: 3 }));
-    assert.equal(h.router.cursors().length, 0);
+    assert.equal(h.cursors().length, 0);
   });
 
 void test('host-local delivery is deferred, ordered, and copied at scheduling time', () => {
@@ -314,7 +325,7 @@ for (const operation of ['disconnect', 'welcome', 'end', 'dispose'] as const)
     else h.router[operation]();
     h.flush();
     assert.equal(h.display.length, 0);
-    assert.equal(h.router.cursors().length, 0);
+    assert.equal(h.cursors().length, 0);
     const before = h.sent.length + h.control.length + h.input.length;
     if (operation !== 'welcome') {
       h.router.sendUp({ type: 'hello' });
@@ -328,14 +339,14 @@ for (const operation of ['disconnect', 'welcome', 'end', 'dispose'] as const)
     h.router.receive('local', 'ctrl', { type: 'ready', generation: 7 });
     h.router.receive('local', 'input', h.frame({ seq: 2 }));
     assert.equal(
-      h.router.cursors().length,
+      h.cursors().length,
       0,
       'old ACK alone cannot restore admission',
     );
     h.ready();
     h.router.receive('local', 'input', h.frame({ seq: 3 }));
     assert.equal(
-      h.router.cursors().length,
+      h.cursors().length,
       operation === 'end' || operation === 'dispose' ? 0 : 1,
     );
     h.router.dispose();

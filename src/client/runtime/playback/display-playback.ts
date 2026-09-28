@@ -1,3 +1,8 @@
+import { CursorPlayback } from './cursor-playback.ts';
+import { ProgressAssembler } from '../../engine/history.ts';
+import { completedResults } from '../../engine/progress.ts';
+import type { Message } from '../../engine/messages.ts';
+import type { Progress } from '../../api/index.ts';
 import type {
   PresentationEvent,
   ReadonlyDeep,
@@ -43,6 +48,29 @@ export interface PlaybackEffects {
 
 /** Read-only display playback; routing and browser resources belong to its caller. */
 export class DisplayPlayback {
+  readonly cursors = new CursorPlayback();
+  private readonly assembler = new ProgressAssembler();
+  private progress: ReadonlyDeep<Progress> = freezeSnapshot({
+    revision: 0,
+    totals: {},
+    rounds: [],
+  });
+  getProgress() {
+    return this.progress;
+  }
+  private history: ReturnType<typeof completedResults> = [];
+  completedResults() {
+    return structuredClone(this.history);
+  }
+  acceptProgress(message: Message) {
+    if (this.inactive) return false;
+    const progress = this.assembler.receive(message);
+    if (!progress) return false;
+    this.history = completedResults(progress);
+    this.progress = freezeSnapshot(structuredClone(progress));
+    return true;
+  }
+
   private readonly buffer: SnapshotTimeline<RoundSnapshot<object>>;
   private resyncPending = false;
   private displayProblem: string | null = null;
@@ -153,12 +181,14 @@ export class DisplayPlayback {
   }
 
   disconnect() {
+    this.cursors.clear();
     this.events = [];
   }
   reconnect() {
     if (!this.inactive) this.resyncPending = false;
   }
   end() {
+    this.cursors.dispose();
     this.inactive = true;
     this.events = [];
   }

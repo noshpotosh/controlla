@@ -1,7 +1,7 @@
-import { decodeInput, newer, type InputFrame } from '../../engine/protocol.ts';
+import { decodeInput, type InputFrame } from '../../engine/protocol.ts';
 import type { Channel, Message } from '../../engine/messages.ts';
 import type { Identity, Roster } from '../../../shared/room.ts';
-import type { Point } from '../../../core/types.ts';
+import type { CursorObservations } from '../cursor-contracts.ts';
 
 type RoutingIdentity = Pick<Identity, 'id' | 'role' | 'hostId' | 'venueId'>;
 export type ControllerRoute = 'venue' | 'direct-to-session';
@@ -17,6 +17,7 @@ export interface RoutingEffects {
   authorityControl(from: string, message: Message): void;
   display(channel: Channel, message: Message): void;
   controller(message: Message): void;
+  cursors: CursorObservations;
 }
 /** Session routing policy; transport and application lifecycle remain external. */
 export class SessionRouter {
@@ -26,16 +27,6 @@ export class SessionRouter {
   private active = false;
   private terminal = false;
   private epoch = 0;
-  private localCursors = new Map<
-    string,
-    { point: Point; at: number; color: string; name: string }
-  >();
-  // Cursor admission mirrors the local phone's config/ACK and binary ordering.
-  // Remote venues observe the same trusted config as they relay it to the phone.
-  private cursorInputs = new Map<
-    string,
-    { generation: number; ready: boolean; seq: number | null }
-  >();
   constructor(
     private readonly environment: RoutingEnvironment,
     private readonly effects: RoutingEffects,
@@ -54,18 +45,7 @@ export class SessionRouter {
   setRoster(roster: Roster) {
     if (this.terminal) return;
     this.roster = structuredClone(roster);
-    for (const id of this.cursorInputs.keys())
-      if (
-        !roster.players.some(
-          (player) =>
-            player.id === id &&
-            player.connected &&
-            player.venueId === this.identity?.id,
-        )
-      ) {
-        this.cursorInputs.delete(id);
-        this.localCursors.delete(id);
-      }
+    this.effects.cursors.roster(this.identity?.id ?? null, roster);
   }
   setControllerRoute(route: ControllerRoute) {
     if (!this.terminal) this.controllerPath = route;
@@ -82,7 +62,7 @@ export class SessionRouter {
   disconnect() {
     this.active = false;
     this.epoch++;
-    this.clearLocalCursors();
+    this.effects.cursors.clear();
   }
   end() {
     if (this.terminal) return;
@@ -108,7 +88,7 @@ export class SessionRouter {
     const p = this.roster.players.find((p) => p.id === id);
     if (!p) return;
     if (p.venueId === this.identity?.id) {
-      this.cursorConfig(id, message);
+      this.effects.cursors.configure(id, message);
       this.effects.send(id, 'ctrl', message);
     } else
       this.effects.send(p.venueId, 'ctrl', {
@@ -155,25 +135,12 @@ export class SessionRouter {
         } catch {
           return;
         }
-        const cursor = this.cursorInputs.get(from);
-        const time = this.environment.authorityTime();
-        if (
-          player.connected &&
-          player.venueId === me.id &&
-          cursor?.ready &&
-          frame.generation === cursor.generation &&
-          frame.time <= time + 100 &&
-          time - frame.time <= 2000 &&
-          (cursor.seq === null || newer(frame.seq, cursor.seq))
-        ) {
-          cursor.seq = frame.seq;
-          this.localCursors.set(from, {
-            point: { x: frame.x, y: frame.y },
-            at: this.environment.localTime(),
-            color: player.color,
-            name: player.name,
-          });
-        }
+        this.effects.cursors.input(
+          player,
+          frame,
+          this.environment.authorityTime(),
+          this.environment.localTime(),
+        );
         if (me.role === 'host') this.effects.authorityInput(from, data);
         else {
           const packet = new Uint8Array(data.byteLength + 1);
@@ -182,15 +149,7 @@ export class SessionRouter {
           this.effects.send(me.hostId, 'input', packet.buffer);
         }
       } else if (channel === 'ctrl') {
-        const cursor = this.cursorInputs.get(from);
-        if (cursor && player.connected && player.venueId === me.id) {
-          if (data.type === 'ready' && data.generation === cursor.generation)
-            cursor.ready = true;
-          else if (data.type === 'hello') {
-            cursor.ready = false;
-            this.localCursors.delete(from);
-          }
-        }
+        this.effects.cursors.control(player, data);
         if (me.role === 'host') this.effects.authorityControl(from, data);
         else
           this.effects.send(me.hostId, 'ctrl', {
@@ -233,46 +192,10 @@ export class SessionRouter {
             (p) => p.id === data.target && p.venueId === me.id,
           )
         ) {
-          this.cursorConfig(data.target, data.message);
+          this.effects.cursors.configure(data.target, data.message);
           this.effects.send(data.target, 'ctrl', data.message);
         }
       } else this.effects.display(channel, data);
     }
-  }
-  private cursorConfig(playerId: string, message: Message) {
-    if (
-      !this.active ||
-      this.terminal ||
-      !message ||
-      message.type !== 'config' ||
-      message.config?.schemaVersion !== 1 ||
-      !Number.isInteger(message.config.generation) ||
-      message.config.generation < 0 ||
-      message.config.generation > 65535 ||
-      !this.roster.players.some(
-        (player) =>
-          player.id === playerId &&
-          player.connected &&
-          player.venueId === this.identity?.id,
-      )
-    )
-      return;
-    const generation = message.config.generation as number;
-    if (this.cursorInputs.get(playerId)?.generation === generation) return;
-    this.cursorInputs.set(playerId, { generation, ready: false, seq: null });
-    this.localCursors.delete(playerId);
-  }
-  private clearLocalCursors() {
-    this.cursorInputs.clear();
-    this.localCursors.clear();
-  }
-  cursors() {
-    return Object.freeze(
-      [...this.localCursors.entries()]
-        .filter(([, c]) => this.environment.localTime() - c.at < 1000)
-        .map(([id, c]) =>
-          Object.freeze({ id, ...c, point: Object.freeze({ ...c.point }) }),
-        ),
-    );
   }
 }

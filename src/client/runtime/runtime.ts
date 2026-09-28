@@ -7,7 +7,6 @@ import {
 } from './playback/display-playback.ts';
 import { games, findGame } from '../minigames/catalog.ts';
 import { catalogSnapshotPolicy } from '../engine/snapshots.ts';
-import { ProgressAssembler } from '../engine/history.ts';
 import { completedResults } from '../engine/progress.ts';
 import { freezeSnapshot } from '../game-screen/screen.ts';
 import type { ScreenPort, ScreenFrame } from '../game-screen/port.ts';
@@ -73,7 +72,6 @@ export class Runtime {
   readonly network: Transport;
   clock = new ClockSync();
   private readonly playback: DisplayPlayback;
-  private progress = new ProgressAssembler();
   private endedAuthoritySummary: unknown = null;
   readonly screenPort: ScreenPort = {
     advanceFrame: () => this.advanceFrame(),
@@ -158,6 +156,16 @@ export class Runtime {
         defer: (callback) => queueMicrotask(callback),
       },
       {
+        cursors: {
+          roster: (id, roster) => this.playback.cursors.setRoster(id, roster),
+          configure: (id, message) =>
+            this.playback.cursors.configure(id, message),
+          input: (player, frame, time, local) =>
+            this.playback.cursors.input(player, frame, time, local),
+          control: (player, message) =>
+            this.playback.cursors.control(player, message),
+          clear: () => this.playback.cursors.clear(),
+        },
         send: (to, channel, data) => this.network.send(to, channel, data),
         authorityInput: (id, data) => this.authority?.input(id, data),
         authorityControl: (from, message) =>
@@ -336,10 +344,9 @@ export class Runtime {
     this.clock.observe(msg.t0, msg.t1, msg.t2, now());
   }
   private acceptProgress(msg: Message) {
-    const progress = this.progress.receive(msg);
-    if (!progress) return;
-    this.view.progress = freezeSnapshot(structuredClone(progress));
-    this.view.history = completedResults(progress);
+    if (!this.playback.acceptProgress(msg)) return;
+    this.view.progress = this.playback.getProgress();
+    this.view.history = this.playback.completedResults();
     this.notify();
   }
   private acceptPhase(msg: Message) {
@@ -585,7 +592,7 @@ export class Runtime {
     return this.advanceFrame().snapshot;
   }
   cursors() {
-    return this.router.cursors();
+    return this.playback.cursors.cursors(now());
   }
   private playEvent(event: PresentationEvent) {
     if (!['hit', 'prompt', 'end'].includes(event.kind)) return;
