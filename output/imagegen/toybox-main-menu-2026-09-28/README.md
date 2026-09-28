@@ -1,5 +1,7 @@
 # Toybox main-menu concepts
 
+Follow-up: [three further toy-world explorations](../toybox-main-menu-explorations-2026-09-28/README.md) try a pop-up playset, display window, and wooden train station.
+
 Three additional main-menu mockups following the user's newer wooden Toybox game-screen reference. THE TOYBOX is a working title taken from that reference; the application has not been renamed.
 
 | Concept | Image | Design intent |
