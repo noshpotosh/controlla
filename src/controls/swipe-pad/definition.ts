@@ -1,5 +1,5 @@
 import { rotateDirection, rotateVector } from '../layout/rotation.ts';
-import type { ControlDefinition, SwipeOutput } from '../types.ts';
+import type { ControlDefinition, SwipeOutput } from '../api.ts';
 
 export interface SwipePadProps {
   /** Shortest swipe that counts, as a fraction of the pad's shorter side. */

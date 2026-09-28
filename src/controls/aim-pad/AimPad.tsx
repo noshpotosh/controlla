@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import { ControlFrame } from '../kit/ControlFrame.tsx';
 import { useTrackedPointer } from '../kit/useTrackedPointer.ts';
-import type { ControlViewProps, Vector } from '../types.ts';
+import type { Vector } from '../api.ts';
+import type { ControlViewProps } from '../types.ts';
 import { AimPadInput } from './logic.ts';
 
 export function AimPad({ widget, port, props }: ControlViewProps) {

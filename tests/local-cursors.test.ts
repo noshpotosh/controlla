@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Runtime } from '../src/client/runtime.ts';
 import { encodeInput } from '../src/core/protocol.ts';
 import { defaultCapabilities, resolveConfig } from '../src/core/config.ts';
-import { pointerManifest } from './fixtures/games.ts';
+import { pointerSpec } from './fixtures/games.ts';
 import type { InputFrame, Message, Roster } from '../src/core/types.ts';
 
 function localVenue(t: TestContext, role: 'host' | 'display') {
@@ -63,7 +63,7 @@ function localVenue(t: TestContext, role: 'host' | 'display') {
   const config = (generation: number) => {
     const message = {
       type: 'config',
-      config: resolveConfig(pointerManifest, defaultCapabilities(), generation),
+      config: resolveConfig(pointerSpec, defaultCapabilities(), generation),
     };
     if (role === 'host')
       (

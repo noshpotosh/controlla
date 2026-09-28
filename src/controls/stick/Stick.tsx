@@ -5,7 +5,8 @@ import {
   useTrackedPointer,
   type TrackedPoint,
 } from '../kit/useTrackedPointer.ts';
-import type { ControlViewProps, StickOutput, Vector } from '../types.ts';
+import type { StickOutput, Vector } from '../api.ts';
+import type { ControlViewProps } from '../types.ts';
 import type { StickProps } from './definition.ts';
 import { clampOrigin, stickVector } from './logic.ts';
 

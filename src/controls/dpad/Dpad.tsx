@@ -11,7 +11,8 @@ import {
   useTrackedPointer,
   type TrackedPoint,
 } from '../kit/useTrackedPointer.ts';
-import type { ControlViewProps, DpadOutput } from '../types.ts';
+import type { DpadOutput } from '../api.ts';
+import type { ControlViewProps } from '../types.ts';
 import type { DpadProps } from './definition.ts';
 import { dpadDirection, sameDirection } from './logic.ts';
 

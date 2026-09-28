@@ -3,7 +3,7 @@
 // look identical everywhere: caption (top-left), hint (bottom), active state,
 // variant class and focus ring. Controls only draw their play area.
 import type { HTMLAttributes, ReactNode } from 'react';
-import type { Widget } from '../../core/types.ts';
+import type { Widget } from '../api.ts';
 
 export interface ControlFrameProps extends HTMLAttributes<HTMLElement> {
   /** Render as a native <button> for controls that are one big button. */

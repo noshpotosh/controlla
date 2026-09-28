@@ -6,7 +6,8 @@ import {
   rotate,
   identity,
 } from '../core/calibration.ts';
-import type { Capabilities, Quaternion } from '../core/types.ts';
+import type { Capabilities } from '../controls/api.ts';
+import type { Quaternion } from '../core/types.ts';
 import {
   RingBuffer,
   toRawSample,

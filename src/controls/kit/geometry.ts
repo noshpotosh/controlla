@@ -1,5 +1,5 @@
 // Pure gesture math shared by controls. No DOM, so it runs under node:test.
-import type { SwipeDirection, Vector } from '../types.ts';
+import type { SwipeDirection, Vector } from '../api.ts';
 
 export const clamp = (x: number, low = -1, high = 1) =>
   Math.min(high, Math.max(low, x));

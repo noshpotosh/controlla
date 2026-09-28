@@ -1,14 +1,15 @@
+import type {
+  LayoutPreset,
+  ControllerSpec,
+  WidgetType,
+  ControllerLayout,
+  GridRect,
+  Orientation,
+} from './api.ts';
 // Layout presets: arrangements the designer starts new layouts from, and
 // that games without a chosen layout fall back to.
-import type { Manifest, WidgetType } from '../core/types.ts';
-import {
-  emptyLayout,
-  isMotion,
-  NO_MOTION,
-  type ControllerLayout,
-  type GridRect,
-  type Orientation,
-} from './layout/schema.ts';
+
+import { emptyLayout, isMotion, NO_MOTION } from './layout/schema.ts';
 
 /** Slots per preset, in fill order. */
 export const LAYOUTS = {
@@ -20,9 +21,7 @@ export const LAYOUTS = {
   duo: ['a', 'b'],
   /** Movement plus two actions: left/right thumbs in landscape. */
   gamepad: ['primary', 'a', 'b'],
-} as const satisfies Record<string, readonly string[]>;
-
-export type LayoutPreset = keyof typeof LAYOUTS;
+} as const satisfies Record<LayoutPreset, readonly string[]>;
 
 const r = (x: number, y: number, w: number, h: number): GridRect => ({
   x,
@@ -129,27 +128,23 @@ export function templateLayout(
  * under the input's name).
  */
 export function gameDefaultLayout(
-  manifest: Pick<Manifest, 'id' | 'name' | 'inputs' | 'layout'>,
+  spec: Pick<ControllerSpec, 'id' | 'name' | 'inputs' | 'layout'>,
 ): ControllerLayout {
-  const touch = Object.entries(manifest.inputs).flatMap(([input, need]) => {
+  const touch = Object.entries(spec.inputs).flatMap(([input, need]) => {
       const type = isMotion(need.prefer) ? need.fallback : need.prefer;
       return type && !isMotion(type) ? [{ id: input, type, need }] : [];
     }),
-    preset = manifest.layout ?? defaultLayout(touch.length),
+    preset = spec.layout ?? defaultLayout(touch.length),
     slots: readonly string[] = LAYOUTS[preset],
     placed = assignSlots(
       preset,
       touch.map((t) => ({ ...t, slot: t.need.slot })),
     ),
     motion = { ...NO_MOTION };
-  for (const need of Object.values(manifest.inputs))
+  for (const need of Object.values(spec.inputs))
     if (isMotion(need.prefer)) motion[need.prefer] = true;
   return {
-    ...emptyLayout(
-      `${manifest.id}-default`,
-      `${manifest.name} (default)`,
-      'portrait',
-    ),
+    ...emptyLayout(`${spec.id}-default`, `${spec.name} (default)`, 'portrait'),
     motion,
     items: placed.map(({ id, type, need, slot }) => ({
       name: id,

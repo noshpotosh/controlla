@@ -3,10 +3,10 @@
 // surface, rotated if placed that way. Used by the live controller, the phone
 // preview, the designer and the gallery, so they all look identical.
 import type { CSSProperties, ReactNode } from 'react';
-import type { Widget } from '../core/types.ts';
+import type { Widget, ControlPort } from './api.ts';
 import { RotationContext } from './kit/rotation-context.ts';
 import { definitionFor } from './registry.ts';
-import type { ControlPort } from './types.ts';
+
 import { views } from './views.ts';
 
 export function ControlView({

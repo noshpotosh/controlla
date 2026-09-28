@@ -1,5 +1,5 @@
 import { dominantDirection, round } from '../kit/geometry.ts';
-import type { SwipeOutput } from '../types.ts';
+import type { SwipeOutput } from '../api.ts';
 
 /**
  * Classify a finished swipe. `dx`/`dy` are in px, normalised by the pad's

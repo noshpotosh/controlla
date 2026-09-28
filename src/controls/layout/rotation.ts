@@ -1,8 +1,7 @@
 // 90°-step rotation for placed controls. Controls compute in their own
 // (unrotated) frame; these helpers convert touches in and outputs back out,
 // so games always receive values in the frame the player sees.
-import type { SwipeDirection, Vector } from '../types.ts';
-import type { Rotation } from './schema.ts';
+import type { SwipeDirection, Vector, Rotation } from '../api.ts';
 
 const turns = (r: Rotation) => (((r / 90) % 4) + 4) % 4;
 // Avoid -0 so outputs compare cleanly.

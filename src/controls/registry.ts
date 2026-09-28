@@ -1,7 +1,12 @@
 // The single source of truth for which controls exist and how they report.
 // Pure data (no React): core, session and runtime code import this.
-import type { WidgetType } from '../core/types.ts';
-import type { Channel, ControlDefinition, OutputKind } from './types.ts';
+import type {
+  WidgetType,
+  Channel,
+  ControlDefinition,
+  OutputKind,
+} from './api.ts';
+
 import { button } from './button/definition.ts';
 import { dpad } from './dpad/definition.ts';
 import { stick } from './stick/definition.ts';

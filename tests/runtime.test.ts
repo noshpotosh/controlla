@@ -2,7 +2,7 @@ import {
   harvestPosition,
   type NeonHarvestState,
 } from '../src/client/minigames/neon-harvest/game.ts';
-import { pointerManifest } from './fixtures/games.ts';
+import { pointerSpec } from './fixtures/games.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -241,11 +241,7 @@ void test('controller maintains 60 Hz despite timer rounding and skips missed fr
     hostId: 'host',
   } as Identity;
   runtime.view.status = 'Connected';
-  runtime.view.config = resolveConfig(
-    pointerManifest,
-    defaultCapabilities(),
-    1,
-  );
+  runtime.view.config = resolveConfig(pointerSpec, defaultCapabilities(), 1);
   const frames: number[] = [];
   t.mock.method(
     runtime.network,

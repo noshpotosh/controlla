@@ -5,7 +5,7 @@ import type {
   GameDescriptor,
   Point,
 } from '../../src/client/api/index.ts';
-import { controllerManifest } from '../../src/client/engine/input.ts';
+import { controllerSpec } from '../../src/client/engine/input.ts';
 export interface ProbeState {
   scores: Record<string, number>;
   cursors: Record<string, Point>;
@@ -111,6 +111,6 @@ export const steeringProbe: GameDescriptor<ProbeState> = {
     controller: { layout: 'steer-and-boost' },
   },
 };
-export const pointerManifest = controllerManifest(buttonProbe);
-export const steeringManifest = controllerManifest(steeringProbe);
-export const controlManifests = [pointerManifest, steeringManifest];
+export const pointerSpec = controllerSpec(buttonProbe);
+export const steeringSpec = controllerSpec(steeringProbe);
+export const controlSpecs = [pointerSpec, steeringSpec];

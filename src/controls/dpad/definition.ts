@@ -1,5 +1,5 @@
 import { rotateVector } from '../layout/rotation.ts';
-import type { ControlDefinition, Vector } from '../types.ts';
+import type { ControlDefinition, Vector } from '../api.ts';
 
 export interface DpadProps {
   /** 4-way (arrows only) or 8-way (adds diagonals). */

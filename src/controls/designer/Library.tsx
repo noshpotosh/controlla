@@ -4,20 +4,26 @@
 import { useState } from 'react';
 import { Copy, Pencil, Plus, Smartphone, Trash2 } from 'lucide-react';
 import { games as catalog } from '../../client/minigames/catalog.ts';
-import { controllerManifest } from '../../client/engine/input.ts';
-const manifests = catalog.map(controllerManifest);
+import type {
+  ControllerSpec,
+  ControllerLayout,
+  Orientation,
+  LayoutPreset,
+} from '../api.ts';
+const specs: ControllerSpec[] = catalog.map(({ id, name, controls }) => ({
+  id,
+  name,
+  ...controls,
+}));
 import { COLORS } from '../../core/types.ts';
 import { layouts } from '../../layouts/index.ts';
 import { ControllerSurface } from '../ControllerSurface.tsx';
-import {
-  MOTION,
-  slugify,
-  type ControllerLayout,
-  type Orientation,
-} from '../layout/schema.ts';
+
+import { MOTION, slugify } from '../layout/schema.ts';
 import { checkAssignment } from '../layout/validate.ts';
 import { layoutWidgets } from '../layout/widgets.ts';
-import { LAYOUTS, templateLayout, type LayoutPreset } from '../layouts.ts';
+
+import { LAYOUTS, templateLayout } from '../layouts.ts';
 import { emptyLayout } from '../layout/schema.ts';
 import { SensorTile } from '../SensorTile.tsx';
 import { canSave, createLayout, deleteLayout } from './api.ts';
@@ -25,7 +31,7 @@ import { canSave, createLayout, deleteLayout } from './api.ts';
 const noopPort = { value() {}, press() {}, haptic() {} };
 
 export const usedBy = (id: string) =>
-  manifests.filter((m) => m.controller?.layout === id);
+  specs.filter((m) => m.controller?.layout === id);
 
 export function Library({
   open,

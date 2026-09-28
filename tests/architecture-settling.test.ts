@@ -3,11 +3,8 @@ import test from 'node:test';
 import { ARBITRATION_MS } from '../src/core/arbitration.ts';
 import { SessionAuthority } from '../src/core/session.ts';
 import { encodeInput } from '../src/core/protocol.ts';
-import type {
-  ControllerConfig,
-  InputFrame,
-  Player,
-} from '../src/core/types.ts';
+import type { ControllerConfig } from '../src/controls/api.ts';
+import type { InputFrame, Player } from '../src/core/types.ts';
 import type {
   GameContext,
   PresentationEvent,

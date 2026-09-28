@@ -17,8 +17,12 @@ import {
 } from '../src/controls/layout/validate.ts';
 import { layouts } from '../src/layouts/index.ts';
 import { defaultCapabilities, resolveConfig } from '../src/core/config.ts';
-import type { Manifest, Widget } from '../src/core/types.ts';
-import type { ControlPort, Vector } from '../src/controls/types.ts';
+import type {
+  ControllerSpec,
+  Widget,
+  ControlPort,
+  Vector,
+} from '../src/controls/api.ts';
 
 void test('absolute aim fills every corner of a rectangular pad without radial clamping', () => {
   const size = { width: 300, height: 180 };
@@ -175,24 +179,17 @@ void test('aim pad is registered as a validated signed vector and aim-and-pulse 
   const layout = JSON.parse(JSON.stringify(layouts['aim-and-pulse']));
   assert.ok(isControllerLayout(layout));
   assert.deepEqual(validateLayout(layout), []);
-  const manifest: Manifest = {
+  const spec: ControllerSpec = {
     id: 'aim-pad-fixture',
     name: 'Aim pad fixture',
-    players: { min: 1, max: 8 },
     inputs: {
       aim: { required: true, prefer: 'pointer', fallback: 'aim-pad' },
       pulse: { required: true, prefer: 'button' },
     },
     controller: { layout: 'aim-and-pulse' },
-    expectedDurationSec: 30,
-    scoring: 'points',
-    onPlayerDropped: 'freeze',
-    retroactiveInput: false,
-    interpolatable: [],
-    discrete: [],
   };
-  assert.deepEqual(checkAssignment(manifest, layout), []);
-  const touch = resolveConfig(manifest, defaultCapabilities(), 4);
+  assert.deepEqual(checkAssignment(spec, layout), []);
+  const touch = resolveConfig(spec, defaultCapabilities(), 4);
   assert.deepEqual(
     touch.widgets.map((widget) => [widget.action, widget.type, widget.label]),
     [
@@ -207,5 +204,5 @@ void test('aim pad is registered as a validated signed vector and aim-and-pulse 
     present: true,
     permission: 'granted',
   };
-  assert.equal(resolveConfig(manifest, motion, 5).widgets[0].type, 'pointer');
+  assert.equal(resolveConfig(spec, motion, 5).widgets[0].type, 'pointer');
 });

@@ -1,5 +1,5 @@
 import { clamp, round } from '../kit/geometry.ts';
-import type { Vector } from '../types.ts';
+import type { Vector } from '../api.ts';
 
 export interface AimPadPoint extends Vector {
   width: number;

@@ -2,7 +2,7 @@
 // Stand-in for motion inputs (pointer, tilt, shake) and other unported
 // widgets wherever there's no live Runtime: the designer and phone preview.
 import { Move3d, Smartphone, Vibrate } from 'lucide-react';
-import type { Widget } from '../core/types.ts';
+import type { Widget } from './api.ts';
 
 const SENSORS: Partial<
   Record<Widget['type'], { Icon: typeof Move3d; hint: string }>

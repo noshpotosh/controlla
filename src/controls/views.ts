@@ -1,7 +1,7 @@
 // Client-side half of the registry: control type → React view.
 // Keep in step with registry.ts (tests/controls.test.ts checks this).
 import type { ComponentType } from 'react';
-import type { WidgetType } from '../core/types.ts';
+import type { WidgetType } from './api.ts';
 import type { ControlViewProps } from './types.ts';
 import { Button } from './button/Button.tsx';
 import { Dpad } from './dpad/Dpad.tsx';

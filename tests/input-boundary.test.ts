@@ -1,6 +1,6 @@
 import {
-  pointerManifest,
-  steeringManifest,
+  pointerSpec,
+  steeringSpec,
   buttonProbe,
   steeringProbe,
 } from './fixtures/games.ts';
@@ -18,8 +18,8 @@ import type { GameInput, GameDescriptor } from '../src/client/api/index.ts';
 import { defaultCapabilities, resolveConfig } from '../src/core/config.ts';
 import { decodeInput, encodeInput, INPUT_BYTES } from '../src/core/protocol.ts';
 import { parseControlValue, valueFitsEnvelope } from '../src/controls/value.ts';
+import type { ControllerConfig } from '../src/controls/api.ts';
 import type {
-  ControllerConfig,
   Identity,
   InputFrame,
   Message,
@@ -44,7 +44,7 @@ function globals(t: TestContext, values: Record<string, unknown>) {
 
 function phone(
   t: TestContext,
-  config = resolveConfig(steeringManifest, defaultCapabilities(), 3),
+  config = resolveConfig(steeringSpec, defaultCapabilities(), 3),
 ) {
   let clock = 1000;
   t.mock.method(performance, 'now', () => clock);
@@ -352,14 +352,14 @@ void test('suspension retires retained view ports without restarting same-genera
 
 void test('hold releases carry their own charge and cancellation creates no activation', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const manifest = {
-    ...pointerManifest,
+  const spec = {
+    ...pointerSpec,
     controller: undefined,
     inputs: { charge: { required: true, prefer: 'hold-meter' as const } },
   };
   const { runtime, sent, at } = phone(
     t,
-    resolveConfig(manifest, defaultCapabilities(), 8),
+    resolveConfig(spec, defaultCapabilities(), 8),
   );
   runtime.action('charge', { charge: 0.4, released: false });
   runtime.press('charge', true);

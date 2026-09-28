@@ -9,7 +9,8 @@ import { layouts } from '../../layouts/index.ts';
 import { ControllerSurface } from '../ControllerSurface.tsx';
 import { Readout, useReadings } from '../gallery/readings.tsx';
 import { layoutWidgets } from '../layout/widgets.ts';
-import { MOTION, type Orientation } from '../layout/schema.ts';
+import type { Orientation } from '../api.ts';
+import { MOTION } from '../layout/schema.ts';
 import { SensorTile } from '../SensorTile.tsx';
 
 function useOrientation(): Orientation {

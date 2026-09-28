@@ -1,7 +1,20 @@
 /** Public game contracts. No runtime, transport or React imports. */
-import type { InputRequirement, Player, Point } from '../../core/types.ts';
+import type { ControllerRequirements } from '../../controls/api.ts';
+import type { Player, Point } from '../../core/types.ts';
 
 export type { Player, Point } from '../../core/types.ts';
+export type {
+  ControllerRequirements,
+  InputRequirement,
+  ControlValue,
+  Vector,
+  DpadOutput,
+  StickOutput,
+  SwipeDirection,
+  SwipeOutput,
+  HoldOutput,
+  StrokeOutput,
+} from '../../controls/api.ts';
 export type ReadonlyDeep<T> = T extends object
   ? { readonly [K in keyof T]: ReadonlyDeep<T[K]> }
   : T;
@@ -139,10 +152,7 @@ export interface GameDescriptor<S extends object = object> {
   modes: readonly { id: string; name: string }[];
   defaultMode: string;
   instructions?: readonly string[];
-  controls: {
-    inputs: Record<string, InputRequirement>;
-    controller?: { layout: string; bind?: Record<string, string> };
-  };
+  controls: ControllerRequirements;
   presentation: { cursors: boolean };
   create(options?: { mode: string }): GameInstance<S>;
   createRenderer(): GameRenderer<S>;

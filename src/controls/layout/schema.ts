@@ -2,56 +2,24 @@
 // /?role=designer and stored as JSON in src/layouts. Layouts don't know about
 // games; a game picks one and its inputs bind to the layout's control names.
 // Pure: safe for core, tests and Vite.
-import type { WidgetType } from '../../core/types.ts';
-
-export type Orientation = 'portrait' | 'landscape';
-export type Rotation = 0 | 90 | 180 | 270;
-export type MenuCorner =
-  | 'top-left'
-  | 'top-right'
-  | 'bottom-left'
-  | 'bottom-right';
+import type {
+  WidgetType,
+  Orientation,
+  Rotation,
+  MenuCorner,
+  MotionInput,
+  GridRect,
+  ControllerLayout,
+} from '../api.ts';
 
 /** Motion inputs a layout can switch on. They have no on-screen footprint. */
-export const MOTION = ['pointer', 'tilt', 'shake'] as const;
-export type MotionInput = (typeof MOTION)[number];
+export const MOTION = [
+  'pointer',
+  'tilt',
+  'shake',
+] as const satisfies readonly MotionInput[];
 export const isMotion = (type: WidgetType): type is MotionInput =>
   (MOTION as readonly string[]).includes(type);
-
-export interface GridRect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-export interface LayoutItem {
-  /** Unique within the layout; game inputs bind to this name. */
-  name: string;
-  /** A touch control from the library (never a motion input). */
-  type: WidgetType;
-  /** Position and size in grid cells. */
-  rect: GridRect;
-  rotation: Rotation;
-  label?: string;
-  variant?: string;
-  props?: Record<string, unknown>;
-}
-
-export interface ControllerLayout {
-  schemaVersion: 2;
-  /** Unique slug; also the file name. Fixed once created. */
-  id: string;
-  /** Display name; free to change. */
-  name: string;
-  orientation: Orientation;
-  grid: { cols: number; rows: number };
-  /** Corner reserved for the menu button. */
-  menu: MenuCorner;
-  /** Motion inputs this layout turns on. */
-  motion: Record<MotionInput, boolean>;
-  items: LayoutItem[];
-}
 
 /** Grid per orientation: roughly square cells on a typical phone. */
 export const GRID: Record<Orientation, { cols: number; rows: number }> = {

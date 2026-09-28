@@ -1,10 +1,10 @@
 import type {
   Capabilities,
   ControllerConfig,
-  Manifest,
+  ControllerSpec,
   Widget,
   WidgetType,
-} from './types.ts';
+} from '../controls/api.ts';
 import { gameDefaultLayout } from '../controls/layouts.ts';
 import { itemWidget } from '../controls/layout/widgets.ts';
 import { isMotion } from '../controls/layout/schema.ts';
@@ -24,26 +24,22 @@ export function available(type: WidgetType, c: Capabilities) {
   return true;
 }
 /** The layout a game plays on: its chosen one, else a generated default. */
-export function gameLayout(manifest: Manifest) {
-  const id = manifest.controller?.layout;
+export function gameLayout(spec: ControllerSpec) {
+  const id = spec.controller?.layout;
   if (id && !layouts[id])
-    throw new Error(
-      `${manifest.name} uses layout "${id}", which doesn't exist.`,
-    );
-  return id ? layouts[id] : gameDefaultLayout(manifest);
+    throw new Error(`${spec.name} uses layout "${id}", which doesn't exist.`);
+  return id ? layouts[id] : gameDefaultLayout(spec);
 }
 export function resolveConfig(
-  manifest: Manifest,
+  spec: ControllerSpec,
   c: Capabilities,
   generation: number,
 ): ControllerConfig {
-  const layout = gameLayout(manifest),
+  const layout = gameLayout(spec),
     substitutions: string[] = [],
     widgets: Widget[] = [];
-  for (const [action, input] of Object.entries(manifest.inputs)) {
-    const item = layout.items.find(
-        (i) => i.name === boundName(manifest, action),
-      ),
+  for (const [action, input] of Object.entries(spec.inputs)) {
+    const item = layout.items.find((i) => i.name === boundName(spec, action)),
       // A motion input the layout switches on wins when the phone has it;
       // otherwise the touch control of the same name stands in for it.
       motion =
@@ -84,11 +80,11 @@ export function resolveConfig(
   const types = widgets.map((w) => w.type);
   if (types.filter(usesPressSlot).length > PRESS_SLOTS)
     throw new Error(
-      `${manifest.name} needs more than ${PRESS_SLOTS} press controls.`,
+      `${spec.name} needs more than ${PRESS_SLOTS} press controls.`,
     );
   return {
     schemaVersion: 1,
-    configId: manifest.id + '-v1',
+    configId: spec.id + '-v1',
     generation,
     orientation: layout.orientation,
     menu: layout.menu,

@@ -3,20 +3,25 @@
 // definition's `fields`), or see which games use the layout.
 import { useState } from 'react';
 import { games as catalog } from '../../client/minigames/catalog.ts';
-import { controllerManifest } from '../../client/engine/input.ts';
-const manifests = catalog.map(controllerManifest);
+import type {
+  ControllerSpec,
+  Field,
+  ControllerLayout,
+  LayoutItem,
+  Rotation,
+} from '../api.ts';
+const specs: ControllerSpec[] = catalog.map(({ id, name, controls }) => ({
+  id,
+  name,
+  ...controls,
+}));
 import { Readout, type Reading } from '../gallery/readings.tsx';
 import { ICONS } from '../kit/icons.ts';
 import { definitionFor, definitions } from '../registry.ts';
-import type { Field } from '../types.ts';
+
 import { checkAssignment, type LayoutIssue } from '../layout/validate.ts';
-import {
-  isControlName,
-  ROTATIONS,
-  type ControllerLayout,
-  type LayoutItem,
-  type Rotation,
-} from '../layout/schema.ts';
+
+import { isControlName, ROTATIONS } from '../layout/schema.ts';
 
 const HINT: Field = { key: 'hint', label: 'Hint', type: 'text' };
 
@@ -78,7 +83,7 @@ export function Inspector({
 
 /** Which games use this layout, and whether it still fits their inputs. */
 function GamesPanel({ layout }: { layout: ControllerLayout }) {
-  const games = manifests.filter((m) => m.controller?.layout === layout.id);
+  const games = specs.filter((m) => m.controller?.layout === layout.id);
   return (
     <section>
       <h2>Used by</h2>
@@ -108,8 +113,8 @@ function GamesPanel({ layout }: { layout: ControllerLayout }) {
       ) : (
         <p className="dz-muted">
           No game uses this layout yet. Games choose a layout with{' '}
-          <code>{`controller: { layout: '${layout.id}' }`}</code> in their
-          manifest; inputs drive the controls with the same names.
+          <code>{`controller: { layout: '${layout.id}' }`}</code> in their spec;
+          inputs drive the controls with the same names.
         </p>
       )}
       <p className="dz-muted dz-small">Select a control to edit it.</p>

@@ -26,7 +26,7 @@ import {
   parseControlValue,
   valueFitsEnvelope,
 } from '../controls/value.ts';
-import type { ControlPort } from '../controls/types.ts';
+import type { ControlPort, ControllerConfig, Widget } from '../controls/api.ts';
 import type { WidgetValueMessage } from '../core/reliable-input.ts';
 import {
   clampGain,
@@ -34,16 +34,15 @@ import {
   GyroPointer,
   PointerSmoother,
 } from '../core/pointer.ts';
+
 import {
   now,
-  type ControllerConfig,
   type Identity,
   type InputFrame,
   type Message,
   type Point,
   type Role,
   type Roster,
-  type Widget,
 } from '../core/types.ts';
 export interface RuntimeView {
   identity: Identity | null;

@@ -1,22 +1,6 @@
 /** Pure output validation shared by phone adapters and authoritative ingress. */
-import type { WidgetType } from '../core/types.ts';
+import type { WidgetType, SwipeOutput, ControlValue } from './api.ts';
 import { kindOf } from './registry.ts';
-import type { HoldOutput, SwipeOutput, Vector } from './types.ts';
-
-export interface StrokeOutput {
-  x: number;
-  y: number;
-  pressure: number;
-  phase: 'move';
-}
-
-export type ControlValue =
-  | number
-  | string
-  | Vector
-  | SwipeOutput
-  | HoldOutput
-  | StrokeOutput;
 
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);

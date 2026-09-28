@@ -1,4 +1,4 @@
-import type { ControlValue } from '../controls/value.ts';
+import type { ControlValue } from '../controls/api.ts';
 
 export interface WidgetValueMessage {
   type: 'widget';

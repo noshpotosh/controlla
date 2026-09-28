@@ -28,10 +28,9 @@ import {
   parseControlValue,
   valueFitsEnvelope,
 } from '../controls/value.ts';
+import type { Capabilities, ControllerConfig } from '../controls/api.ts';
 import {
   now,
-  type Capabilities,
-  type ControllerConfig,
   type InputFrame,
   type Message,
   type Player,

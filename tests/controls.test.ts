@@ -1,4 +1,4 @@
-import { pointerManifest, steeringManifest } from './fixtures/games.ts';
+import { pointerSpec, steeringSpec } from './fixtures/games.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -9,11 +9,11 @@ import {
   usesPressSlot,
 } from '../src/controls/registry.ts';
 import { views } from '../src/controls/views.ts';
+import type { LayoutPreset } from '../src/controls/api.ts';
 import {
   assignSlots,
   defaultLayout,
   LAYOUTS,
-  type LayoutPreset,
 } from '../src/controls/layouts.ts';
 import {
   deadzone,
@@ -149,7 +149,7 @@ void test('presets assign slots in order and refuse to overflow', () => {
 
 void test('resolveConfig lays out the built-in games from their layouts', () => {
   const c = defaultCapabilities();
-  const lab = resolveConfig(pointerManifest, c, 1);
+  const lab = resolveConfig(pointerSpec, c, 1);
   assert.equal(lab.orientation, 'portrait');
   assert.equal(lab.menu, 'top-right');
   assert.deepEqual(
@@ -162,7 +162,7 @@ void test('resolveConfig lays out the built-in games from their layouts', () => 
   // Grid cells become normalized rects.
   assert.deepEqual(lab.widgets[0].rect, [0, 2 / 24, 1, 13 / 24]);
   assert.deepEqual(lab.widgets[1].props, { icon: 'fire' });
-  const race = resolveConfig(steeringManifest, c, 2);
+  const race = resolveConfig(steeringSpec, c, 2);
   assert.equal(race.widgets[1].type, 'swipe-pad');
 });
 
@@ -188,7 +188,7 @@ void test('resolveConfig rejects more press controls than the frame carries', ()
       () =>
         resolveConfig(
           {
-            ...pointerManifest,
+            ...pointerSpec,
             inputs,
             controller: { layout: 'five-buttons' },
           },

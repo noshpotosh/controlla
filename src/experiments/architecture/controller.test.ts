@@ -15,12 +15,8 @@ import {
 import { RoundRunner } from '../../client/engine/round.ts';
 import { SessionAuthority } from '../../core/session.ts';
 import { encodeInput } from '../../core/protocol.ts';
-import type {
-  ControllerConfig,
-  InputFrame,
-  Message,
-  Player,
-} from '../../core/types.ts';
+import type { ControllerConfig } from '../../controls/api.ts';
+import type { InputFrame, Message, Player } from '../../core/types.ts';
 
 void test('four-control layout passes production validation and preserves adapted button props', () => {
   assert.deepEqual(validateLayout(probeLayout), []);

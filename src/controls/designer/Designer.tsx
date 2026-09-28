@@ -4,18 +4,19 @@
 // src/layouts/<id>.json on the dev server; "Test on phone" follows edits live.
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Copy, Play, Smartphone, Undo2, X } from 'lucide-react';
-import { COLORS, type WidgetType } from '../../core/types.ts';
+import type {
+  WidgetType,
+  ControllerLayout,
+  GridRect,
+  LayoutItem,
+  MenuCorner,
+  Orientation,
+} from '../api.ts';
+import { COLORS } from '../../core/types.ts';
 import { layouts } from '../../layouts/index.ts';
 import { useReadings } from '../gallery/readings.tsx';
-import {
-  MENU_CORNERS,
-  MOTION,
-  type ControllerLayout,
-  type GridRect,
-  type LayoutItem,
-  type MenuCorner,
-  type Orientation,
-} from '../layout/schema.ts';
+
+import { MENU_CORNERS, MOTION } from '../layout/schema.ts';
 import { validateLayout } from '../layout/validate.ts';
 import { canSave, saveLayout } from './api.ts';
 import { Canvas } from './Canvas.tsx';

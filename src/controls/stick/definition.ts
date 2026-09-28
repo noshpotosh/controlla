@@ -1,5 +1,5 @@
 import { rotateVector } from '../layout/rotation.ts';
-import type { ControlDefinition, Vector } from '../types.ts';
+import type { ControlDefinition, Vector } from '../api.ts';
 
 export interface StickProps {
   /** Fraction of travel that reads as zero. */

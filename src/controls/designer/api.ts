@@ -1,5 +1,5 @@
 // Talks to the dev server's layout endpoints (vite.config.ts).
-import type { ControllerLayout } from '../layout/schema.ts';
+import type { ControllerLayout } from '../api.ts';
 
 async function call(url: string, init: RequestInit) {
   const res = await fetch(url, init),

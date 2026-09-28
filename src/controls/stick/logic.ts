@@ -1,5 +1,5 @@
 import { deadzone, radialClamp, round } from '../kit/geometry.ts';
-import type { StickOutput, Vector } from '../types.ts';
+import type { StickOutput, Vector } from '../api.ts';
 
 /**
  * Stick output for a finger at `finger` with the stick centred at `origin`

@@ -1,4 +1,4 @@
-/** Compatibility adapter; authors do not consume legacy frame/config types. */
+/** Adapt a game descriptor to the shared controller resolver. */
 import {
   gameLayout,
   resolveConfig,
@@ -11,22 +11,15 @@ import {
 import type {
   Capabilities,
   ControllerConfig,
-  Manifest,
-} from '../../core/types.ts';
+  ControllerSpec,
+} from '../../controls/api.ts';
 import type { GameDescriptor } from '../api/index.ts';
 
-export function controllerManifest(game: GameDescriptor): Manifest {
+export function controllerSpec(game: GameDescriptor): ControllerSpec {
   return {
     id: game.id,
     name: game.name,
-    players: game.players,
     ...game.controls,
-    expectedDurationSec: game.durationMs / 1000,
-    scoring: 'points',
-    onPlayerDropped: 'freeze',
-    retroactiveInput: false,
-    interpolatable: [],
-    discrete: [],
   };
 }
 
@@ -35,13 +28,10 @@ export function resolveController(
   capabilities: Capabilities = defaultCapabilities(),
   generation = 1,
 ): ControllerConfig {
-  const manifest = controllerManifest(game),
-    layout = gameLayout(manifest);
-  const issues = [
-    ...validateLayout(layout),
-    ...checkAssignment(manifest, layout),
-  ];
+  const spec = controllerSpec(game),
+    layout = gameLayout(spec);
+  const issues = [...validateLayout(layout), ...checkAssignment(spec, layout)];
   if (issues.length)
     throw new Error(issues.map((issue) => issue.message).join(' '));
-  return resolveConfig(manifest, capabilities, generation);
+  return resolveConfig(spec, capabilities, generation);
 }

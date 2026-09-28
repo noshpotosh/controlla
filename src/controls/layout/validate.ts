@@ -1,6 +1,10 @@
 // Rules for layouts. `validateLayout` is about the layout alone (designer,
 // save endpoint); `checkAssignment` is about a game using it.
-import type { Manifest } from '../../core/types.ts';
+import type {
+  ControllerRequirements,
+  ControllerLayout,
+  GridRect,
+} from '../api.ts';
 import {
   definitionFor,
   kindOf,
@@ -9,13 +13,8 @@ import {
   usesPressSlot,
 } from '../registry.ts';
 import { isSideways } from './rotation.ts';
-import {
-  isControlName,
-  isMotion,
-  menuRect,
-  type ControllerLayout,
-  type GridRect,
-} from './schema.ts';
+
+import { isControlName, isMotion, menuRect } from './schema.ts';
 
 export interface LayoutIssue {
   /** Index of the offending item, when the issue belongs to one. */
@@ -89,9 +88,9 @@ export function validateLayout(layout: ControllerLayout): LayoutIssue[] {
 
 /** The layout control a game input binds to (same name unless remapped). */
 export const boundName = (
-  manifest: Pick<Manifest, 'controller'>,
+  spec: Pick<ControllerRequirements, 'controller'>,
   input: string,
-) => manifest.controller?.bind?.[input] ?? input;
+) => spec.controller?.bind?.[input] ?? input;
 
 /**
  * Can this game run on this layout? Each required input needs either a
@@ -99,12 +98,12 @@ export const boundName = (
  * inputs — the layout to switch that motion input on.
  */
 export function checkAssignment(
-  manifest: Pick<Manifest, 'inputs' | 'controller'>,
+  spec: Pick<ControllerRequirements, 'inputs' | 'controller'>,
   layout: ControllerLayout,
 ): LayoutIssue[] {
   const issues: LayoutIssue[] = [];
-  for (const [input, need] of Object.entries(manifest.inputs)) {
-    const name = boundName(manifest, input),
+  for (const [input, need] of Object.entries(spec.inputs)) {
+    const name = boundName(spec, input),
       item = layout.items.find((i) => i.name === name),
       motionOn = isMotion(need.prefer) && layout.motion[need.prefer];
     if (item && kindOf(item.type) !== kindOf(need.prefer))

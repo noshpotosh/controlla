@@ -1,4 +1,4 @@
-import type { ControlDefinition } from '../types.ts';
+import type { ControlDefinition } from '../api.ts';
 
 export interface HoldMeterProps {
   /** Time to reach full charge. */

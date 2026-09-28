@@ -1,7 +1,7 @@
 import { defaultCapabilities } from '../../core/config.ts';
-import type { Capabilities } from '../../core/types.ts';
+import type { Capabilities } from '../../controls/api.ts';
 export {
-  controllerManifest,
+  controllerSpec,
   resolveController,
 } from '../../client/engine/input.ts';
 export function capabilityProfile(motion: boolean): Capabilities {

@@ -7,14 +7,11 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { RotateCw, Trash2 } from 'lucide-react';
-import type { WidgetType } from '../../core/types.ts';
+import type { WidgetType, ControllerLayout, GridRect } from '../api.ts';
 import { ControllerSurface } from '../ControllerSurface.tsx';
 import type { useReadings } from '../gallery/readings.tsx';
-import {
-  menuRect,
-  type ControllerLayout,
-  type GridRect,
-} from '../layout/schema.ts';
+
+import { menuRect } from '../layout/schema.ts';
 import { layoutWidgets } from '../layout/widgets.ts';
 import { SensorTile } from '../SensorTile.tsx';
 import { clampRect } from './model.ts';

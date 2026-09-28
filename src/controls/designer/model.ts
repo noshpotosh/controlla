@@ -1,17 +1,17 @@
 // Pure editing operations for the controller designer (tested in
 // tests/layout.test.ts). The React components only call these.
-import type { WidgetType } from '../../core/types.ts';
+import type {
+  WidgetType,
+  ControllerLayout,
+  GridRect,
+  LayoutItem,
+  Orientation,
+  Rotation,
+} from '../api.ts';
 import { minSizeOf } from '../registry.ts';
 import { isSideways } from '../layout/rotation.ts';
-import {
-  GRID,
-  menuRect,
-  type ControllerLayout,
-  type GridRect,
-  type LayoutItem,
-  type Orientation,
-  type Rotation,
-} from '../layout/schema.ts';
+
+import { GRID, menuRect } from '../layout/schema.ts';
 import { overlaps } from '../layout/validate.ts';
 
 /** Minimum footprint for an item, accounting for rotation. */

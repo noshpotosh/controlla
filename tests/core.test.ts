@@ -1,8 +1,8 @@
 import { games } from '../src/client/minigames/catalog.ts';
 import type { GameDescriptor } from '../src/client/api/index.ts';
 import {
-  pointerManifest,
-  steeringManifest,
+  pointerSpec,
+  steeringSpec,
   buttonProbe,
   type ProbeState,
 } from './fixtures/games.ts';
@@ -30,12 +30,12 @@ import {
 import { defaultCapabilities, resolveConfig } from '../src/core/config.ts';
 import { SessionAuthority } from '../src/core/session.ts';
 import type { RoundSnapshot } from '../src/client/api/index.ts';
+import type { ControllerConfig } from '../src/controls/api.ts';
 import type {
   InputFrame,
   Player,
   Snapshot,
   Message,
-  ControllerConfig,
   WireSnapshot,
 } from '../src/core/types.ts';
 const frame = (time = 1000): InputFrame => ({
@@ -147,36 +147,27 @@ void test('continuous buffer bounds extrapolation even after a stall', () => {
 void test('permission denial chooses stick per player, never a dead pointer', () => {
   const c = defaultCapabilities();
   c.sensors.gyro = { present: true, permission: 'denied' };
-  const config = resolveConfig(pointerManifest, c, 4);
+  const config = resolveConfig(pointerSpec, c, 4);
   assert.equal(config.sensors.pointer.enabled, false);
   assert.equal(config.widgets[0].type, 'stick');
   assert.equal(config.widgets[0].space, 'normalized');
-  assert.equal(
-    resolveConfig(steeringManifest, c, 5).widgets[0].space,
-    'signed',
-  );
+  assert.equal(resolveConfig(steeringSpec, c, 5).widgets[0].space, 'signed');
   assert.equal(config.substitutions.length, 1);
   c.sensors.gyro.permission = 'granted';
   c.sensors.accel = { present: true, permission: 'granted' };
+  assert.equal(resolveConfig(pointerSpec, c, 5).sensors.pointer.enabled, true);
   assert.equal(
-    resolveConfig(pointerManifest, c, 5).sensors.pointer.enabled,
-    true,
-  );
-  assert.equal(
-    resolveConfig(steeringManifest, c, 6).sensors.pointer.enabled,
+    resolveConfig(steeringSpec, c, 6).sensors.pointer.enabled,
     false,
   );
-  assert.equal(
-    resolveConfig(steeringManifest, c, 6).sensors.tilt.enabled,
-    true,
-  );
+  assert.equal(resolveConfig(steeringSpec, c, 6).sensors.tilt.enabled, true);
 });
 void test('required motion without fallback gives an actionable failure', () => {
   assert.throws(
     () =>
       resolveConfig(
         {
-          ...pointerManifest,
+          ...pointerSpec,
           // No layout, so no touch control can stand in for the pointer.
           controller: undefined,
           inputs: { aim: { required: true, prefer: 'pointer' } },

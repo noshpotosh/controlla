@@ -1,5 +1,5 @@
 import { snapDirection } from '../kit/geometry.ts';
-import type { DpadOutput, Vector } from '../types.ts';
+import type { DpadOutput, Vector } from '../api.ts';
 
 /** Offsets closer to the centre than this (fraction of radius) read neutral. */
 export const DPAD_CENTER_ZONE = 0.22;

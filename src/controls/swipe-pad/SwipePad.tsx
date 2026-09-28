@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { ControlFrame } from '../kit/ControlFrame.tsx';
 import { useTrackedPointer } from '../kit/useTrackedPointer.ts';
-import type { ControlViewProps, SwipeDirection } from '../types.ts';
+import type { SwipeDirection } from '../api.ts';
+import type { ControlViewProps } from '../types.ts';
 import type { SwipePadProps } from './definition.ts';
 import { classifySwipe } from './logic.ts';
 

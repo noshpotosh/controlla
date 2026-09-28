@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
-import type { Permission } from '../core/types.ts';
+import type { Permission } from '../controls/api.ts';
 import type { RawMotionSample } from '../core/motion/trace.ts';
 import type { Motion } from './motion.ts';
 

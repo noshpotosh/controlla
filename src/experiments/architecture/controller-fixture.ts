@@ -1,10 +1,12 @@
-import type { Manifest, Widget } from '../../core/types.ts';
+import type {
+  ControllerRequirements,
+  Widget,
+  ControlPort,
+  ControllerLayout,
+} from '../../controls/api.ts';
 import { definitionFor } from '../../controls/registry.ts';
-import type { ControlPort } from '../../controls/types.ts';
-import {
-  isControllerLayout,
-  type ControllerLayout,
-} from '../../controls/layout/schema.ts';
+
+import { isControllerLayout } from '../../controls/layout/schema.ts';
 import {
   checkAssignment,
   validateLayout,
@@ -58,7 +60,7 @@ export const probeLayout: ControllerLayout = {
   ],
 };
 
-export const probeAssignment: Pick<Manifest, 'inputs' | 'controller'> = {
+export const probeAssignment: ControllerRequirements = {
   inputs: {
     move: { required: true, prefer: 'stick' },
     look: { required: true, prefer: 'stick' },

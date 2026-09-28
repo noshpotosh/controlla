@@ -1,4 +1,4 @@
-import type { ControlDefinition } from '../types.ts';
+import type { ControlDefinition } from '../api.ts';
 import type { IconName } from '../kit/icons.ts';
 
 export interface ButtonProps {

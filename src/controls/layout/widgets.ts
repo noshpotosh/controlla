@@ -1,6 +1,5 @@
 // Turn a layout into the widgets a phone renders.
-import type { Widget } from '../../core/types.ts';
-import type { ControllerLayout, GridRect, LayoutItem } from './schema.ts';
+import type { Widget, ControllerLayout, GridRect, LayoutItem } from '../api.ts';
 
 export const normalizedRect = (
   r: GridRect,
