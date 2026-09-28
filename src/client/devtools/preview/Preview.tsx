@@ -4,7 +4,7 @@
 // hot-reloads this page, so the phone tracks your edits live.
 import { useEffect, useState } from 'react';
 import { Menu, X } from 'lucide-react';
-import { COLORS } from '../../../core/types.ts';
+import { COLORS } from '../../../shared/room.ts';
 import { layouts } from '../../controls/layouts/index.ts';
 import { ControllerSurface } from '../../controls/ControllerSurface.tsx';
 import { Readout, useReadings } from '../gallery/readings.tsx';

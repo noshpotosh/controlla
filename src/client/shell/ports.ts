@@ -5,7 +5,8 @@ import type {
   Widget,
   Permission,
 } from '../controls/api.ts';
-import type { Identity, Role, Point, Player, Venue } from '../../core/types.ts';
+import type { Point } from '../../core/types.ts';
+import type { Identity, Role, Player, Venue } from '../../shared/room.ts';
 import type { RawMotionSample } from '../../core/motion/trace.ts';
 import type { ScreenPort } from '../game-screen/port.ts';
 
@@ -17,7 +18,7 @@ export interface JoinRequest {
   endpoint: string;
   resume: boolean;
 }
-export type { Role } from '../../core/types.ts';
+export type { Role } from '../../shared/room.ts';
 export interface GameChoice {
   readonly id: string;
   readonly name: string;

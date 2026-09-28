@@ -2,7 +2,7 @@
 
 A browser-authoritative party-game framework. Each venue has a screen and its own phone controllers. Phones send local input to their venue; screens relay input to the host and render snapshots of its simulation. No video streaming.
 
-**Status: Neon Harvest is the sole game; controller and shell boundaries are implemented. All 238 tests and the production build pass, with desktop browser observations recorded. Hardware/multi-household acceptance remains unverified.** The acceptance budgets in the specification are targets, not measured claims. See [validation](docs/VALIDATION.md) and [design decisions](docs/ADR-001.md).
+**Status: Neon Harvest is the sole game; controller, shell, and shared-contract boundaries are implemented. All 244 tests and the production build pass, with desktop browser observations recorded. Hardware/multi-household acceptance remains unverified.** The acceptance budgets in the specification are targets, not measured claims. See [validation](docs/VALIDATION.md) and [design decisions](docs/ADR-001.md).
 
 ## Run locally
 
@@ -98,6 +98,7 @@ Frontend and signaling must both use application protocol **4**. Reload existing
 The gallery, designer, phone preview, Motion Lab and game harness are development-only. Production builds assert that their modules and styles are excluded. Calibration, connection diagnostics and session reports remain available in production. Rounds hold a 200 ms settling period after the timer ends before showing final results.
 
 - [`src/client/shell`](src/client/shell): composition, join/room/phone views, diagnostics and read-only runtime ports. See the [shell boundary and acceptance](docs/architecture/NEXT-SHELL-BOUNDARY.md).
+- `src/shared`: platform-independent room/identity/roster contracts, player colors, and application protocol constants; the only project contracts consumed by signaling. See the [shared boundary record](docs/architecture/SHARED-CONTRACTS.md).
 - `src/core`: binary input protocol, clock sync, jitter buffer, calibration, snapshot replication and authoritative session.
 - `src/client/runtime.ts`, `network.ts`, `motion.ts`: existing session orchestration, peer transport and phone sensor fusion.
 - `src/client/controls`: controller contracts, validated resolution, reusable controls and saved layouts (`layouts/`).

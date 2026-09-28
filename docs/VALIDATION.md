@@ -1,6 +1,20 @@
 # Validation and acceptance ledger
 
-The current slice uses **Neon Harvest as the sole production game**: 45 seconds, 1–8 players, one `standard` mode. Harness and live rooms share the public author contracts, round runner, validated snapshots and session ledger. **241 integrated tests, typecheck, project lint and production build pass (2026-09-28) after controller/tool consolidation.** Current desktop observations are recorded below; controller and Neon results remain separate historical evidence. Physical latency, cross-country fairness and device compatibility remain uncertified.
+The current slice uses **Neon Harvest as the sole production game**: 45 seconds, 1–8 players, one `standard` mode. Harness and live rooms share the public author contracts, round runner, validated snapshots and session ledger. **244 integrated tests, typecheck, project lint and production build pass (2026-09-28) after shared contract extraction.** Current desktop observations are recorded below; controller and Neon results remain separate historical evidence. Physical latency, cross-country fairness and device compatibility remain uncertified.
+
+## Shared room and protocol contracts — 2026-09-28
+
+| Check | Result |
+| --- | --- |
+| Baseline and checkpoint | `codex/shared-contracts-0928` starts from combined architecture checkpoint `371050d`; implementation/enforcement is `70378ad`. Clean baseline: 241 tests. Source branches/worktrees are preserved. |
+| Automated acceptance | **244 tests pass**, typecheck, plain project lint, production build and client/SSR/RSC developer-tool exclusion audit pass. Room/signaling checks retain role isolation, reconnect, protocol rejection and explicit host termination. |
+| New boundary evidence | Direct/transitive/type-only/alias/reexport/import-type/dynamic/require leaks are rejected. Backend cannot reach client/core implementation. Shared contracts reject package/platform dependencies and compile with only ECMAScript libraries; injected DOM/Node ambient references fail. |
+| Local setup | Existing development server on `127.0.0.1:3002` serves this checkout. Isolated signaling on port 8790 was started with `ALLOWED_ORIGINS=http://127.0.0.1:3002`; browser joins explicitly select that endpoint. Existing servers were left untouched. |
+| Browser roles and controls | Room `G2CQX`, host screen `F274`, remote screen `CD58`, AdaShared at the host and BeaShared at the remote. Two independent controller identities appeared in both rosters. Aim keyboard/touch fallback and PULSE were exercised. No sensor permission was requested. |
+| Round and rematch | First round: Ada 60 / Bea 20, awards 1 / 0. Rematch: Ada 10 / Bea 40, awards 0 / 1. Host and remote displayed cumulative totals 1 / 1; host observation API confirmed results phase. |
+| Controller resume | Bea reloaded during the rematch and rejoined within grace after entering the required name. Observations before/after show the same identity, name, seat 1, color `#74d9ff`, venue, and connected state restored without a duplicate player. |
+| Host loss and report | Closing the host produced the explicit session-ended message on the remote. Save session report remained available; downloaded `controlla-G2CQX.json` was parsed from Downloads and contains both completed rounds, player names/colors, scores, statistics, awards and totals 1 / 1. The browser download-event waiter timed out, but the actual file was saved and verified. |
+| Limits | Desktop simulation only. Physical motion, multitouch, TVs, TURN and multi-household/latency acceptance remain open. No release, deployment, protocol bump, or merge into main. |
 
 ## Controller and developer-tool ownership — 2026-09-28
 

@@ -7,7 +7,7 @@ import type {
   LayoutPreset,
   ControlDefinition,
 } from '../../controls/api.ts';
-import { COLORS } from '../../../core/types.ts';
+import { COLORS } from '../../../shared/room.ts';
 import { ControllerSurface } from '../../controls/ControllerSurface.tsx';
 import { layoutWidgets } from '../../controls/layout/widgets.ts';
 

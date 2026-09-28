@@ -15,7 +15,7 @@ const specs: ControllerSpec[] = catalog.map(({ id, name, controls }) => ({
   name,
   ...controls,
 }));
-import { COLORS } from '../../../core/types.ts';
+import { COLORS } from '../../../shared/room.ts';
 import { layouts } from '../../controls/layouts/index.ts';
 import { ControllerSurface } from '../../controls/ControllerSurface.tsx';
 

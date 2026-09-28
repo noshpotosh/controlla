@@ -2,7 +2,7 @@ import {
   APP_PROTOCOL_VERSION,
   PROTOCOL_MISMATCH,
   PROTOCOL_RELOAD_MESSAGE,
-} from '../src/core/app-protocol.ts';
+} from '../src/shared/app-protocol.ts';
 import { createServer } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { RoomRegistry, RateLimiter, type Room } from './rooms.ts';

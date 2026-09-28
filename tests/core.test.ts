@@ -36,11 +36,11 @@ import type { RoundSnapshot } from '../src/client/api/index.ts';
 import type { ControllerConfig } from '../src/client/controls/api.ts';
 import type {
   InputFrame,
-  Player,
   Snapshot,
   Message,
   WireSnapshot,
 } from '../src/core/types.ts';
+import type { Player } from '../src/shared/room.ts';
 const frame = (time = 1000): InputFrame => ({
   seq: 65535,
   time,

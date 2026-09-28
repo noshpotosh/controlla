@@ -12,7 +12,7 @@ import type {
   MenuCorner,
   Orientation,
 } from '../../controls/api.ts';
-import { COLORS } from '../../../core/types.ts';
+import { COLORS } from '../../../shared/room.ts';
 import { layouts } from '../../controls/layouts/index.ts';
 import { useReadings } from '../gallery/readings.tsx';
 

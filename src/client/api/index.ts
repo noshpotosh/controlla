@@ -1,8 +1,10 @@
 /** Public game contracts. No runtime, transport or React imports. */
 import type { ControllerRequirements } from '../controls/api.ts';
-import type { Player, Point } from '../../core/types.ts';
+import type { Point } from '../../core/types.ts';
+import type { Player } from '../../shared/room.ts';
 
-export type { Player, Point } from '../../core/types.ts';
+export type { Point } from '../../core/types.ts';
+export type { Player } from '../../shared/room.ts';
 export type {
   ControllerRequirements,
   InputRequirement,
