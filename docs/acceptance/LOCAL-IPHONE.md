@@ -22,7 +22,7 @@ deployment acceptance.
 ## Temporary trusted HTTPS
 
 Use Caddy from its official distribution. The checked-in
-[proxy configuration](../../deploy/Caddyfile.local-acceptance) binds the selected
+[proxy configuration](../../scripts/local-testing/Caddyfile.local-acceptance) binds the selected
 LAN address on 8443 and distributes the public root on 8086. It does not install
 trust, enable an admin listener, or request public certificates. No public tunnel,
 router forwarding or TURN is needed.
@@ -38,7 +38,7 @@ chmod 700 "$CONTROLLA_ACCEPTANCE_DIR/private"
 export CONTROLLA_ACCEPTANCE_PUBLIC="$CONTROLLA_ACCEPTANCE_DIR/public"
 export XDG_DATA_HOME="$CONTROLLA_ACCEPTANCE_DIR/private/data"
 export XDG_CONFIG_HOME="$CONTROLLA_ACCEPTANCE_DIR/private/config"
-cp deploy/local-acceptance-preflight.html "$CONTROLLA_ACCEPTANCE_PUBLIC/preflight.html"
+cp scripts/local-testing/local-acceptance-preflight.html "$CONTROLLA_ACCEPTANCE_PUBLIC/preflight.html"
 ```
 
 Reuse the same literal directory and environment values in other terminals;
@@ -51,8 +51,8 @@ SIGNAL_PORT=8906 npm run dev -- --port 3006
 # Terminal 2: fresh isolated signaling process.
 SIGNAL_PORT=8906 ALLOWED_ORIGINS="https://$CONTROLLA_LAN_IP:8443" npm run signal
 # Terminal 3: prepend Caddy's absolute binary path if not on PATH.
-caddy validate --config deploy/Caddyfile.local-acceptance --adapter caddyfile
-caddy run --config deploy/Caddyfile.local-acceptance --adapter caddyfile
+caddy validate --config scripts/local-testing/Caddyfile.local-acceptance --adapter caddyfile
+caddy run --config scripts/local-testing/Caddyfile.local-acceptance --adapter caddyfile
 ```
 
 If a port is occupied, do not kill the existing service. Stop this setup and

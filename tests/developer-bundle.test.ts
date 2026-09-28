@@ -138,8 +138,6 @@ function evidence(): { reports: BundleReport[]; artifacts: Artifact[] } {
         content:
           '.ctl-button{}.ctl-aim-pad{}.ctl-menu-button{}.calibrate{}.stage{}',
       },
-      { path: '.openai/hosting.json', content: '{}' },
-      { path: 'server/wrangler.json', content: '{}' },
     ],
   };
 }

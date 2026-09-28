@@ -14,8 +14,6 @@ cd controlla
 npm ci
 ```
 
-On Linux installations where Sharp detects an incompatible global libvips, use `SHARP_IGNORE_GLOBAL_LIBVIPS=1 npm ci`.
-
 Both processes must stay running. From the project directory:
 
 **Terminal 1 — room signaling and relay service (port 8787):**
@@ -27,7 +25,7 @@ npm run signal
 **Terminal 2 — browser application (port 3000):**
 
 ```sh
-npm run dev -- --host 0.0.0.0
+npm run dev
 ```
 
 Stop each process with Ctrl+C when finished. Stopping the signaling service ends its active sessions. No database, account setup, or environment file is needed for local desktop testing.
@@ -38,13 +36,17 @@ On a single computer, separate browser tabs can act as phones using touch/mouse 
 
 ## Real phones need HTTPS
 
-`localhost` is special: an ordinary `http://192.168.…` phone connection is **not** a secure context and will not expose motion or wake-lock APIs. Use a trusted HTTPS reverse proxy or development tunnel. Configure the signaling service's exact frontend origin:
+The frontend listens on the computer's LAN addresses as well as localhost. Phones must open that LAN address; `localhost` on a phone points to the phone itself. Plain LAN HTTP supports touch testing, but motion and wake lock need a secure context.
+
+For trusted HTTPS on iPhones, follow the [local device setup](docs/acceptance/LOCAL-IPHONE.md). Its temporary Caddy proxy and certificate preflight live under `scripts/local-testing/`; they need no public hosting account, tunnel or deployment.
+
+For a quick HTTPS preview, `HTTPS=1 npm run dev` enables a self-signed certificate. A browser warning bypass is not a substitute for trusted HTTPS when accepting real-device motion behavior. In a separate terminal, allow the exact frontend origin (replace the example with your computer's LAN address and actual port):
 
 ```sh
-ALLOWED_ORIGINS=https://play.example.com npm run signal
+ALLOWED_ORIGINS=https://192.168.1.20:3000 npm run signal
 ```
 
-Proxy `/signal` with WebSocket upgrade support to port 8787 and all other paths to the frontend. See [deploy/Caddyfile](deploy/Caddyfile.example). The local Vite server already proxies `/signal`. Never expose the Vite development server as a production deployment.
+The frontend proxies `/signal` to the local signaling process on port 8787. To change that port, set the same `SIGNAL_PORT` in both terminals. Development fails if the selected frontend port is occupied instead of silently changing the phone URL. Open the host screen through the LAN HTTPS address before copying its phone link.
 
 Keep phones on the same network as their own screen, use Game Mode on televisions, and keep every screen visible. Direct P2P is not proof of LAN reachability: inspect candidate types and measure the path. A guest Wi-Fi network may isolate clients. The controller identifies direct-to-host fallback as degraded aiming.
 
@@ -52,27 +54,22 @@ Keep phones on the same network as their own screen, use Game Mode on television
 
 - **“Cannot reach the room service”:** check that both terminals are running. The local frontend forwards `/signal` to port 8787.
 - **Phone link contains `localhost`:** that address refers to the phone itself. Open the host screen through the shared HTTPS address before copying its phone link.
-- **Connection rejected through a proxy or tunnel:** set `ALLOWED_ORIGINS` to the exact frontend origin, including its scheme and non-default port, then restart signaling. Multiple origins are comma-separated.
+- **Connection rejected from a phone or local proxy:** set `ALLOWED_ORIGINS` to the exact frontend origin, including its scheme and non-default port, then restart signaling. Multiple origins are comma-separated.
 - **Motion unavailable:** use HTTPS, tap **Enable motion**, and check the browser’s site permissions. Touch fallback lets you continue without motion.
 - **A second tab resumes the same player:** choose **Join as a new device** under connection settings.
 - **Protocol version mismatch:** update the browser application and signaling service together, then reload every screen and phone. Mixed versions cannot join or resume a room; retries stop until you reconnect with matching versions.
 
-The signaling process reads variables from its environment. `.env.example` documents them, but `npm run signal` does not automatically load a `.env` file; export the variables or prefix the command as shown below.
+The signaling process reads variables from its environment. `.env.example` documents them, but `npm run signal` does not automatically load a `.env` file; export the variables or prefix the command as shown above.
 
-## Production topology
+## Development and build validation
 
-The frontend builds as a Cloudflare-compatible Worker through the Sites/Vinext scaffold. The Node signaling service is a separate, long-lived process; it is **not** contained in the frontend Worker. No public deployment is configured in this checkout.
+This project currently supports local development on computers and phones. Hosting and deployment are deferred. There is no deployment command or hosted-service configuration.
 
-For a production release, deploy the signaling service behind WSS, route `/signal` to it (or enter its WSS URL in connection settings), restrict `ALLOWED_ORIGINS`, and supply TURN servers through `ICE_SERVERS`. Cross-household success cannot be assumed with the default STUN-only configuration.
+Vite/Vinext runs the frontend in Node; a separate Node `ws` process handles room signaling and relay traffic. `npm run build` compiles the app locally and checks that developer tools stay out of the normal application bundle. CI runs checks and builds, without publishing anything.
 
-```sh
-SIGNAL_PORT=8787 \
-ALLOWED_ORIGINS=https://play.example.com \
-ICE_SERVERS='[{"urls":"stun:stun.example.com:3478"},{"urls":"turns:turn.example.com:5349","username":"short-lived-user","credential":"short-lived-credential"}]' \
-npm run signal
-```
+Signaling keeps rooms in memory. Restarting it ends existing sessions; host loss also ends a session. The default STUN configuration does not guarantee connectivity across households. `ICE_SERVERS` remains available for connection testing and is sent to room participants; do not put administrative secrets in it.
 
-`ICE_SERVERS` is sent to room participants, as WebRTC requires. Use scoped, short-lived TURN credentials; do not put administrative secrets in it. Signaling keeps only live rooms and uses an ephemeral HMAC key. Restarting it ends existing sessions. Host loss also ends a session; there is no migration or persistence service.
+Generated `.next/`, `.vinext/`, and `dist/` directories are ignored by Git and can be regenerated after stopping development processes. `node_modules/` contains installed dependencies. Preserve `.worktrees/` (separate Git checkouts), `output/` (design source artifacts), and any useful playtest evidence under `outputs/`.
 
 ## Validation commands
 
