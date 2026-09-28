@@ -7,26 +7,32 @@ import {
   definitionFor,
   PRESS_SLOTS,
   usesPressSlot,
-} from '../src/controls/registry.ts';
-import { views } from '../src/controls/views.ts';
-import type { LayoutPreset } from '../src/controls/api.ts';
+} from '../src/client/controls/registry.ts';
+import { views } from '../src/client/controls/views.ts';
+import type { LayoutPreset } from '../src/client/controls/api.ts';
 import {
   assignSlots,
   defaultLayout,
   LAYOUTS,
-} from '../src/controls/layouts.ts';
+} from '../src/client/controls/layouts.ts';
 import {
   deadzone,
   radialClamp,
   snapDirection,
-} from '../src/controls/kit/geometry.ts';
-import { dpadDirection } from '../src/controls/dpad/logic.ts';
-import { clampOrigin, stickVector } from '../src/controls/stick/logic.ts';
-import { classifySwipe } from '../src/controls/swipe-pad/logic.ts';
-import { chargeAt } from '../src/controls/hold-meter/logic.ts';
-import { defaultCapabilities, resolveConfig } from '../src/controls/resolve.ts';
-import { layouts } from '../src/layouts/index.ts';
-import { emptyLayout } from '../src/controls/layout/schema.ts';
+} from '../src/client/controls/kit/geometry.ts';
+import { dpadDirection } from '../src/client/controls/dpad/logic.ts';
+import {
+  clampOrigin,
+  stickVector,
+} from '../src/client/controls/stick/logic.ts';
+import { classifySwipe } from '../src/client/controls/swipe-pad/logic.ts';
+import { chargeAt } from '../src/client/controls/hold-meter/logic.ts';
+import {
+  defaultCapabilities,
+  resolveConfig,
+} from '../src/client/controls/resolve.ts';
+import { layouts } from '../src/client/controls/layouts/index.ts';
+import { emptyLayout } from '../src/client/controls/layout/schema.ts';
 
 void test('every library control has one definition and a view', () => {
   const types = definitions.map((d) => d.type);

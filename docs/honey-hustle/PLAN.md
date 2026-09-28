@@ -131,7 +131,7 @@ Countdown and results currently bypass the game renderer and use generic dark st
 
 ### Controller presentation and feedback
 
-The current [ControllerScreen.tsx](../../src/client/shell/ControllerScreen.tsx) renders generic widgets through [ControllerSurface.tsx](../../src/controls/ControllerSurface.tsx). The current [aim-and-pulse layout](../../src/layouts/aim-and-pulse.json) reserves most of the screen for the fallback aim pad; it cannot reproduce the motion-only reference by changing colors.
+The current [ControllerScreen.tsx](../../src/client/shell/ControllerScreen.tsx) renders generic widgets through [ControllerSurface.tsx](../../src/client/controls/ControllerSurface.tsx). The current [aim-and-pulse layout](../../src/client/controls/layouts/aim-and-pulse.json) reserves most of the screen for the fallback aim pad; it cannot reproduce the motion-only reference by changing colors.
 
 Add a small, optional, declarative controller presentation contract: skin/assets, layout variants, semantic status fields, and action slots. Keep game-specific Honey Hustle configuration/assets inside the game folder and register it through the catalog. The shared controller renderer consumes this contract and narrow input ports; it must not import the game or inspect its state shape. Keep the author API React-free and preserve the catalog-only game import boundary. The existing `AppExtensions.controllerPanel` is for motion diagnostics and should retain that purpose.
 

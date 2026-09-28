@@ -14,12 +14,12 @@ import nextConfig from './next.config.ts';
 import { isMotionTrace } from './src/core/motion/trace.ts';
 import { developmentEntry } from './scripts/development-entry.ts';
 import { productionBundleBoundary } from './scripts/production-boundary.ts';
-import { renderLayoutIndex } from './src/controls/layout/index-file.ts';
+import { renderLayoutIndex } from './src/client/controls/layout/index-file.ts';
 import {
   isControllerLayout,
   layoutFileName,
-} from './src/controls/layout/schema.ts';
-import { validateLayout } from './src/controls/layout/validate.ts';
+} from './src/client/controls/layout/schema.ts';
+import { validateLayout } from './src/client/controls/layout/validate.ts';
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   '00000000-0000-4000-8000-000000000000';
@@ -141,13 +141,13 @@ const motionTraceUpload = (): Plugin => ({
   },
 });
 
-// Dev-only: the controller designer's layout library lives in src/layouts,
+// Dev-only: the controller designer's layout library lives in src/client/controls/layouts,
 // one JSON file per layout, plus a generated index.ts listing them. The index
 // is regenerated only when a layout is created or deleted, so ordinary saves
 // just hot-reload that one file (which is how phone previews update live).
 // Nothing here imports the layouts themselves: Vite restarts the dev server
 // when a config dependency changes.
-const LAYOUT_DIR = 'src/layouts';
+const LAYOUT_DIR = 'src/client/controls/layouts';
 const MAX_LAYOUT_BYTES = 64 * 1024;
 const controllerLayouts = (): Plugin => ({
   name: 'controlla-controller-layouts',

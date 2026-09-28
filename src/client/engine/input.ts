@@ -1,10 +1,10 @@
 /** Adapt a game descriptor to the shared controller resolver. */
-import { resolveConfig, defaultCapabilities } from '../../controls/resolve.ts';
+import { resolveConfig, defaultCapabilities } from '../controls/resolve.ts';
 import type {
   Capabilities,
   ControllerConfig,
   ControllerSpec,
-} from '../../controls/api.ts';
+} from '../controls/api.ts';
 import type { GameDescriptor } from '../api/index.ts';
 
 export function controllerSpec(game: GameDescriptor): ControllerSpec {

@@ -1,6 +1,6 @@
 import { SnapshotEncoder, SnapshotTimeline } from '../../../core/snapshots.ts';
-import { channelOf, usesPressSlot } from '../../../controls/registry.ts';
-import type { ControllerConfig } from '../../../controls/api.ts';
+import { channelOf, usesPressSlot } from '../../controls/registry.ts';
+import type { ControllerConfig } from '../../controls/api.ts';
 import type { WireSnapshot } from '../../../core/types.ts';
 import type {
   Action,

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { RotateCcw } from 'lucide-react';
-import { ControllerSurface } from '../../controls/ControllerSurface.tsx';
+import { ControllerSurface } from '../controls/ControllerSurface.tsx';
 import { LegacyWidget } from './LegacyWidget.tsx';
 import { ControllerMenu, StatusToast } from './ControllerMenu.tsx';
 import type {

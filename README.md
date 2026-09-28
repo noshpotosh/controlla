@@ -100,7 +100,7 @@ The gallery, designer, phone preview, Motion Lab and game harness are developmen
 - [`src/client/shell`](src/client/shell): composition, join/room/phone views, diagnostics and read-only runtime ports. See the [shell boundary and acceptance](docs/architecture/NEXT-SHELL-BOUNDARY.md).
 - `src/core`: binary input protocol, clock sync, jitter buffer, calibration, snapshot replication and authoritative session.
 - `src/client/runtime.ts`, `network.ts`, `motion.ts`: existing session orchestration, peer transport and phone sensor fusion.
-- `src/controls`, `src/layouts`: controller contracts, validated resolution, reusable controls and layouts.
+- `src/client/controls`: controller contracts, validated resolution, reusable controls and saved layouts (`layouts/`).
 - `src/client/devtools`: development entry, controller designer/gallery/preview, Motion Lab and isolated game harness.
 - `src/client/api`, `engine`, `game-screen`, `minigames`: author contracts, shared lifecycle/progress, read-only presentation, and the production game catalog.
 - `src/client/minigames/neon-harvest`: independent rules, state, renderer and colocated tests. Lab, Tilt Rally, Target Practice and their combined legacy adapters/state are retired; cross-game guarantees use test-only descriptors.

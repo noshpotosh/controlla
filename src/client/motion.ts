@@ -6,14 +6,14 @@ import {
   rotate,
   identity,
 } from '../core/calibration.ts';
-import type { Capabilities } from '../controls/api.ts';
+import type { Capabilities } from './controls/api.ts';
 import type { Quaternion } from '../core/types.ts';
 import {
   RingBuffer,
   toRawSample,
   type RawMotionSample,
 } from '../core/motion/trace.ts';
-import { defaultCapabilities } from '../controls/resolve.ts';
+import { defaultCapabilities } from './controls/resolve.ts';
 interface PermissionConstructor {
   requestPermission?: () => Promise<'granted' | 'denied'>;
 }

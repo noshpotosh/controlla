@@ -1,6 +1,6 @@
 'use client';
 // Legacy widgets that have not been ported to the controls library
-// (src/controls) yet. ControllerSurface places each one in its layout cell;
+// (src/client/controls) yet. ControllerSurface places each one in its layout cell;
 // port a type by adding it to the library and deleting its branch here.
 import {
   useEffect,
@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import type { Widget, ControlPort } from '../../controls/api.ts';
+import type { Widget, ControlPort } from '../controls/api.ts';
 import type { PhoneActions } from './ports.ts';
 const clamp = (x: number) => Math.max(-1, Math.min(1, x));
 export function LegacyWidget({

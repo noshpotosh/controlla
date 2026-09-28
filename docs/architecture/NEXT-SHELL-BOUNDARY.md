@@ -115,3 +115,5 @@ The 238-test full suite, typecheck, project lint and production build pass. The 
 Keep contract migration, mechanical moves and enforcement/evidence distinguishable for review. A reviewer can revert the shell series to the controller-cleanup checkpoint without a protocol migration. Do not mix unrelated working-tree changes into that rollback.
 
 After this slice, assess moving the stable controller/layout and developer-tool domains, then dividing remaining `core` modules by actual browser/backend consumers. Use the reduced runtime consumer surface to plan engine relocation separately. Physical-device acceptance can be prepared independently against a fixed accepted build.
+
+The subsequent [controller/tool ownership slice](CONTROLLER-TOOLS-OWNERSHIP.md) implements the bounded relocation described above. Its record and the current baseline own the updated controller/tool paths; this document retains the shell slice history.

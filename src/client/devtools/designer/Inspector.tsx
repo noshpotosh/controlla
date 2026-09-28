@@ -9,22 +9,22 @@ import type {
   ControllerLayout,
   LayoutItem,
   Rotation,
-} from '../../../controls/api.ts';
+} from '../../controls/api.ts';
 const specs: ControllerSpec[] = catalog.map(({ id, name, controls }) => ({
   id,
   name,
   ...controls,
 }));
 import { Readout, type Reading } from '../gallery/readings.tsx';
-import { ICONS } from '../../../controls/kit/icons.ts';
-import { definitionFor, definitions } from '../../../controls/registry.ts';
+import { ICONS } from '../../controls/kit/icons.ts';
+import { definitionFor, definitions } from '../../controls/registry.ts';
 
 import {
   checkAssignment,
   type LayoutIssue,
-} from '../../../controls/layout/validate.ts';
+} from '../../controls/layout/validate.ts';
 
-import { isControlName, ROTATIONS } from '../../../controls/layout/schema.ts';
+import { isControlName, ROTATIONS } from '../../controls/layout/schema.ts';
 
 const HINT: Field = { key: 'hint', label: 'Hint', type: 'text' };
 

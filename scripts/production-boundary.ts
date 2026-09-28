@@ -36,7 +36,7 @@ const gameplayModules = [
   'src/client/runtime.ts',
   'src/client/GameCanvas.tsx',
   'src/client/shell/ControllerMenu.tsx',
-  'src/controls/ControllerSurface.tsx',
+  'src/client/controls/ControllerSurface.tsx',
   'src/core/session.ts',
   'src/client/engine/round.ts',
   'src/client/engine/progress.ts',
@@ -44,7 +44,7 @@ const gameplayModules = [
   'src/client/minigames/neon-harvest/index.ts',
   'src/client/minigames/neon-harvest/game.ts',
   'src/client/minigames/neon-harvest/renderer.ts',
-  'src/controls/aim-pad/AimPad.tsx',
+  'src/client/controls/aim-pad/AimPad.tsx',
 ];
 
 export function assertProductionModules(report: BundleReport): void {

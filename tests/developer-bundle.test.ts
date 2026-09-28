@@ -13,7 +13,7 @@ import {
 import { toolRequest } from '../src/client/devtools/routing.ts';
 import { motionDiagnostics } from '../src/client/shell/runtime-adapter.ts';
 import { RingBuffer, type RawMotionSample } from '../src/core/motion/trace.ts';
-import { defaultCapabilities } from '../src/controls/resolve.ts';
+import { defaultCapabilities } from '../src/client/controls/resolve.ts';
 
 void test('build selection excludes dev routes before Vinext scans client imports', () => {
   const root = process.cwd(),
@@ -85,7 +85,7 @@ void test('production guard rejects tool modules in every environment including 
   assert.doesNotThrow(() =>
     assertProductionModules({
       environment: 'client',
-      moduleIds: ['src/controls/button/View.tsx'],
+      moduleIds: ['src/client/controls/button/View.tsx'],
     }),
   );
 });
@@ -101,7 +101,7 @@ const modules = [
   'src/client/runtime.ts',
   'src/client/GameCanvas.tsx',
   'src/client/shell/ControllerMenu.tsx',
-  'src/controls/ControllerSurface.tsx',
+  'src/client/controls/ControllerSurface.tsx',
   'src/core/session.ts',
   'src/client/engine/round.ts',
   'src/client/engine/progress.ts',
@@ -109,7 +109,7 @@ const modules = [
   'src/client/minigames/neon-harvest/index.ts',
   'src/client/minigames/neon-harvest/game.ts',
   'src/client/minigames/neon-harvest/renderer.ts',
-  'src/controls/aim-pad/AimPad.tsx',
+  'src/client/controls/aim-pad/AimPad.tsx',
 ];
 function evidence(): { reports: BundleReport[]; artifacts: Artifact[] } {
   return {

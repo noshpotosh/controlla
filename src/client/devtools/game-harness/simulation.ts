@@ -1,4 +1,4 @@
-import { kindOf, usesPressSlot } from '../../../controls/registry.ts';
+import { kindOf, usesPressSlot } from '../../controls/registry.ts';
 import type { GameHarness } from './harness.ts';
 import type { Point } from '../../api/index.ts';
 

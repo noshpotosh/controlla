@@ -6,7 +6,7 @@ On the development server, open **`/?role=gallery`** on a phone to play with eve
 
 ## Using controls in a game
 
-A **control** is a primitive; a **layout** composes controls; an **action** is the game input name. Layouts live in [src/layouts](../layouts) and are designed at `/?role=designer`. Games declare controller requirements in `GameDescriptor.controls`, using the public [game API](../client/api/index.ts):
+A **control** is a primitive; a **layout** composes controls; an **action** is the game input name. Layouts live in [src/client/controls/layouts](./layouts) and are designed at `/?role=designer`. Games declare controller requirements in `GameDescriptor.controls`, using the public [game API](../api/index.ts):
 
 ```ts
 import type { ControllerRequirements } from '../../api/index.ts';
@@ -50,7 +50,7 @@ The **Game receives** line in the gallery is the contract for each control. The 
 Run the dev server over HTTPS (`HTTPS=1 npm run dev`) and open **`/?role=designer`**. Everything happens on that one address: the designer, the phone preview, and games.
 
 1. **Open the library.** It lists every layout with a live thumbnail, its motion inputs, and the games using it. You can create a **New layout** (blank or from a template, portrait or landscape), or **Duplicate**, **Preview**, **Edit** or **Delete** an existing one. You can't delete a layout while a game uses it.
-2. **Name it.** The name you type becomes the file name (`src/layouts/<id>.json`) and is fixed once created. The display name can change anytime.
+2. **Name it.** The name you type becomes the file name (`src/client/controls/layouts/<id>.json`) and is fixed once created. The display name can change anytime.
 3. **Place touch controls.** Drag them from the palette, or click one to drop it in the first free spot. The phone is an uninterrupted grid: 12×24 cells in portrait, 24×12 in landscape. The hatched corner is reserved for the in-game menu button, and you can move it with the top-bar menu.
 4. **Switch on motion** with the checkboxes under the palette.
 5. **Adjust controls:**
@@ -61,7 +61,7 @@ Run the dev server over HTTPS (`HTTPS=1 npm run dev`) and open **`/?role=designe
    - ⌘Z undoes
 6. **Tune them in the inspector:** name (what game inputs bind to), label, which control it is, variant, props and rotation. Each control's editable props come from `fields` in its `definition.ts`. With nothing selected, the inspector shows which games use the layout and whether every one of their inputs has a control.
 7. **Fix the checks.** Items that overlap, stray off the grid, cover the menu, are smaller than their `minSize`, or share a name turn red and block saving.
-8. **Save.** Valid layouts autosave; commit the JSON. The generated `src/layouts/index.ts` updates when layouts are created or deleted.
+8. **Save.** Valid layouts autosave; commit the JSON. The generated `src/client/controls/layouts/index.ts` updates when layouts are created or deleted.
 9. **Test on a phone.** **Test on phone** shows a QR code for `/?role=preview&layout=<id>` on this computer's LAN address. The preview hot-reloads on every save, so the phone follows your edits live. If the phone is held the wrong way it asks you to rotate it, and tapping the menu corner shows what each control sends.
 
 **Play** in the designer lets you use the controls with the mouse and shows their output in the inspector.
@@ -94,7 +94,7 @@ The shared kit:
 npm run control:new -- my-control
 ```
 
-This scaffolds the four files and registers the control in `registry.ts`, `views.ts`, `controls.css`, the `WidgetType` union in [api.ts](api.ts), and [docs/INPUTS.md](../../docs/INPUTS.md). It does not modify core types or runtime code. Keep the `/* control-generator:imports */` marker after the control stylesheet imports so future controls can register there. Duplicate types fail before creating files. Then fill in the definition, build the view, and check it in the gallery. To show named demo options in the gallery, add an `OPTIONS` entry in [the development gallery](gallery/Gallery.tsx).
+This scaffolds the four files and registers the control in `registry.ts`, `views.ts`, `controls.css`, the `WidgetType` union in [api.ts](api.ts), and [docs/INPUTS.md](../../../docs/INPUTS.md). It does not modify core types or runtime code. Keep the `/* control-generator:imports */` marker after the control stylesheet imports so future controls can register there. Duplicate types fail before creating files. Then fill in the definition, build the view, and check it in the gallery. To show named demo options in the gallery, add an `OPTIONS` entry in [the development gallery](../devtools/gallery/Gallery.tsx).
 
 ## Copying a control for a special case
 

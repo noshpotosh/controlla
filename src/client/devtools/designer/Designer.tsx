@@ -1,7 +1,7 @@
 'use client';
 // /?role=designer — the controller layout library and editor.
 // /?role=designer&layout=<id> opens one layout. Layouts save to
-// src/layouts/<id>.json on the dev server; "Test on phone" follows edits live.
+// src/client/controls/layouts/<id>.json on the dev server; "Test on phone" follows edits live.
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Copy, Play, Smartphone, Undo2, X } from 'lucide-react';
 import type {
@@ -11,13 +11,13 @@ import type {
   LayoutItem,
   MenuCorner,
   Orientation,
-} from '../../../controls/api.ts';
+} from '../../controls/api.ts';
 import { COLORS } from '../../../core/types.ts';
-import { layouts } from '../../../layouts/index.ts';
+import { layouts } from '../../controls/layouts/index.ts';
 import { useReadings } from '../gallery/readings.tsx';
 
-import { MENU_CORNERS, MOTION } from '../../../controls/layout/schema.ts';
-import { validateLayout } from '../../../controls/layout/validate.ts';
+import { MENU_CORNERS, MOTION } from '../../controls/layout/schema.ts';
+import { validateLayout } from '../../controls/layout/validate.ts';
 import { canSave, saveLayout } from './api.ts';
 import { Canvas } from './Canvas.tsx';
 import { Inspector } from './Inspector.tsx';

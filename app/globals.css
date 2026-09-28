@@ -1,11 +1,11 @@
 @import 'tailwindcss' source(none);
 @import 'tw-animate-css';
-@import '../src/controls/controls.css';
+@import '../src/client/controls/controls.css';
 @import '../src/client/controller.css';
 @source './';
 @source '../components';
 @source '../src/client';
-@source '../src/controls';
+@source '../src/client/controls';
 @source not './dev';
 @source not '../src/client/devtools';
 @theme inline {
@@ -384,7 +384,7 @@ footer {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-/* Legacy widgets not yet ported to src/controls; styled to sit beside them. */
+/* Legacy widgets not yet ported to src/client/controls; styled to sit beside them. */
 .widget {
   position: absolute;
   border: 0;

@@ -15,10 +15,16 @@ import {
 import { SessionAuthority } from '../src/core/session.ts';
 import { games, findGame } from '../src/client/minigames/catalog.ts';
 import type { GameInput, GameDescriptor } from '../src/client/api/index.ts';
-import { defaultCapabilities, resolveConfig } from '../src/controls/resolve.ts';
+import {
+  defaultCapabilities,
+  resolveConfig,
+} from '../src/client/controls/resolve.ts';
 import { decodeInput, encodeInput, INPUT_BYTES } from '../src/core/protocol.ts';
-import { parseControlValue, valueFitsEnvelope } from '../src/controls/value.ts';
-import type { ControllerConfig } from '../src/controls/api.ts';
+import {
+  parseControlValue,
+  valueFitsEnvelope,
+} from '../src/client/controls/value.ts';
+import type { ControllerConfig } from '../src/client/controls/api.ts';
 import type {
   Identity,
   InputFrame,

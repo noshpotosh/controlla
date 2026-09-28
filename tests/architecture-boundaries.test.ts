@@ -389,7 +389,7 @@ void test('the production canvas and game screen can read presentation but canno
 void test('shell ports stay type-only and UI leaves cannot reach the runtime', () => {
   const ports = join(root, 'src/client/shell/ports.ts');
   const allowed = [
-    'src/controls/api.ts',
+    'src/client/controls/api.ts',
     'src/core/types.ts',
     'src/core/motion/trace.ts',
     'src/client/game-screen/port.ts',
@@ -530,7 +530,7 @@ void test('engine, screen, controls and backend cannot depend back on the shell;
     ...[
       'src/client/engine',
       'src/client/game-screen',
-      'src/controls',
+      'src/client/controls',
       'server',
     ].flatMap((path) => productionFiles(join(root, path))),
     ...[
@@ -621,10 +621,12 @@ void test('all production source graphs exclude developer tools, including erase
   for (const entry of entries) assertNoDeveloperDependencies(entry);
   for (const old of [
     'src/devtools',
+    'src/controls',
+    'src/layouts',
     'src/experiments/architecture',
-    'src/controls/designer',
-    'src/controls/gallery',
-    'src/controls/preview',
+    'src/client/controls/designer',
+    'src/client/controls/gallery',
+    'src/client/controls/preview',
     'src/client/MotionLab.tsx',
   ])
     assert.equal(

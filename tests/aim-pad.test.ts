@@ -1,28 +1,34 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { AimPadInput, aimPadVector } from '../src/controls/aim-pad/logic.ts';
-import { aimPad } from '../src/controls/aim-pad/definition.ts';
+import {
+  AimPadInput,
+  aimPadVector,
+} from '../src/client/controls/aim-pad/logic.ts';
+import { aimPad } from '../src/client/controls/aim-pad/definition.ts';
 import {
   channelOf,
   definitionFor,
   usesPressSlot,
-} from '../src/controls/registry.ts';
-import { views } from '../src/controls/views.ts';
-import { screenPort } from '../src/controls/ControllerSurface.tsx';
-import { parseControlValue } from '../src/controls/value.ts';
-import { isControllerLayout } from '../src/controls/layout/schema.ts';
+} from '../src/client/controls/registry.ts';
+import { views } from '../src/client/controls/views.ts';
+import { screenPort } from '../src/client/controls/ControllerSurface.tsx';
+import { parseControlValue } from '../src/client/controls/value.ts';
+import { isControllerLayout } from '../src/client/controls/layout/schema.ts';
 import {
   checkAssignment,
   validateLayout,
-} from '../src/controls/layout/validate.ts';
-import { layouts } from '../src/layouts/index.ts';
-import { defaultCapabilities, resolveConfig } from '../src/controls/resolve.ts';
+} from '../src/client/controls/layout/validate.ts';
+import { layouts } from '../src/client/controls/layouts/index.ts';
+import {
+  defaultCapabilities,
+  resolveConfig,
+} from '../src/client/controls/resolve.ts';
 import type {
   ControllerSpec,
   Widget,
   ControlPort,
   Vector,
-} from '../src/controls/api.ts';
+} from '../src/client/controls/api.ts';
 
 void test('absolute aim fills every corner of a rectangular pad without radial clamping', () => {
   const size = { width: 300, height: 180 };

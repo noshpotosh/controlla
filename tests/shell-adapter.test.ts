@@ -5,7 +5,10 @@ import {
   adaptRuntime,
   createSession,
 } from '../src/client/shell/runtime-adapter.ts';
-import { defaultCapabilities, resolveConfig } from '../src/controls/resolve.ts';
+import {
+  defaultCapabilities,
+  resolveConfig,
+} from '../src/client/controls/resolve.ts';
 import { pointerSpec } from './fixtures/games.ts';
 import type { Role } from '../src/core/types.ts';
 import type { RoundSnapshot } from '../src/client/api/index.ts';

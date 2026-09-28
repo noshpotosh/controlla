@@ -5,10 +5,10 @@ import test from 'node:test';
 import ts from 'typescript';
 
 const root = resolve(process.cwd());
-const controls = join(root, 'src/controls');
+const controls = join(root, 'src/client/controls');
 const api = join(controls, 'api.ts');
 const resolver = join(controls, 'resolve.ts');
-const layouts = join(root, 'src/layouts');
+const layouts = join(root, 'src/client/controls/layouts');
 const legacyConfig = join(root, 'src/core/config.ts');
 const tools = ['designer', 'gallery', 'preview'].map((name) =>
   join(root, 'src/client/devtools', name),
@@ -327,10 +327,10 @@ void test('legacy resolver, Manifest bridge and moved contract exports are remov
   const contractNames = exportsOf(api);
   for (const oldOwner of [
     'src/core/types.ts',
-    'src/controls/types.ts',
-    'src/controls/value.ts',
-    'src/controls/layout/schema.ts',
-    'src/controls/layouts.ts',
+    'src/client/controls/types.ts',
+    'src/client/controls/value.ts',
+    'src/client/controls/layout/schema.ts',
+    'src/client/controls/layouts.ts',
   ])
     for (const name of exportsOf(join(root, oldOwner)))
       assert.ok(

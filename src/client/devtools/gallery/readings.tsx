@@ -2,7 +2,7 @@
 // A mock ControlPort that records what a game would receive, plus a readout
 // for it. Shared by the gallery, the phone preview and the designer.
 import { useState } from 'react';
-import type { Widget, ControlPort } from '../../../controls/api.ts';
+import type { Widget, ControlPort } from '../../controls/api.ts';
 
 export interface Reading {
   value?: unknown;

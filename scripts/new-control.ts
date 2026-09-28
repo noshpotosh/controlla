@@ -3,14 +3,14 @@
 //   npm run control:new -- <type>                 new control from the template
 //   npm run control:new -- <type> --from <type>   copy an existing control
 //
-// Copies never touch the original. See src/controls/README.md.
+// Copies never touch the original. See src/client/controls/README.md.
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import ts from 'typescript';
 
 const root = resolve(import.meta.dirname, '..'),
-  controls = join(root, 'src/controls'),
+  controls = join(root, 'src/client/controls'),
   templates = join(root, 'scripts/templates/control');
 
 const [type, flag, from] = process.argv.slice(2);
@@ -23,9 +23,9 @@ if (!type || !/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(type))
 if (flag && (flag !== '--from' || !from))
   fail('expected --from <existing-type>');
 if (existsSync(join(controls, type)))
-  fail(`src/controls/${type} already exists`);
+  fail(`src/client/controls/${type} already exists`);
 if (from && !existsSync(join(controls, from, 'definition.ts')))
-  fail(`no control "${from}" in src/controls`);
+  fail(`no control "${from}" in src/client/controls`);
 
 const pascal = (t: string) =>
     t.replace(/(^|-)([a-z0-9])/g, (_, _d, c: string) => c.toUpperCase()),
@@ -112,7 +112,8 @@ function registerWidgetType(source: string, type: string): string {
   const declaration = /\bexport\s+type\s+WidgetType\s*=\s*([^;]+);/.exec(
     source,
   );
-  if (!declaration) return fail('no WidgetType union in src/controls/api.ts');
+  if (!declaration)
+    return fail('no WidgetType union in src/client/controls/api.ts');
   const members = declaration[1]
     .split('|')
     .map((member) => member.trim())
@@ -121,9 +122,11 @@ function registerWidgetType(source: string, type: string): string {
     !members.length ||
     members.some((member) => !/^(['"])[a-z][a-z0-9-]*\1$/.test(member))
   )
-    fail('WidgetType in src/controls/api.ts must be a literal union');
+    fail('WidgetType in src/client/controls/api.ts must be a literal union');
   if (members.some((member) => member.slice(1, -1) === type))
-    fail(`control type "${type}" is already registered in src/controls/api.ts`);
+    fail(
+      `control type "${type}" is already registered in src/client/controls/api.ts`,
+    );
   return source.replace(
     declaration[0],
     `export type WidgetType =\n${[...members, `'${type}'`].map((member) => `  | ${member}`).join('\n')};`,
@@ -185,36 +188,40 @@ async function insert(path: string, marker: string | RegExp, line: string) {
 
 const inserts: [string, string | RegExp, string][] = [
   [
-    'src/controls/registry.ts',
+    'src/client/controls/registry.ts',
     '\n\n/** Library controls',
     `import { ${camel(type)} } from './${type}/definition.ts';\n`,
   ],
-  ['src/controls/registry.ts', '// control:new inserts', `  ${camel(type)},\n`],
   [
-    'src/controls/views.ts',
+    'src/client/controls/registry.ts',
+    '// control:new inserts',
+    `  ${camel(type)},\n`,
+  ],
+  [
+    'src/client/controls/views.ts',
     '\n\n// Each view narrows',
     `import { ${pascal(type)} } from './${type}/${view!.replace('.tsx', '')}.tsx';\n`,
   ],
   [
-    'src/controls/views.ts',
+    'src/client/controls/views.ts',
     '// control:new inserts',
     `  '${type}': ${pascal(type)},\n`,
   ],
   [
-    'src/controls/controls.css',
+    'src/client/controls/controls.css',
     '/* control-generator:imports */',
     `@import './${type}/styles.css';\n`,
   ],
   ['docs/INPUTS.md', /\n\n## Motion/, `| \`${type}\` | TODO | TODO |  |\n`],
 ];
 console.log(
-  `Created src/controls/${type}/${from ? ` (copied from ${from})` : ''}`,
+  `Created src/client/controls/${type}/${from ? ` (copied from ${from})` : ''}`,
 );
 for (const [path, marker, line] of inserts) await insert(path, marker, line);
 await writeFile(apiFile, updatedApi);
-console.log('  ✓ src/controls/api.ts');
+console.log('  ✓ src/client/controls/api.ts');
 console.log(`
 Next:
-  1. Fill in src/controls/${type}/definition.ts (description, channel, output).
+  1. Fill in src/client/controls/${type}/definition.ts (description, channel, output).
   2. Build the view and styles (tokens only), then open /?role=gallery.
   3. npm run format && npm test`);

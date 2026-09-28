@@ -6,15 +6,15 @@ import type {
   ControllerLayout,
   ControllerSpec,
   InputRequirement,
-} from '../src/controls/api.ts';
+} from '../src/client/controls/api.ts';
 import {
   available,
   defaultCapabilities,
   gameLayout,
   resolveConfig,
-} from '../src/controls/resolve.ts';
-import { emptyLayout } from '../src/controls/layout/schema.ts';
-import { layouts } from '../src/layouts/index.ts';
+} from '../src/client/controls/resolve.ts';
+import { emptyLayout } from '../src/client/controls/layout/schema.ts';
+import { layouts } from '../src/client/controls/layouts/index.ts';
 import {
   controllerSpec,
   resolveController,

@@ -3,15 +3,15 @@ import type {
   Widget,
   ControlPort,
   ControllerLayout,
-} from '../../../controls/api.ts';
-import { definitionFor } from '../../../controls/registry.ts';
+} from '../../controls/api.ts';
+import { definitionFor } from '../../controls/registry.ts';
 
-import { isControllerLayout } from '../../../controls/layout/schema.ts';
+import { isControllerLayout } from '../../controls/layout/schema.ts';
 import {
   checkAssignment,
   validateLayout,
-} from '../../../controls/layout/validate.ts';
-import { layoutWidgets } from '../../../controls/layout/widgets.ts';
+} from '../../controls/layout/validate.ts';
+import { layoutWidgets } from '../../controls/layout/widgets.ts';
 
 /** Four independent actions, built entirely from the existing control library. */
 export const probeLayout: ControllerLayout = {

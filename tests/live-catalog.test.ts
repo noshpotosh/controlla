@@ -9,7 +9,7 @@ import type {
   RoundSnapshot,
   PresentationEvent,
 } from '../src/client/api/index.ts';
-import type { ControllerConfig } from '../src/controls/api.ts';
+import type { ControllerConfig } from '../src/client/controls/api.ts';
 import type { Message, Player, WireSnapshot } from '../src/core/types.ts';
 import {
   harvestPosition,

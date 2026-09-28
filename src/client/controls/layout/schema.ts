@@ -1,5 +1,5 @@
 // Controller layouts: a library of named touch layouts, designed in
-// /?role=designer and stored as JSON in src/layouts. Layouts don't know about
+// /?role=designer and stored as JSON in src/client/controls/layouts. Layouts don't know about
 // games; a game picks one and its inputs bind to the layout's control names.
 // Pure: safe for core, tests and Vite.
 import type {

@@ -6,13 +6,13 @@ import type {
   Widget,
   LayoutPreset,
   ControlDefinition,
-} from '../../../controls/api.ts';
+} from '../../controls/api.ts';
 import { COLORS } from '../../../core/types.ts';
-import { ControllerSurface } from '../../../controls/ControllerSurface.tsx';
-import { layoutWidgets } from '../../../controls/layout/widgets.ts';
+import { ControllerSurface } from '../../controls/ControllerSurface.tsx';
+import { layoutWidgets } from '../../controls/layout/widgets.ts';
 
-import { LAYOUTS, templateLayout } from '../../../controls/layouts.ts';
-import { definitions } from '../../../controls/registry.ts';
+import { LAYOUTS, templateLayout } from '../../controls/layouts.ts';
+import { definitions } from '../../controls/registry.ts';
 
 import { Readout, useReadings } from './readings.tsx';
 

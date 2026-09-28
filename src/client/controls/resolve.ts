@@ -13,7 +13,7 @@ import {
   checkAssignment,
   validateLayout,
 } from './layout/validate.ts';
-import { layouts } from '../layouts/index.ts';
+import { layouts } from './layouts/index.ts';
 import { PRESS_SLOTS, usesPressSlot } from './registry.ts';
 export function available(type: WidgetType, c: Capabilities) {
   if (type === 'pointer')

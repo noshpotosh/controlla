@@ -1,5 +1,5 @@
 /** Public game contracts. No runtime, transport or React imports. */
-import type { ControllerRequirements } from '../../controls/api.ts';
+import type { ControllerRequirements } from '../controls/api.ts';
 import type { Player, Point } from '../../core/types.ts';
 
 export type { Player, Point } from '../../core/types.ts';
@@ -14,7 +14,7 @@ export type {
   SwipeOutput,
   HoldOutput,
   StrokeOutput,
-} from '../../controls/api.ts';
+} from '../controls/api.ts';
 export type ReadonlyDeep<T> = T extends object
   ? { readonly [K in keyof T]: ReadonlyDeep<T[K]> }
   : T;

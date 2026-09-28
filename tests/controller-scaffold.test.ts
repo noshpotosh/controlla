@@ -27,7 +27,7 @@ async function fixture() {
     join(directory, 'node_modules'),
     'dir',
   );
-  for (const path of ['scripts', 'src/controls', 'src/core', 'docs'])
+  for (const path of ['scripts', 'src/client/controls', 'src/core', 'docs'])
     await mkdir(join(directory, path), { recursive: true });
   await cp(
     join(root, 'scripts/new-control.ts'),
@@ -43,19 +43,19 @@ async function fixture() {
     JSON.stringify({ type: 'module' }),
   );
   await writeFile(
-    join(directory, 'src/controls/api.ts'),
+    join(directory, 'src/client/controls/api.ts'),
     `// Independent control contract. No core import.\nexport type WidgetType = 'pointer' | "button";\nexport interface ControlDefinition { type: WidgetType; }\n`,
   );
   await writeFile(
-    join(directory, 'src/controls/registry.ts'),
+    join(directory, 'src/client/controls/registry.ts'),
     `import { button } from './button/definition.ts';\n\n/** Library controls */\nexport const definitions = [\n  button,\n  // control:new inserts above this line\n];\n`,
   );
   await writeFile(
-    join(directory, 'src/controls/views.ts'),
+    join(directory, 'src/client/controls/views.ts'),
     `import { Button } from './button/Button.tsx';\n\n// Each view narrows its own props.\nexport const views = {\n  button: Button,\n  // control:new inserts above this line\n};\n`,
   );
   await writeFile(
-    join(directory, 'src/controls/controls.css'),
+    join(directory, 'src/client/controls/controls.css'),
     `@import './button/styles.css';\n/* control-generator:imports */\n`,
   );
   await writeFile(
@@ -102,22 +102,22 @@ void test('control:new registers a template in controls only and duplicate creat
     assert.equal(created.status, 0, created.stderr);
     const files = await tree(directory);
     assert.equal(files['src/core/types.ts'], before['src/core/types.ts']);
-    assert.match(files['src/controls/api.ts'], /\| 'vector-probe';/);
+    assert.match(files['src/client/controls/api.ts'], /\| 'vector-probe';/);
     assert.match(
-      files['src/controls/registry.ts'],
+      files['src/client/controls/registry.ts'],
       /import \{ vectorProbe \} from '\.\/vector-probe\/definition\.ts';/,
     );
-    assert.match(files['src/controls/registry.ts'], /\n  vectorProbe,/);
+    assert.match(files['src/client/controls/registry.ts'], /\n  vectorProbe,/);
     assert.match(
-      files['src/controls/views.ts'],
+      files['src/client/controls/views.ts'],
       /import \{ VectorProbe \} from '\.\/vector-probe\/VectorProbe\.tsx';/,
     );
     assert.match(
-      files['src/controls/views.ts'],
+      files['src/client/controls/views.ts'],
       /'vector-probe': VectorProbe,/,
     );
     assert.match(
-      files['src/controls/controls.css'],
+      files['src/client/controls/controls.css'],
       /@import '\.\/vector-probe\/styles\.css';\n\/\* control-generator:imports \*\//,
     );
     assert.match(
@@ -125,31 +125,31 @@ void test('control:new registers a template in controls only and duplicate creat
       /\| `vector-probe` \| TODO \| TODO \|/,
     );
     assert.match(
-      files['src/controls/vector-probe/definition.ts'],
+      files['src/client/controls/vector-probe/definition.ts'],
       /from '\.\.\/api\.ts'/,
     );
     assert.match(
-      files['src/controls/vector-probe/definition.ts'],
+      files['src/client/controls/vector-probe/definition.ts'],
       /type: 'vector-probe'/,
     );
     assert.match(
-      files['src/controls/vector-probe/VectorProbe.tsx'],
+      files['src/client/controls/vector-probe/VectorProbe.tsx'],
       /export function VectorProbe/,
     );
     assert.match(
-      files['src/controls/vector-probe/VectorProbe.tsx'],
+      files['src/client/controls/vector-probe/VectorProbe.tsx'],
       /port\.value\(vectorProbeValue/,
     );
     assert.match(
-      files['src/controls/vector-probe/logic.ts'],
+      files['src/client/controls/vector-probe/logic.ts'],
       /export function vectorProbeValue/,
     );
     assert.match(
-      files['src/controls/vector-probe/styles.css'],
+      files['src/client/controls/vector-probe/styles.css'],
       /\.ctl-vector-probe__body/,
     );
     for (const [path, source] of Object.entries(files).filter(([path]) =>
-      path.startsWith('src/controls/vector-probe/'),
+      path.startsWith('src/client/controls/vector-probe/'),
     ))
       assert.doesNotMatch(source, /__(TYPE|PASCAL|CAMEL|TITLE)__/, path);
     const duplicate = run(directory, 'vector-probe');
@@ -170,34 +170,34 @@ void test('control:new --from preserves the source while registering the copied 
     assert.equal(copied.status, 0, copied.stderr);
     const files = await tree(directory);
     for (const [path, text] of Object.entries(before).filter(([path]) =>
-      path.startsWith('src/controls/source-probe/'),
+      path.startsWith('src/client/controls/source-probe/'),
     ))
       assert.equal(files[path], text);
     assert.equal(files['src/core/types.ts'], before['src/core/types.ts']);
     assert.match(
-      files['src/controls/copied-probe/definition.ts'],
+      files['src/client/controls/copied-probe/definition.ts'],
       /export const copiedProbe:/,
     );
     assert.match(
-      files['src/controls/copied-probe/definition.ts'],
+      files['src/client/controls/copied-probe/definition.ts'],
       /type: 'copied-probe'/,
     );
     assert.match(
-      files['src/controls/copied-probe/CopiedProbe.tsx'],
+      files['src/client/controls/copied-probe/CopiedProbe.tsx'],
       /export function CopiedProbe/,
     );
     assert.match(
-      files['src/controls/copied-probe/styles.css'],
+      files['src/client/controls/copied-probe/styles.css'],
       /\.ctl-copied-probe__body/,
     );
-    assert.match(files['src/controls/api.ts'], /\| 'copied-probe';/);
-    assert.match(files['src/controls/registry.ts'], /\n  copiedProbe,/);
+    assert.match(files['src/client/controls/api.ts'], /\| 'copied-probe';/);
+    assert.match(files['src/client/controls/registry.ts'], /\n  copiedProbe,/);
     assert.match(
-      files['src/controls/views.ts'],
+      files['src/client/controls/views.ts'],
       /'copied-probe': CopiedProbe,/,
     );
     assert.match(
-      files['src/controls/controls.css'],
+      files['src/client/controls/controls.css'],
       /@import '\.\/copied-probe\/styles\.css';/,
     );
   } finally {
@@ -213,7 +213,7 @@ void test('control:new rejects an already registered type before creating any fi
     assert.notEqual(duplicate.status, 0);
     assert.match(
       duplicate.stderr,
-      /already registered in src\/controls\/api\.ts/,
+      /already registered in src\/client\/controls\/api\.ts/,
     );
     assert.deepEqual(await tree(directory), before);
   } finally {
@@ -228,14 +228,18 @@ for (const [original, copied, outputType] of [
   void test(`control:new --from ${original} preserves shared types and typechecks the actual library copy`, async () => {
     const directory = await fixture();
     try {
-      await cp(join(root, 'src/controls'), join(directory, 'src/controls'), {
-        recursive: true,
-      });
+      await cp(
+        join(root, 'src/client/controls'),
+        join(directory, 'src/client/controls'),
+        {
+          recursive: true,
+        },
+      );
       if (original === 'stick') {
         // Both halves matter: external aliases keep their names/references, while
         // source-owned named imports follow the renamed definition declaration.
         await writeFile(
-          join(directory, 'src/controls/stick/identity.ts'),
+          join(directory, 'src/client/controls/stick/identity.ts'),
           `
 import type { StickOutput as StickShared } from '../api.ts';
 import { stick as StickDefinition } from './definition.ts';
@@ -245,14 +249,16 @@ export const StickIdentity = (value: StickShared) => ({ value, definition: Stick
 `,
         );
       }
-      const before = await tree(join(directory, 'src/controls', original));
+      const before = await tree(
+        join(directory, 'src/client/controls', original),
+      );
       const generated = run(directory, copied, '--from', original);
       assert.equal(generated.status, 0, generated.stderr);
       assert.deepEqual(
-        await tree(join(directory, 'src/controls', original)),
+        await tree(join(directory, 'src/client/controls', original)),
         before,
       );
-      const copy = await tree(join(directory, 'src/controls', copied));
+      const copy = await tree(join(directory, 'src/client/controls', copied));
       const view = Object.keys(copy).find((name) => name.endsWith('.tsx'))!;
       assert.ok(copy[view].includes(outputType));
       assert.ok(copy['logic.ts'].includes(outputType));
@@ -270,12 +276,12 @@ export const StickIdentity = (value: StickShared) => ({ value, definition: Stick
       }
       const files = Object.keys(copy)
         .filter((file) => /\.tsx?$/.test(file))
-        .map((file) => join(directory, 'src/controls', copied, file));
+        .map((file) => join(directory, 'src/client/controls', copied, file));
       const program = ts.createProgram(
         [
           ...files,
-          join(directory, 'src/controls/registry.ts'),
-          join(directory, 'src/controls/views.ts'),
+          join(directory, 'src/client/controls/registry.ts'),
+          join(directory, 'src/client/controls/views.ts'),
         ],
         {
           target: ts.ScriptTarget.ESNext,

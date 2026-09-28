@@ -1,4 +1,4 @@
-import { defaultCapabilities } from '../controls/resolve.ts';
+import { defaultCapabilities } from '../client/controls/resolve.ts';
 import {
   defaultGame,
   findGame,
@@ -22,13 +22,13 @@ import { SequenceWindow, decodeInput } from './protocol.ts';
 import { ContinuousBuffer, Equalizer, Samples } from './timing.ts';
 import { SnapshotEncoder } from './snapshots.ts';
 import { ARBITRATION_MS } from './arbitration.ts';
-import { channelOf, usesPressSlot } from '../controls/registry.ts';
+import { channelOf, usesPressSlot } from '../client/controls/registry.ts';
 import {
   parseActivationValue,
   parseControlValue,
   valueFitsEnvelope,
-} from '../controls/value.ts';
-import type { Capabilities, ControllerConfig } from '../controls/api.ts';
+} from '../client/controls/value.ts';
+import type { Capabilities, ControllerConfig } from '../client/controls/api.ts';
 import {
   now,
   type InputFrame,

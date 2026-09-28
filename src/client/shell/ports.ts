@@ -4,7 +4,7 @@ import type {
   ControlPort,
   Widget,
   Permission,
-} from '../../controls/api.ts';
+} from '../controls/api.ts';
 import type { Identity, Role, Point, Player, Venue } from '../../core/types.ts';
 import type { RawMotionSample } from '../../core/motion/trace.ts';
 import type { ScreenPort } from '../game-screen/port.ts';

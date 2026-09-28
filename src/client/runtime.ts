@@ -20,13 +20,13 @@ import type {
 import { SessionAuthority } from '../core/session.ts';
 import { encodeInput, decodeInput, newer } from '../core/protocol.ts';
 import { Motion } from './motion.ts';
-import { channelOf, PRESS_SLOTS, usesPressSlot } from '../controls/registry.ts';
+import { channelOf, PRESS_SLOTS, usesPressSlot } from './controls/registry.ts';
 import {
   parseActivationValue,
   parseControlValue,
   valueFitsEnvelope,
-} from '../controls/value.ts';
-import type { ControlPort, ControllerConfig, Widget } from '../controls/api.ts';
+} from './controls/value.ts';
+import type { ControlPort, ControllerConfig, Widget } from './controls/api.ts';
 import type { WidgetValueMessage } from '../core/reliable-input.ts';
 import {
   clampGain,

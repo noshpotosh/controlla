@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usesPressSlot } from '../../../controls/registry.ts';
+import { usesPressSlot } from '../../controls/registry.ts';
 import type { Point, RoundProgress, RoundSnapshot } from '../../api/index.ts';
 import { games } from '../../minigames/catalog.ts';
 import { ControllerProbe } from './ControllerProbe.tsx';

@@ -8,7 +8,7 @@ import type {
   LayoutPreset,
   Capabilities,
   ControllerSpec,
-} from '../src/controls/api.ts';
+} from '../src/client/controls/api.ts';
 import {
   asControllerLayout,
   emptyLayout,
@@ -16,26 +16,26 @@ import {
   layoutFileName,
   menuRect,
   slugify,
-} from '../src/controls/layout/schema.ts';
+} from '../src/client/controls/layout/schema.ts';
 import {
   checkAssignment,
   validateLayout,
-} from '../src/controls/layout/validate.ts';
+} from '../src/client/controls/layout/validate.ts';
 import {
   rotateDirection,
   rotateVector,
   toLocal,
-} from '../src/controls/layout/rotation.ts';
-import { renderLayoutIndex } from '../src/controls/layout/index-file.ts';
-import { layoutWidgets } from '../src/controls/layout/widgets.ts';
+} from '../src/client/controls/layout/rotation.ts';
+import { renderLayoutIndex } from '../src/client/controls/layout/index-file.ts';
+import { layoutWidgets } from '../src/client/controls/layout/widgets.ts';
 
 import {
   gameDefaultLayout,
   LAYOUTS,
   templateLayout,
-} from '../src/controls/layouts.ts';
-import { definitionFor } from '../src/controls/registry.ts';
-import { dpadDirection } from '../src/controls/dpad/logic.ts';
+} from '../src/client/controls/layouts.ts';
+import { definitionFor } from '../src/client/controls/registry.ts';
+import { dpadDirection } from '../src/client/controls/dpad/logic.ts';
 import {
   addItem,
   findFreeSpot,
@@ -46,9 +46,9 @@ import {
   defaultCapabilities,
   gameLayout,
   resolveConfig,
-} from '../src/controls/resolve.ts';
+} from '../src/client/controls/resolve.ts';
 
-import { layouts } from '../src/layouts/index.ts';
+import { layouts } from '../src/client/controls/layouts/index.ts';
 
 const layoutOf = (
   items: LayoutItem[],

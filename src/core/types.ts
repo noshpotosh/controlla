@@ -1,4 +1,4 @@
-import type { Capabilities, ControlValue } from '../controls/api.ts';
+import type { Capabilities, ControlValue } from '../client/controls/api.ts';
 export type Role = 'host' | 'display' | 'controller';
 export type Point = { x: number; y: number };
 export type Quaternion = [number, number, number, number];

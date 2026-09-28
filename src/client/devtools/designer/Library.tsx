@@ -1,5 +1,5 @@
 'use client';
-// The layout library: every layout in src/layouts, with the games using it.
+// The layout library: every layout in src/client/controls/layouts, with the games using it.
 // Create, open, duplicate or delete layouts here.
 import { useState } from 'react';
 import { Copy, Pencil, Plus, Smartphone, Trash2 } from 'lucide-react';
@@ -9,23 +9,23 @@ import type {
   ControllerLayout,
   Orientation,
   LayoutPreset,
-} from '../../../controls/api.ts';
+} from '../../controls/api.ts';
 const specs: ControllerSpec[] = catalog.map(({ id, name, controls }) => ({
   id,
   name,
   ...controls,
 }));
 import { COLORS } from '../../../core/types.ts';
-import { layouts } from '../../../layouts/index.ts';
-import { ControllerSurface } from '../../../controls/ControllerSurface.tsx';
+import { layouts } from '../../controls/layouts/index.ts';
+import { ControllerSurface } from '../../controls/ControllerSurface.tsx';
 
-import { MOTION, slugify } from '../../../controls/layout/schema.ts';
-import { checkAssignment } from '../../../controls/layout/validate.ts';
-import { layoutWidgets } from '../../../controls/layout/widgets.ts';
+import { MOTION, slugify } from '../../controls/layout/schema.ts';
+import { checkAssignment } from '../../controls/layout/validate.ts';
+import { layoutWidgets } from '../../controls/layout/widgets.ts';
 
-import { LAYOUTS, templateLayout } from '../../../controls/layouts.ts';
-import { emptyLayout } from '../../../controls/layout/schema.ts';
-import { SensorTile } from '../../../controls/SensorTile.tsx';
+import { LAYOUTS, templateLayout } from '../../controls/layouts.ts';
+import { emptyLayout } from '../../controls/layout/schema.ts';
+import { SensorTile } from '../../controls/SensorTile.tsx';
 import { canSave, createLayout, deleteLayout } from './api.ts';
 
 const noopPort = { value() {}, press() {}, haptic() {} };
@@ -235,7 +235,7 @@ function NewLayout({
           />
         </label>
         <p className="dz-muted">
-          Saved as <code>src/layouts/{id}.json</code>
+          Saved as <code>src/client/controls/layouts/{id}.json</code>
         </p>
         {!from && (
           <>
