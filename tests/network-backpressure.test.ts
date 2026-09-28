@@ -1,6 +1,6 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { Network } from '../src/client/network.ts';
+import { Network } from '../src/client/transport/network.ts';
 import { APP_PROTOCOL_VERSION } from '../src/shared/app-protocol.ts';
 import { SessionProgress } from '../src/client/engine/progress.ts';
 import {

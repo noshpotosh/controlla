@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { SessionRouter } from '../src/client/session-routing/session-router.ts';
+import { SessionRouter } from '../src/client/runtime/session-routing/session-router.ts';
 import { encodeInput, type InputFrame } from '../src/client/engine/protocol.ts';
 import type { Channel, Message } from '../src/client/engine/messages.ts';
 import type { Identity, Role, Roster } from '../src/shared/room.ts';

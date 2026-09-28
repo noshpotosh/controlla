@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   ControllerInput,
   type InputEffects,
-} from '../src/client/controller-input/controller-input.ts';
+} from '../src/client/runtime/controller-input/controller-input.ts';
 import type { ControllerConfig, Widget } from '../src/client/controls/api.ts';
 import type { MotionSnapshot } from '../src/client/controls/motion/contracts.ts';
 import { decodeInput, type InputFrame } from '../src/client/engine/protocol.ts';

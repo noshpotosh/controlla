@@ -1,7 +1,7 @@
-import { decodeInput, newer, type InputFrame } from '../engine/protocol.ts';
-import type { Channel, Message } from '../engine/messages.ts';
-import type { Identity, Roster } from '../../shared/room.ts';
-import type { Point } from '../../core/types.ts';
+import { decodeInput, newer, type InputFrame } from '../../engine/protocol.ts';
+import type { Channel, Message } from '../../engine/messages.ts';
+import type { Identity, Roster } from '../../../shared/room.ts';
+import type { Point } from '../../../core/types.ts';
 
 type RoutingIdentity = Pick<Identity, 'id' | 'role' | 'hostId' | 'venueId'>;
 export type ControllerRoute = 'venue' | 'direct-to-session';

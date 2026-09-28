@@ -1,19 +1,19 @@
-import type { ControlPort, ControllerConfig, Widget } from '../controls/api.ts';
-import type { MotionSnapshot } from '../controls/motion/contracts.ts';
-import { channelOf, PRESS_SLOTS, usesPressSlot } from '../controls/registry.ts';
+import type { ControlPort, ControllerConfig, Widget } from '../../controls/api.ts';
+import type { MotionSnapshot } from '../../controls/motion/contracts.ts';
+import { channelOf, PRESS_SLOTS, usesPressSlot } from '../../controls/registry.ts';
 import {
   parseActivationValue,
   parseControlValue,
   valueFitsEnvelope,
-} from '../controls/value.ts';
+} from '../../controls/value.ts';
 import {
   clampGain,
   GyroPointer,
   PointerSmoother,
-} from '../controls/motion/pointer.ts';
-import { encodeInput, type InputFrame } from '../engine/protocol.ts';
-import type { Press, WidgetValueMessage } from '../engine/reliable-input.ts';
-import type { Point } from '../../core/types.ts';
+} from '../../controls/motion/pointer.ts';
+import { encodeInput, type InputFrame } from '../../engine/protocol.ts';
+import type { Press, WidgetValueMessage } from '../../engine/reliable-input.ts';
+import type { Point } from '../../../core/types.ts';
 
 export interface InputEnvironment {
   localTime(): number;

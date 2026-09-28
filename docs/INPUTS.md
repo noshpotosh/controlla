@@ -2,7 +2,7 @@
 
 Every controller input a minigame can ask for, what it senses on the phone, and what the game receives. **Used by** links to the ideas in [MINIGAMES.md](MINIGAMES.md), so the inputs that many games need stand out.
 
-Names are the `WidgetType` values in [src/client/controls/api.ts](../src/client/controls/api.ts). Inputs marked **(library)** come from the controls library in [src/client/controls](../src/client/controls/README.md). Try them at `/?role=gallery`. The rest are legacy widgets in [src/client/shell/LegacyWidget.tsx](../src/client/shell/LegacyWidget.tsx) and, for motion, [src/client/runtime.ts](../src/client/runtime.ts), waiting to be ported. Legacy touch widgets are not registered library controls and do not pass the validated layout resolver. The usage links below are game ideas and historical examples; Neon Harvest remains the sole production game.
+Names are the `WidgetType` values in [src/client/controls/api.ts](../src/client/controls/api.ts). Inputs marked **(library)** come from the controls library in [src/client/controls](../src/client/controls/README.md). Try them at `/?role=gallery`. The rest are legacy widgets in [src/client/shell/LegacyWidget.tsx](../src/client/shell/LegacyWidget.tsx) and, for motion, [src/client/runtime/runtime.ts](../src/client/runtime/runtime.ts), waiting to be ported. Legacy touch widgets are not registered library controls and do not pass the validated layout resolver. The usage links below are game ideas and historical examples; Neon Harvest remains the sole production game.
 
 ## Touch
 

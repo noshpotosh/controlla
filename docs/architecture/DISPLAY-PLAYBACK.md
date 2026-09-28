@@ -4,7 +4,7 @@ Implemented on `codex/display-playback-0928` in `.worktrees/display-playback-092
 
 ## Responsibilities and interfaces
 
-`src/client/playback/display-playback.ts` owns `DisplayPlayback`: snapshot timeline admission/sampling, missing-base recovery, compatibility errors, presentation cue queues and duplicate tracking, retired rounds, visible-marker acknowledgments, and snapshot diagnostics. The snapshot buffer is private and no longer exposed by Runtime.
+`src/client/runtime/playback/display-playback.ts` owns `DisplayPlayback`: snapshot timeline admission/sampling, missing-base recovery, compatibility errors, presentation cue queues and duplicate tracking, retired rounds, visible-marker acknowledgments, and snapshot diagnostics. The snapshot buffer is private and no longer exposed by Runtime.
 
 Runtime injects the existing catalog snapshot policy and game/mode support predicate. Calls supply authority time, clock readiness, and detached local cursor positions. Playback accepts snapshot/event/phase data through focused methods; it never receives Runtime, RuntimeView, Network, or session authority. Effects are explicit callbacks for snapshot ACK, resync, venue statistics, presentation ACK, recovery warning and due audio cue. Read-only getters expose delay, limiting venue and the last immutable sampled state for the existing shell projection.
 

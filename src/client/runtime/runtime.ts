@@ -1,32 +1,33 @@
-import { Network, type LinkStats } from './network.ts';
-import { ClockSync, now } from './engine/timing.ts';
+import { Network } from '../transport/network.ts';
+import type { LinkStats, Transport } from '../transport/contracts.ts';
+import { ClockSync, now } from '../engine/timing.ts';
 import {
   DisplayPlayback,
   SNAPSHOT_RETRY_MESSAGE,
 } from './playback/display-playback.ts';
-import { games, findGame } from './minigames/catalog.ts';
-import { catalogSnapshotPolicy } from './engine/snapshots.ts';
-import { ProgressAssembler } from './engine/history.ts';
-import { completedResults } from './engine/progress.ts';
-import { freezeSnapshot } from './game-screen/screen.ts';
-import type { ScreenPort, ScreenFrame } from './game-screen/port.ts';
+import { games, findGame } from '../minigames/catalog.ts';
+import { catalogSnapshotPolicy } from '../engine/snapshots.ts';
+import { ProgressAssembler } from '../engine/history.ts';
+import { completedResults } from '../engine/progress.ts';
+import { freezeSnapshot } from '../game-screen/screen.ts';
+import type { ScreenPort, ScreenFrame } from '../game-screen/port.ts';
 import type {
   Progress,
   ReadonlyDeep,
   RoundSnapshot,
   PresentationEvent,
-} from './api/index.ts';
-import { SessionAuthority } from './engine/session.ts';
-import { Motion } from './controls/motion/provider.ts';
-import type { MotionStatus } from './controls/motion/contracts.ts';
-import type { ControlPort, ControllerConfig, Widget } from './controls/api.ts';
-import { DEFAULT_GAIN } from './controls/motion/pointer.ts';
+} from '../api/index.ts';
+import { SessionAuthority } from '../engine/session.ts';
+import { Motion } from '../controls/motion/provider.ts';
+import type { MotionStatus } from '../controls/motion/contracts.ts';
+import type { ControlPort, ControllerConfig, Widget } from '../controls/api.ts';
+import { DEFAULT_GAIN } from '../controls/motion/pointer.ts';
 import { ControllerInput } from './controller-input/controller-input.ts';
 
-import type { Channel, Message } from './engine/messages.ts';
+import type { Channel, Message } from '../engine/messages.ts';
 import { SessionRouter } from './session-routing/session-router.ts';
-import type { Point } from '../core/types.ts';
-import { type Identity, type Role, type Roster } from '../shared/room.ts';
+import type { Point } from '../../core/types.ts';
+import { type Identity, type Role, type Roster } from '../../shared/room.ts';
 export interface RuntimeView {
   identity: Identity | null;
   roster: Roster;
@@ -69,7 +70,7 @@ export interface JoinOptions {
   token?: string;
 }
 export class Runtime {
-  network: Network;
+  readonly network: Transport;
   clock = new ClockSync();
   private readonly playback: DisplayPlayback;
   private progress = new ProgressAssembler();
@@ -128,6 +129,7 @@ export class Runtime {
   constructor(
     public options: JoinOptions,
     motion = new Motion(),
+    transport?: Transport,
   ) {
     this.playback = new DisplayPlayback(
       catalogSnapshotPolicy(games),
@@ -180,7 +182,7 @@ export class Runtime {
       },
     );
     this.motion = motion;
-    this.network = new Network(options.endpoint, options);
+    this.network = transport ?? new Network(options.endpoint, options);
     this.network.onWelcome = (i) => this.welcome(i);
     this.network.onRoster = (r) => this.roster(r);
     this.network.onMessage = (f, c, d) => this.receive(f, c, d);

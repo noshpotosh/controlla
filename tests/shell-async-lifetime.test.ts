@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
-import { Runtime } from '../src/client/runtime.ts';
+import { Runtime } from '../src/client/runtime/runtime.ts';
 import { adaptRuntime } from '../src/client/shell/runtime-adapter.ts';
 
 function deferred<T>() {

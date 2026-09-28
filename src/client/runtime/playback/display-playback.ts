@@ -2,18 +2,18 @@ import type {
   PresentationEvent,
   ReadonlyDeep,
   RoundSnapshot,
-} from '../api/index.ts';
+} from '../../api/index.ts';
 import {
   SnapshotTimeline,
   type SnapshotPolicy,
   type WireSnapshot,
-} from '../engine/replication.ts';
-import { Samples } from '../engine/timing.ts';
-import { freezeSnapshot } from '../game-screen/screen.ts';
+} from '../../engine/replication.ts';
+import { Samples } from '../../engine/timing.ts';
+import { freezeSnapshot } from '../../game-screen/screen.ts';
 import {
   RELOAD_DISPLAY_MESSAGE,
   type ScreenFrame,
-} from '../game-screen/port.ts';
+} from '../../game-screen/port.ts';
 
 export const SNAPSHOT_RETRY_MESSAGE =
   'A game update could not be read. Waiting for a fresh snapshot.';

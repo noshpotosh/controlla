@@ -1,6 +1,6 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { Runtime } from '../src/client/runtime.ts';
+import { Runtime } from '../src/client/runtime/runtime.ts';
 import { createPresenter } from '../src/client/game-screen/presenter.ts';
 import { findGame, games } from '../src/client/minigames/catalog.ts';
 import type { ScreenFrame } from '../src/client/game-screen/port.ts';

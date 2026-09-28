@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 import { motionFixture } from './fixtures/motion-provider.ts';
-import { Runtime } from '../src/client/runtime.ts';
+import { Runtime } from '../src/client/runtime/runtime.ts';
 import { SessionAuthority } from '../src/client/engine/session.ts';
 import type { Message } from '../src/client/engine/messages.ts';
 import { decodeInput, type InputFrame } from '../src/client/engine/protocol.ts';
