@@ -98,3 +98,7 @@ Controller contributors import shared contracts from `src/client/controls/api.ts
 ## Motion lifecycle
 
 Motion-based controls consume the controller-owned [motion provider](MOTION-PROVIDER.md). Permissions, sampling and suspension belong to that provider; runtime owns transport and host configuration remains authoritative. Declare a touch fallback when the game can support one. A sensor returning automatically restores its motion option through normal generation/ACK negotiation. Development tools observe detached samples through the shell diagnostics port and cannot restart a suspended or disposed provider.
+
+## Runtime integration ownership
+
+Game authors still use the descriptor, catalog, harness and public APIs above. The [runtime composition](RUNTIME-COMPOSITION.md) connects playback, controller input, routing, browser resources and diagnostics through narrow contracts; games and tools must not import those implementations or concrete transport. No additional registration or authoring step is introduced.

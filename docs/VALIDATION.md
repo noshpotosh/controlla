@@ -1,6 +1,24 @@
 # Validation and acceptance ledger
 
-The current slice uses **Neon Harvest as the sole production game**: 45 seconds, 1–8 players, one `standard` mode. Harness and live rooms share the public author contracts, round runner, validated snapshots and session ledger. **297 tests, typecheck, project lint and production build pass (2026-09-28) on the session-routing topic branch.** Current desktop observations are recorded below; earlier slices remain separate historical evidence. Physical latency, cross-country fairness and device compatibility remain uncertified.
+The current slice uses **Neon Harvest as the sole production game**: 45 seconds, 1–8 players, one `standard` mode. Harness and live rooms share the public author contracts, round runner, validated snapshots and session ledger. **308 tests, typecheck, project lint and production build pass (2026-09-28) on the runtime-decomposition topic branch.** Current desktop observations are recorded below; earlier slices remain separate historical evidence. Physical latency, cross-country fairness and device compatibility remain uncertified.
+
+## Runtime composition — 2026-09-28
+
+Baseline: fetched integration `7e8de1f`; topic `codex/runtime-decomposition-0928`, main checkout. See [ownership and checkpoint record](architecture/RUNTIME-COMPOSITION.md). All prior collaborator regressions remain, plus fallback timing, browser resource disposal, stale statistics, injected-transport retirement and complete runtime dependency checks.
+
+| Check | Observed result |
+| --- | --- |
+| Automated | 308 tests; typecheck, lint and production build/bundle assertions pass. IPC/WebSocket tests and Vite build require execution outside this environment's restricted socket sandbox. |
+| Local room | In-app desktop browser against local dev/signaling servers; room XC4RT, host CB34 and remote screen 22CB, AdaRuntime local and BeaRuntime remote. |
+| Play and results | Two-player round completed. Remote canvas showed AdaRuntime game score 40 / award 1 and BeaRuntime score 0 / award 0; standings matched. Keyboard aim and PULSE exercised on both controllers. |
+| Rematch and return | Started rematch, reloaded Bea's controller and rejoined through room/screen codes. The same player identity returned while running. Recovered aim/PULSE controls remained available. |
+| Abort and host loss | Aborted rematch retained totals 1/0. Closing host produced session-ended guidance on the remote display with retained standings. |
+| Export | Downloaded and parsed version-two reports before and after host loss: one completed round plus one aborted round with empty awards. Browser download-event waiter timed out, but files were successfully saved in Downloads and parsed from disk. Before host loss starvation count was 0; the post-loss report recorded 1. |
+| Diagnostics and motion | Remote diagnostics showed P2P host/host candidates, venue controller paths, and touch fallback. Controller menu and Motion Lab correctly showed enable-motion / waiting-for-samples guidance. No physical sensor grant is claimed. |
+| Development tools | Gallery loaded and Fire incremented its press readout; designer library and aim-and-pulse preview loaded. Existing nested-button designer warning remains unchanged. Harness route loaded independently. |
+| Limits | No physical phone/TV, granted sensor compatibility, TURN/cross-household or camera latency certification. No merge or deployment. |
+
+Temporary acceptance tabs and local servers were closed after the walkthrough. The two exported XC4RT JSON files are local acceptance artifacts outside Git. Source checkpoints are pushed individually; existing sibling worktrees remain intact.
 
 ## Session routing — 2026-09-28
 

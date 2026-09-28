@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import WebSocket from 'ws';
-import { Runtime } from '../src/client/runtime.ts';
+import { Runtime } from '../src/client/runtime/runtime.ts';
 import {
   defaultCapabilities,
   resolveConfig,

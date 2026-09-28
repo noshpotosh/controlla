@@ -226,9 +226,8 @@ void test('backend and shared contracts have independent implementation boundari
 const engine = join(root, 'src/client/engine');
 const engineForbidden = [
   'src/client/shell',
-  'src/client/playback',
-  'src/client/runtime.ts',
-  'src/client/network.ts',
+  'src/client/runtime',
+  'src/client/transport',
   'src/client/controls/motion/processor.ts',
   'src/client/GameCanvas.tsx',
   'src/client/game-screen',
@@ -289,16 +288,16 @@ void test('engine boundary rejects erased, indirect, dynamic and unresolved depe
   const entry = join(engine, 'session.ts');
   const helper = join(engine, 'timing.ts');
   for (const source of [
-    "import '../playback/display-playback.ts';",
-    "import { Runtime } from '../runtime.ts';",
-    "import type { Network } from '../network.ts';",
-    "type M = import('../controls/motion/provider.ts').Motion;",
+    "import '@/src/client/runtime/playback/display-playback.ts';",
+    "import { Runtime } from '@/src/client/runtime/runtime.ts';",
+    "import type { Network } from '@/src/client/transport/network.ts';",
+    "type M = import('@/src/client/controls/motion/provider.ts').Motion;",
     "export * from '@/src/client/shell/runtime-adapter.ts';",
-    "const load = () => import('../devtools/routing.ts');",
+    "const load = () => import('@/src/client/devtools/routing.ts');",
     "const load = () => require('@/server/rooms.ts');",
-    "export * from '../controls/motion/pointer.ts';",
+    "export * from '@/src/client/controls/motion/pointer.ts';",
     "import type { ReactNode } from 'react';",
-    "import { ICONS } from '../controls/kit/icons.ts';",
+    "import { ICONS } from '@/src/client/controls/kit/icons.ts';",
     "import type { Missing } from './missing-contract.ts';",
     'const load = (path: string) => import(path);',
   ]) {
@@ -367,15 +366,15 @@ void test('shared and backend boundaries reject erased, indirect and dynamic dep
   const server = join(backend, 'index.ts');
   const rooms = join(backend, 'rooms.ts');
   const leaks = [
-    "import { Runtime } from '@/src/client/runtime.ts';",
+    "import { Runtime } from '@/src/client/runtime/runtime.ts';",
     "import type { Capabilities } from '@/src/client/controls/api.ts';",
     "type Capabilities = import('@/src/client/controls/api.ts').Capabilities;",
     "export type { Player } from '@/src/client/api/index.ts';",
     "export * from '@/src/core/types.ts';",
     "export * from '@/src/client/engine/session.ts';",
     "import type { Message } from '@/src/client/engine/messages.ts';",
-    "const load = () => import('@/src/client/network.ts');",
-    "const load = () => require('@/src/client/network.ts');",
+    "const load = () => import('@/src/client/transport/network.ts');",
+    "const load = () => require('@/src/client/transport/network.ts');",
     'const load = (path: string) => import(path);',
     "import type { Missing } from './missing-contract.ts';",
   ];
@@ -497,8 +496,8 @@ void test('the catalog is the only production module that imports Neon Harvest',
 void test('game and harness dependency graphs stay outside shell, network ownership and tooling', () => {
   const forbidden = [
     'src/client/shell',
-    'src/client/playback',
-    'src/client/runtime.ts',
+    'src/client/runtime/playback',
+    'src/client/runtime/runtime.ts',
     'server',
     'src/client/devtools/motion-lab',
     'src/client/devtools/designer',
@@ -622,9 +621,9 @@ function assertScreenBoundary(overrides = new Map<string, string>()) {
   const screenDirectory = join(root, 'src/client/game-screen');
   const canvas = join(root, 'src/client/GameCanvas.tsx');
   const forbidden = [
-    'src/client/playback',
-    'src/client/runtime.ts',
-    'src/client/network.ts',
+    'src/client/runtime/playback',
+    'src/client/runtime/runtime.ts',
+    'src/client/transport/network.ts',
     'src/client/engine/session.ts',
     'src/client/engine/round.ts',
     'src/client/engine/progress.ts',
@@ -737,8 +736,8 @@ function assertShellLeaf(entry: string, overrides = new Map<string, string>()) {
     composition,
     adapter,
     ...[
-      'src/client/runtime.ts',
-      'src/client/network.ts',
+      'src/client/runtime',
+      'src/client/transport',
       'src/client/controls/motion/processor.ts',
       'src/client/controls/motion/provider.ts',
       'src/client/GameCanvas.tsx',
@@ -771,18 +770,18 @@ void test('shell boundary rejects direct, type-only, alias, re-export and dynami
   const entry = join(shell, 'RoomScreen.tsx'),
     helper = join(shell, 'standings.ts');
   for (const source of [
-    "import '../playback/display-playback.ts';",
-    "import { Runtime } from '../runtime.ts';",
-    "import type { Runtime } from '../runtime.ts';",
-    "type R = import('../runtime.ts').Runtime;",
-    "export { Runtime } from '@/src/client/runtime.ts';",
-    "export * from '../network.ts';",
-    "const lazy = () => import('../controls/motion/provider.ts');",
+    "import '@/src/client/runtime/playback/display-playback.ts';",
+    "import { Runtime } from '@/src/client/runtime/runtime.ts';",
+    "import type { Runtime } from '@/src/client/runtime/runtime.ts';",
+    "type R = import('@/src/client/runtime/runtime.ts').Runtime;",
+    "export { Runtime } from '@/src/client/runtime/runtime.ts';",
+    "export * from '@/src/client/transport/network.ts';",
+    "const lazy = () => import('@/src/client/controls/motion/provider.ts');",
     "import './runtime-adapter.ts';",
     "export { default } from './App.tsx';",
-    "import { games } from '../minigames/catalog.ts';",
-    "import '../devtools/motion-lab/MotionLab.tsx';",
-    "import type { SessionAuthority } from '../engine/session.ts';",
+    "import { games } from '@/src/client/minigames/catalog.ts';",
+    "import '@/src/client/devtools/motion-lab/MotionLab.tsx';",
+    "import type { SessionAuthority } from '@/src/client/engine/session.ts';",
   ]) {
     assert.throws(
       () => assertShellLeaf(entry, new Map([[entry, source]])),
@@ -853,14 +852,14 @@ void test('engine, screen, controls and backend cannot depend back on the shell;
   const entries = [
     ...[
       'src/client/engine',
-      'src/client/playback',
+      'src/client/runtime/playback',
       'src/client/game-screen',
       'src/client/controls',
       'server',
     ].flatMap((path) => productionFiles(join(root, path))),
     ...[
-      'src/client/runtime.ts',
-      'src/client/network.ts',
+      'src/client/runtime/runtime.ts',
+      'src/client/transport/network.ts',
       'src/client/controls/motion/processor.ts',
       'src/client/controls/motion/provider.ts',
       'src/client/GameCanvas.tsx',
@@ -912,13 +911,13 @@ function assertShellComposition(sourceText?: string) {
 void test('shell composition can assemble catalog, screen and ports but cannot bypass the runtime adapter', () => {
   assertShellComposition();
   for (const source of [
-    "import '../playback/display-playback.ts';",
-    "import { Runtime } from '../runtime.ts';",
-    "import type { Runtime } from '../runtime.ts';",
+    "import '@/src/client/runtime/playback/display-playback.ts';",
+    "import { Runtime } from '@/src/client/runtime/runtime.ts';",
+    "import type { Runtime } from '@/src/client/runtime/runtime.ts';",
     "export * from '@/src/client/engine/session.ts';",
-    "const load = () => import('../network.ts');",
-    "import '../controls/motion/provider.ts';",
-    "export * from '../devtools/DevelopmentApp.tsx';",
+    "const load = () => import('@/src/client/transport/network.ts');",
+    "import '@/src/client/controls/motion/provider.ts';",
+    "export * from '@/src/client/devtools/DevelopmentApp.tsx';",
   ])
     assert.throws(() => assertShellComposition(source), /composition bypasses/);
 });
@@ -962,14 +961,14 @@ void test('all production source graphs exclude developer tools, including erase
     );
 });
 void test('production tool exclusion rejects import forms and transitive helpers at the new paths', () => {
-  const entry = join(root, 'src/client/network.ts');
+  const entry = join(root, 'src/client/transport/network.ts');
   const helper = join(root, 'src/client/engine/timing.ts');
   for (const injected of [
-    "import './devtools/routing.ts';",
-    "import type { HarnessOptions } from './devtools/game-harness/harness.ts';",
-    "type T = import('./devtools/game-harness/harness.ts').HarnessOptions;",
+    "import '@/src/client/devtools/routing.ts';",
+    "import type { HarnessOptions } from '@/src/client/devtools/game-harness/harness.ts';",
+    "type T = import('@/src/client/devtools/game-harness/harness.ts').HarnessOptions;",
     "export * from '@/src/client/devtools/routing.ts';",
-    "const lazy = () => import('./devtools/routing.ts');",
+    "const lazy = () => import('@/src/client/devtools/routing.ts');",
   ]) {
     assert.throws(
       () => assertNoDeveloperDependencies(entry, new Map([[entry, injected]])),
@@ -980,8 +979,8 @@ void test('production tool exclusion rejects import forms and transitive helpers
         assertNoDeveloperDependencies(
           entry,
           new Map([
-            [entry, "export * from './engine/timing.ts';"],
-            [helper, injected.replaceAll('./devtools/', '../devtools/')],
+            [entry, "export * from '@/src/client/engine/timing.ts';"],
+            [helper, injected],
           ]),
         ),
       /reaches developer tools/,
@@ -1026,8 +1025,8 @@ void test('motion boundary rejects direct, erased, indirect, dynamic and externa
   const entry = join(motionDirectory, 'provider.ts');
   const helper = join(motionDirectory, 'processor.ts');
   for (const leak of [
-    "import type { Runtime } from '@/src/client/runtime.ts';",
-    "type N = import('@/src/client/network.ts').Network;",
+    "import type { Runtime } from '@/src/client/runtime/runtime.ts';",
+    "type N = import('@/src/client/transport/network.ts').Network;",
     "export * from '@/src/client/engine/session.ts';",
     "const load = () => import('@/src/client/devtools/routing.ts');",
     "import 'react';",
@@ -1047,10 +1046,14 @@ void test('motion boundary rejects direct, erased, indirect, dynamic and externa
   }
 });
 
-const playbackDirectory = join(root, 'src/client/playback');
+const playbackDirectory = join(root, 'src/client/runtime/playback');
 function assertPlaybackBoundary(overrides = new Map<string, string>()) {
   const allowed = [
     'src/client/engine/replication.ts',
+    'src/client/engine/history.ts',
+    'src/client/engine/progress.ts',
+    'src/client/engine/messages.ts',
+    'src/client/engine/protocol.ts',
     'src/client/engine/timing.ts',
     'src/client/game-screen/port.ts',
     'src/client/game-screen/screen.ts',
@@ -1083,13 +1086,13 @@ void test('playback rejects direct, erased, indirect, opaque and external depend
   const entry = join(playbackDirectory, 'display-playback.ts');
   const helper = join(root, 'src/client/engine/timing.ts');
   for (const source of [
-    "import '../runtime.ts';",
-    "import type { Network } from '../network.ts';",
-    "type Authority = import('../engine/session.ts').SessionAuthority;",
+    "import '@/src/client/runtime/runtime.ts';",
+    "import type { Network } from '@/src/client/transport/network.ts';",
+    "type Authority = import('@/src/client/engine/session.ts').SessionAuthority;",
     "export * from '@/src/client/shell/ports.ts';",
-    "const control = () => import('../controls/motion/provider.ts');",
-    "require('../devtools/routing.ts');",
-    "import '../../../server/rooms.ts';",
+    "const control = () => import('@/src/client/controls/motion/provider.ts');",
+    "require('@/src/client/devtools/routing.ts');",
+    "import '@/server/rooms.ts';",
     "import 'react';",
     "import './missing.ts';",
     'import(variable);',
@@ -1102,7 +1105,7 @@ void test('playback rejects direct, erased, indirect, opaque and external depend
       () =>
         assertPlaybackBoundary(
           new Map([
-            [entry, "export * from '../engine/timing.ts';"],
+            [entry, "export * from '@/src/client/engine/timing.ts';"],
             [helper, source],
           ]),
         ),
@@ -1111,7 +1114,10 @@ void test('playback rejects direct, erased, indirect, opaque and external depend
   }
 });
 
-const controllerInputDirectory = join(root, 'src/client/controller-input');
+const controllerInputDirectory = join(
+  root,
+  'src/client/runtime/controller-input',
+);
 function assertControllerInputBoundary(overrides = new Map<string, string>()) {
   const allowed = [
     'src/client/controls/api.ts',
@@ -1166,7 +1172,7 @@ function assertControllerInputConsumers(overrides = new Map<string, string>()) {
   ]) {
     if (
       within(entry, controllerInputDirectory) ||
-      entry === join(root, 'src/client/runtime.ts')
+      entry === join(root, 'src/client/runtime/runtime.ts')
     )
       continue;
     for (const edge of imports(entry, overrides.get(entry)))
@@ -1184,19 +1190,19 @@ void test('controller input rejects erased, indirect, dynamic, external and brow
   const entry = join(controllerInputDirectory, 'controller-input.ts');
   const helper = join(root, 'src/client/controls/value.ts');
   for (const source of [
-    "import '../runtime.ts';",
-    "import type { Network } from '../network.ts';",
-    "type Authority = import('../engine/session.ts').SessionAuthority;",
+    "import '@/src/client/runtime/runtime.ts';",
+    "import type { Network } from '@/src/client/transport/network.ts';",
+    "type Authority = import('@/src/client/engine/session.ts').SessionAuthority;",
     "export * from '@/src/client/shell/ports.ts';",
-    "const provider = () => import('../controls/motion/provider.ts');",
-    "import '../playback/display-playback.ts';",
-    "import '../minigames/catalog.ts';",
-    "require('../devtools/routing.ts');",
-    "import '../../../server/rooms.ts';",
+    "const provider = () => import('@/src/client/controls/motion/provider.ts');",
+    "import '@/src/client/runtime/playback/display-playback.ts';",
+    "import '@/src/client/minigames/catalog.ts';",
+    "require('@/src/client/devtools/routing.ts');",
+    "import '@/server/rooms.ts';",
     "import 'react';",
     "import './missing.ts';",
     'import(variable);',
-    "import '../controls/kit/icons.ts';",
+    "import '@/src/client/controls/kit/icons.ts';",
   ]) {
     assert.throws(
       () => assertControllerInputBoundary(new Map([[entry, source]])),
@@ -1206,7 +1212,7 @@ void test('controller input rejects erased, indirect, dynamic, external and brow
       () =>
         assertControllerInputBoundary(
           new Map([
-            [entry, "export * from '../controls/value.ts';"],
+            [entry, "export * from '@/src/client/controls/value.ts';"],
             [helper, source],
           ]),
         ),
@@ -1218,7 +1224,7 @@ void test('controller input rejects erased, indirect, dynamic, external and brow
     'src/client/shell/ports.ts',
     'src/client/game-screen/port.ts',
     'src/client/controls/api.ts',
-    'src/client/network.ts',
+    'src/client/transport/network.ts',
     'server/rooms.ts',
   ]) {
     const entry = join(root, path);
@@ -1228,7 +1234,7 @@ void test('controller input rejects erased, indirect, dynamic, external and brow
           new Map([
             [
               entry,
-              "export type { ControllerInput } from '@/src/client/controller-input/controller-input.ts';",
+              "export type { ControllerInput } from '@/src/client/runtime/controller-input/controller-input.ts';",
             ],
           ]),
         ),
@@ -1237,9 +1243,13 @@ void test('controller input rejects erased, indirect, dynamic, external and brow
   }
 });
 
-const sessionRoutingDirectory = join(root, 'src/client/session-routing');
+const sessionRoutingDirectory = join(
+  root,
+  'src/client/runtime/session-routing',
+);
 function assertSessionRoutingBoundary(overrides = new Map<string, string>()) {
   const allowed = [
+    'src/client/runtime/cursor-contracts.ts',
     'src/shared/room.ts',
     'src/core/types.ts',
     'src/client/engine/messages.ts',
@@ -1269,7 +1279,7 @@ function assertSessionRoutingConsumers(overrides = new Map<string, string>()) {
   ]) {
     if (
       within(entry, sessionRoutingDirectory) ||
-      entry === join(root, 'src/client/runtime.ts')
+      entry === join(root, 'src/client/runtime/runtime.ts')
     )
       continue;
     for (const edge of imports(entry, overrides.get(entry)))
@@ -1287,16 +1297,16 @@ void test('session routing rejects erased, transitive, alias, dynamic, external 
   const entry = join(sessionRoutingDirectory, 'session-router.ts');
   const helper = join(root, 'src/client/engine/protocol.ts');
   for (const source of [
-    "import '../runtime.ts';",
-    "import type { Network } from '../network.ts';",
-    "type Authority = import('../engine/session.ts').SessionAuthority;",
+    "import '@/src/client/runtime/runtime.ts';",
+    "import type { Network } from '@/src/client/transport/network.ts';",
+    "type Authority = import('@/src/client/engine/session.ts').SessionAuthority;",
     "export * from '@/src/client/shell/ports.ts';",
-    "const provider = () => import('../controls/motion/provider.ts');",
-    "import '../playback/display-playback.ts';",
-    "import '../controller-input/controller-input.ts';",
-    "import '../minigames/catalog.ts';",
-    "require('../devtools/routing.ts');",
-    "import '../../../server/rooms.ts';",
+    "const provider = () => import('@/src/client/controls/motion/provider.ts');",
+    "import '@/src/client/runtime/playback/display-playback.ts';",
+    "import '@/src/client/runtime/controller-input/controller-input.ts';",
+    "import '@/src/client/minigames/catalog.ts';",
+    "require('@/src/client/devtools/routing.ts');",
+    "import '@/server/rooms.ts';",
     "import 'react';",
     "import 'node:fs';",
     "import './missing.ts';",
@@ -1310,7 +1320,7 @@ void test('session routing rejects erased, transitive, alias, dynamic, external 
       () =>
         assertSessionRoutingBoundary(
           new Map([
-            [entry, "export * from '../engine/protocol.ts';"],
+            [entry, "export * from '@/src/client/engine/protocol.ts';"],
             [helper, source],
           ]),
         ),
@@ -1322,10 +1332,10 @@ void test('session routing rejects erased, transitive, alias, dynamic, external 
     'src/client/shell/ports.ts',
     'src/client/game-screen/port.ts',
     'src/client/controls/api.ts',
-    'src/client/network.ts',
+    'src/client/transport/network.ts',
     'server/rooms.ts',
-    'src/client/playback/display-playback.ts',
-    'src/client/controller-input/controller-input.ts',
+    'src/client/runtime/playback/display-playback.ts',
+    'src/client/runtime/controller-input/controller-input.ts',
   ]) {
     assert.throws(
       () =>
@@ -1333,11 +1343,176 @@ void test('session routing rejects erased, transitive, alias, dynamic, external 
           new Map([
             [
               join(root, path),
-              "export type { SessionRouter } from '@/src/client/session-routing/session-router.ts';",
+              "export type { SessionRouter } from '@/src/client/runtime/session-routing/session-router.ts';",
             ],
           ]),
         ),
       /composition/,
     );
+  }
+});
+
+function assertRuntimeServices(overrides = new Map<string, string>()) {
+  const contracts = [
+    'src/client/api/index.ts',
+    'src/client/controls/api.ts',
+    'src/shared/room.ts',
+    'src/core/types.ts',
+    'src/client/engine/messages.ts',
+    'src/client/transport/contracts.ts',
+  ].map((path) => join(root, path));
+  for (const domain of ['browser', 'diagnostics']) {
+    const owner = join(root, 'src/client/runtime', domain);
+    for (const entry of productionFiles(owner)) {
+      for (const file of dependencies(entry, true, overrides)) {
+        assert.ok(
+          within(file, owner) || contracts.includes(file),
+          `runtime service escapes: ${relative(root, file)}`,
+        );
+        for (const edge of imports(file, overrides.get(file))) {
+          assert.ok(
+            edge.resolved &&
+              (within(edge.resolved, owner) ||
+                contracts.includes(edge.resolved)),
+            `runtime service dependency escapes: ${edge.specifier}`,
+          );
+        }
+      }
+    }
+  }
+  const transport = join(root, 'src/client/transport');
+  const allowed = [
+    ...contracts,
+    ...[
+      'src/shared/app-protocol.ts',
+      'src/client/engine/history.ts',
+      'src/client/engine/progress.ts',
+    ].map((path) => join(root, path)),
+  ];
+  for (const entry of productionFiles(transport)) {
+    for (const file of dependencies(entry, true, overrides)) {
+      assert.ok(
+        within(file, transport) || allowed.includes(file),
+        `transport escapes: ${relative(root, file)}`,
+      );
+      for (const edge of imports(file, overrides.get(file)))
+        assert.ok(
+          edge.resolved &&
+            (within(edge.resolved, transport) ||
+              allowed.includes(edge.resolved)),
+          `transport dependency escapes: ${edge.specifier}`,
+        );
+    }
+  }
+}
+void test('browser, diagnostics and transport enforce narrow independent dependency graphs', () => {
+  assertRuntimeServices();
+  for (const owner of [
+    'browser/browser-resources.ts',
+    'diagnostics/diagnostics.ts',
+  ]) {
+    const entry = join(root, 'src/client/runtime', owner);
+    for (const leak of [
+      "import '@/src/client/runtime/runtime.ts';",
+      "import type { Network } from '@/src/client/transport/network.ts';",
+      "export * from '@/src/client/runtime/controller-input/controller-input.ts';",
+      "type T = import('@/src/client/runtime/playback/display-playback.ts').DisplayPlayback;",
+      "const load = () => import('@/src/client/runtime/session-routing/session-router.ts');",
+      "import 'react';",
+      'import(variable);',
+    ])
+      assert.throws(
+        () => assertRuntimeServices(new Map([[entry, leak]])),
+        /escapes|opaque/,
+      );
+    assert.throws(
+      () =>
+        assertRuntimeServices(
+          new Map([
+            [entry, "export * from '@/src/client/transport/contracts.ts';"],
+            [
+              join(root, 'src/client/transport/contracts.ts'),
+              "export * from '@/src/client/runtime/runtime.ts';",
+            ],
+          ]),
+        ),
+      /escapes/,
+    );
+  }
+  assert.throws(
+    () =>
+      assertRuntimeServices(
+        new Map([
+          [
+            join(root, 'src/client/transport/network.ts'),
+            "import '@/src/client/runtime/runtime.ts';",
+          ],
+        ]),
+      ),
+    /escapes/,
+  );
+});
+void test('runtime collaboration contracts are declarations only and obsolete owners have no forwards', () => {
+  const entries = [
+    'src/client/runtime/cursor-contracts.ts',
+    ...[
+      'browser',
+      'diagnostics',
+      'controller-input',
+      'playback',
+      'session-routing',
+    ].map((owner) => `src/client/runtime/${owner}/contracts.ts`),
+    'src/client/transport/contracts.ts',
+  ];
+  for (const path of entries) {
+    const source = ts.createSourceFile(
+      path,
+      readFileSync(join(root, path), 'utf8'),
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    for (const statement of source.statements)
+      assert.ok(
+        ts.isInterfaceDeclaration(statement) ||
+          ts.isTypeAliasDeclaration(statement) ||
+          (ts.isImportDeclaration(statement) &&
+            statement.importClause?.phaseModifier ===
+              ts.SyntaxKind.TypeKeyword),
+        `${path} must only declare contracts`,
+      );
+  }
+  for (const old of [
+    'runtime.ts',
+    'network.ts',
+    'playback',
+    'controller-input',
+    'session-routing',
+  ])
+    assert.equal(existsSync(join(root, 'src/client', old)), false);
+});
+
+void test('runtime collaborators are reachable only through composition and internal contracts', () => {
+  const owner = join(root, 'src/client/runtime');
+  const runtime = join(owner, 'runtime.ts');
+  const transportImplementation = join(root, 'src/client/transport/network.ts');
+  for (const entry of [
+    ...productionFiles(join(root, 'src')),
+    ...productionFiles(join(root, 'server')),
+  ]) {
+    for (const edge of imports(entry)) {
+      if (!edge.resolved) continue;
+      if (within(edge.resolved, owner) && !within(entry, owner)) {
+        assert.ok(
+          entry === adapter && edge.resolved === runtime,
+          `runtime consumer bypasses composition: ${relative(root, entry)}`,
+        );
+      }
+      if (
+        edge.resolved === transportImplementation &&
+        entry !== transportImplementation
+      ) {
+        assert.equal(entry, runtime, 'concrete transport is composition-only');
+      }
+    }
   }
 });

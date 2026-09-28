@@ -1,6 +1,6 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { Runtime } from '../src/client/runtime.ts';
+import { Runtime } from '../src/client/runtime/runtime.ts';
 import { encodeInput } from '../src/client/engine/protocol.ts';
 import {
   defaultCapabilities,

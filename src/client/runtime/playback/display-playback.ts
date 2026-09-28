@@ -1,48 +1,58 @@
 import type {
+  PlaybackPhaseInput,
+  PlaybackPhase,
+  PlaybackEffects,
+} from './contracts.ts';
+import { CursorPlayback } from './cursor-playback.ts';
+import { ProgressAssembler } from '../../engine/history.ts';
+import { completedResults } from '../../engine/progress.ts';
+import type { Message } from '../../engine/messages.ts';
+import type { Progress } from '../../api/index.ts';
+import type {
   PresentationEvent,
   ReadonlyDeep,
   RoundSnapshot,
-} from '../api/index.ts';
+} from '../../api/index.ts';
 import {
   SnapshotTimeline,
   type SnapshotPolicy,
   type WireSnapshot,
-} from '../engine/replication.ts';
-import { Samples } from '../engine/timing.ts';
-import { freezeSnapshot } from '../game-screen/screen.ts';
+} from '../../engine/replication.ts';
+import { Samples } from '../../engine/timing.ts';
+import { freezeSnapshot } from '../../game-screen/screen.ts';
 import {
   RELOAD_DISPLAY_MESSAGE,
   type ScreenFrame,
-} from '../game-screen/port.ts';
+} from '../../game-screen/port.ts';
 
 export const SNAPSHOT_RETRY_MESSAGE =
   'A game update could not be read. Waiting for a fresh snapshot.';
 
-export interface PlaybackPhaseInput {
-  phase?: unknown;
-  roundId?: unknown;
-  gameId?: unknown;
-  mode?: unknown;
-  error?: unknown;
-}
-export interface PlaybackPhase {
-  phase: string;
-  roundId: string | null;
-  gameId: string | null;
-  mode: string | null;
-  roundError: string | null;
-}
-export interface PlaybackEffects {
-  acknowledge(id: number): void;
-  resync(): void;
-  venueStats(delay: number): void;
-  presented(roundId: string, eventId: string, at: number): void;
-  recoveryWarning(active: boolean): void;
-  playEvent(event: PresentationEvent): void;
-}
-
 /** Read-only display playback; routing and browser resources belong to its caller. */
 export class DisplayPlayback {
+  readonly cursors = new CursorPlayback();
+  private readonly assembler = new ProgressAssembler();
+  private progress: ReadonlyDeep<Progress> = freezeSnapshot({
+    revision: 0,
+    totals: {},
+    rounds: [],
+  });
+  getProgress() {
+    return this.progress;
+  }
+  private history: ReturnType<typeof completedResults> = [];
+  completedResults() {
+    return structuredClone(this.history);
+  }
+  acceptProgress(message: Message) {
+    if (this.inactive) return false;
+    const progress = this.assembler.receive(message);
+    if (!progress) return false;
+    this.history = completedResults(progress);
+    this.progress = freezeSnapshot(structuredClone(progress));
+    return true;
+  }
+
   private readonly buffer: SnapshotTimeline<RoundSnapshot<object>>;
   private resyncPending = false;
   private displayProblem: string | null = null;
@@ -153,12 +163,14 @@ export class DisplayPlayback {
   }
 
   disconnect() {
+    this.cursors.clear();
     this.events = [];
   }
   reconnect() {
     if (!this.inactive) this.resyncPending = false;
   }
   end() {
+    this.cursors.dispose();
     this.inactive = true;
     this.events = [];
   }

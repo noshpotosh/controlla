@@ -1,10 +1,12 @@
 # Session routing ownership
 
+Follow-up: [runtime composition](RUNTIME-COMPOSITION.md) is the current ownership record. The implementation and acceptance below describe this earlier slice.
+
 Implemented at `d880905` on `codex/session-routing-0928`, worktree `.worktrees/session-routing-0928`, from fetched integration checkpoint `4362666`. Display playback and controller input are prerequisites. No deployment or merge is included.
 
 ## Responsibilities and interfaces
 
-`src/client/session-routing/session-router.ts` owns role-based incoming dispatch, upstream control/frame routing, host-to-venue/player delivery, controller relay envelopes, and local cursor admission. Its explicit operations are `welcome`, `setRoster`, `setControllerRoute`, `receive`, `sendUp`, `sendFrame`, `toVenue`, `toPlayer`, `cursors`, `disconnect`, `end`, and `dispose`.
+`src/client/runtime/session-routing/session-router.ts` owns role-based incoming dispatch, upstream control/frame routing, host-to-venue/player delivery, controller relay envelopes, and local cursor admission. Its explicit operations are `welcome`, `setRoster`, `setControllerRoute`, `receive`, `sendUp`, `sendFrame`, `toVenue`, `toPlayer`, `cursors`, `disconnect`, `end`, and `dispose`.
 
 The injected environment supplies local/authority clocks and deferred scheduling. Effects send transport messages or invoke authority input/control, display delivery, and controller delivery separately. The router retains copied routing identity fields without credentials, a copied roster, and detached frozen cursor observations. It has no Runtime, Network, SessionAuthority, browser provider, or DOM reference. `Channel` now lives in `engine/messages.ts`; no old-path re-export remains.
 

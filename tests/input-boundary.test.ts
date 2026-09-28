@@ -6,8 +6,8 @@ import {
 } from './fixtures/games.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { Runtime } from '../src/client/runtime.ts';
-import { Network } from '../src/client/network.ts';
+import { Runtime } from '../src/client/runtime/runtime.ts';
+import { Network } from '../src/client/transport/network.ts';
 import {
   APP_PROTOCOL_VERSION,
   PROTOCOL_MISMATCH,

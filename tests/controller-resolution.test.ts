@@ -25,7 +25,7 @@ import type { GameDescriptor } from '../src/client/api/index.ts';
 import { SessionAuthority } from '../src/client/engine/session.ts';
 import type { Message } from '../src/client/engine/messages.ts';
 import type { Player } from '../src/shared/room.ts';
-import { Runtime } from '../src/client/runtime.ts';
+import { Runtime } from '../src/client/runtime/runtime.ts';
 
 const granted = (): Capabilities => {
   const c = defaultCapabilities();

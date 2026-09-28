@@ -137,7 +137,7 @@ Add a small, optional, declarative controller presentation contract: skin/assets
 
 Choose the motion layout from resolved `config.sensors.pointer.enabled`, not merely a local permission flag. The current resolver retains the aim-pad rectangle when replacing it with a pointer widget, leaving a large pointer preview; the new motion layout must explicitly reclaim that space. Reflect layout variants in the development previews as well as live controllers.
 
-Reuse the existing widget input semantics for Pulse and aim. Expose Recenter through a separate narrow shell action, retaining [Runtime.recenter()](../../src/client/runtime.ts). Update input ports or shared button presentation only as needed to supply the custom face; preserve their pointer and keyboard lifecycle guarantees, including aim stabilization during a Pulse press. Feedback renders must not remount controls or change their `configId:generation:inputEpoch` lifetime key.
+Reuse the existing widget input semantics for Pulse and aim. Expose Recenter through a separate narrow shell action, retaining [Runtime.recenter()](../../src/client/runtime/runtime.ts). Update input ports or shared button presentation only as needed to supply the custom face; preserve their pointer and keyboard lifecycle guarantees, including aim stabilization during a Pulse press. Feedback renders must not remount controls or change their `configId:generation:inputEpoch` lifetime key.
 
 **New feedback is required:** phones currently receive config, phase, and session progress, but do not receive the live state containing round score and `pulseReadyAt`. Add a generic per-player controller-feedback channel rather than sending the arena snapshot to every phone.
 
@@ -148,7 +148,7 @@ Reuse the existing widget input semantics for Pulse and aim. Expose Recenter thr
 - Preserve the distinction between current game score and the session points ledger. Do not display session totals as the reference's live score.
 - Version and validate the wire change with the existing application protocol gate; test mixed-version reload behavior.
 
-Expected shared touchpoints: [api/index.ts](../../src/client/api/index.ts), [core/types.ts](../../src/core/types.ts), [core/session.ts](../../src/core/session.ts), [runtime.ts](../../src/client/runtime.ts), [core/config.ts](../../src/core/config.ts), [controller.css](../../src/client/controller.css), controller layout resolution, and [core/app-protocol.ts](../../src/core/app-protocol.ts). Exact contract names should be settled in the first implementation slice.
+Expected shared touchpoints: [api/index.ts](../../src/client/api/index.ts), [core/types.ts](../../src/core/types.ts), [core/session.ts](../../src/core/session.ts), [runtime.ts](../../src/client/runtime/runtime.ts), [core/config.ts](../../src/core/config.ts), [controller.css](../../src/client/controller.css), controller layout resolution, and [core/app-protocol.ts](../../src/core/app-protocol.ts). Exact contract names should be settled in the first implementation slice.
 
 ## Delivery sequence
 

@@ -1,4 +1,4 @@
-import { Runtime, type JoinOptions } from '../runtime.ts';
+import { Runtime, type JoinOptions } from '../runtime/runtime.ts';
 import type { Motion } from '../controls/motion/provider.ts';
 import type { Identity } from '../../shared/room.ts';
 import { MAX_GAIN, MIN_GAIN } from '../controls/motion/pointer.ts';

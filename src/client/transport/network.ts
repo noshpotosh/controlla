@@ -1,11 +1,12 @@
+import type { LinkStats, Transport } from './contracts.ts';
 import {
   APP_PROTOCOL_VERSION,
   PROTOCOL_MISMATCH,
   PROTOCOL_RELOAD_MESSAGE,
-} from '../shared/app-protocol.ts';
-import type { Channel, Message } from './engine/messages.ts';
-import type { Identity, Role, Roster } from '../shared/room.ts';
-import { MAX_MESSAGE_BYTES, messageFits } from './engine/history.ts';
+} from '../../shared/app-protocol.ts';
+import type { Channel, Message } from '../engine/messages.ts';
+import type { Identity, Role, Roster } from '../../shared/room.ts';
+import { MAX_MESSAGE_BYTES, messageFits } from '../engine/history.ts';
 const MAX_HISTORY_QUEUE_BYTES = 64 * 1024 * 1024;
 const HISTORY_HIGH_WATER_BYTES = 64 * 1024;
 const HISTORY_RETRY_MS = 50;
@@ -55,12 +56,6 @@ function historyPart(data: unknown): {
   };
 }
 
-export interface LinkStats {
-  path: 'connecting' | 'P2P' | 'TURN' | 'WebSocket';
-  rtt: number | null;
-  localCandidate?: string;
-  remoteCandidate?: string;
-}
 class Peer {
   pc: RTCPeerConnection;
   channels = new Map<Channel, RTCDataChannel>();
@@ -192,7 +187,7 @@ class Peer {
     this.pc.close();
   }
 }
-export class Network {
+export class Network implements Transport {
   ws: WebSocket | null = null;
   identity: Identity | null = null;
   roster: Roster = { players: [], venues: [] };

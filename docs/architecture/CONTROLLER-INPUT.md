@@ -1,10 +1,12 @@
 # Controller input ownership
 
+Follow-up: [runtime composition](RUNTIME-COMPOSITION.md) is the current ownership record. The implementation and acceptance below describe this earlier slice.
+
 Implemented on `codex/controller-input-0928` in `.worktrees/controller-input-0928`, from fetched architecture integration checkpoint `2a32c59` (including display playback). This is a behavior-preserving extraction with stale-callback lifecycle safeguards.
 
 ## Responsibilities and interfaces
 
-`src/client/controller-input/controller-input.ts` owns phone-side `ControllerInput`: configuration-bound control ports and epochs, detached validated values, per-action sequence/time capture, 30 ms trailing throttles, atomic activation payloads, reliable presses and binary press recovery, frame scheduling, motion-to-pointer/tilt/shake processing, pointer smoothing and press anchoring, sensitivity and recenter counters.
+`src/client/runtime/controller-input/controller-input.ts` owns phone-side `ControllerInput`: configuration-bound control ports and epochs, detached validated values, per-action sequence/time capture, 30 ms trailing throttles, atomic activation payloads, reliable presses and binary press recovery, frame scheduling, motion-to-pointer/tilt/shake processing, pointer smoothing and press anchoring, sensitivity and recenter counters.
 
 The injected environment provides local/authority clocks and asynchronous timeout scheduling with cancellation. Focused effects emit an encoded input frame, a widget/press message without transport identity, or a haptic request. Each tick receives an immutable motion snapshot. Configuration is copied on admission; status returns a detached frozen epoch, point, sensitivity and recenter count. The collaborator has no Runtime, Network, browser provider, DOM, storage or session-authority reference.
 

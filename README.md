@@ -102,10 +102,11 @@ The gallery, designer, phone preview, Motion Lab and game harness are developmen
 - `src/shared`: platform-independent room/identity/roster contracts, player colors, and application protocol constants; the only project contracts consumed by signaling. See the [shared boundary record](docs/architecture/SHARED-CONTRACTS.md).
 - `src/core`: general geometry primitives (`Point`, `clamp`); motion algorithms and `Quaternion` are controller-owned.
 - `src/client/engine`: session authority, input transport, clocks/buffers, arbitration, generic replication, game snapshot policy, round runner and progress/history. See the [engine ownership record](docs/architecture/ENGINE-OWNERSHIP.md).
-- [`src/client/playback`](src/client/playback): snapshot playback, presentation cues, acknowledgments and diagnostics; see the [playback ownership record](docs/architecture/DISPLAY-PLAYBACK.md).
-- [`src/client/controller-input`](src/client/controller-input): phone input lifetimes, values/presses, motion processing and frame scheduling; see the [input ownership record](docs/architecture/CONTROLLER-INPUT.md).
-- [`src/client/session-routing`](src/client/session-routing): role-based messages, controller relays and local cursor admission; see the [routing ownership record](docs/architecture/SESSION-ROUTING.md).
-- `src/client/runtime.ts`, `network.ts`: session composition, browser resources and peer transport; fallback selection remains in Runtime and transport internals remain in Network.
+- [`src/client/runtime/playback`](src/client/runtime/playback): snapshot/progress playback, local cursors, presentation cues and acknowledgments; see the [playback ownership record](docs/architecture/DISPLAY-PLAYBACK.md).
+- [`src/client/runtime/controller-input`](src/client/runtime/controller-input): phone input lifetimes, values/presses, motion processing and frame scheduling; see the [input ownership record](docs/architecture/CONTROLLER-INPUT.md).
+- [`src/client/runtime/session-routing`](src/client/runtime/session-routing): role-based messages, controller relays and fallback selection; see the [routing ownership record](docs/architecture/SESSION-ROUTING.md).
+- `src/client/runtime/runtime.ts`: session composition and lifecycle coordination; browser resources and observational diagnostics have separate runtime owners. See the [runtime composition record](docs/architecture/RUNTIME-COMPOSITION.md).
+- `src/client/transport`: injectable peer transport; existing WebRTC, reconnect, relay and queue algorithms are preserved.
 - `src/client/controls`: controller contracts, validated resolution, reusable controls and saved layouts (`layouts/`).
 - `src/client/devtools`: development entry, controller designer/gallery/preview, Motion Lab and isolated game harness.
 - `src/client/api`, `game-screen`, `minigames`: author contracts, read-only presentation, and the production game catalog.

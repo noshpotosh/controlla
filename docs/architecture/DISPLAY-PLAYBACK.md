@@ -1,10 +1,12 @@
 # Display playback ownership
 
+Follow-up: [runtime composition](RUNTIME-COMPOSITION.md) is the current ownership record. The implementation and acceptance below describe this earlier slice.
+
 Implemented on `codex/display-playback-0928` in `.worktrees/display-playback-0928`, from fetched architecture integration checkpoint `8a059ef` (which includes motion checkpoint `34912ee`). Automated acceptance passed at delivery; the subsequent controller-input slice closes multi-client desktop acceptance on the combined build. The original run was blocked by browser URL policy. See the [validation ledger](../VALIDATION.md).
 
 ## Responsibilities and interfaces
 
-`src/client/playback/display-playback.ts` owns `DisplayPlayback`: snapshot timeline admission/sampling, missing-base recovery, compatibility errors, presentation cue queues and duplicate tracking, retired rounds, visible-marker acknowledgments, and snapshot diagnostics. The snapshot buffer is private and no longer exposed by Runtime.
+`src/client/runtime/playback/display-playback.ts` owns `DisplayPlayback`: snapshot timeline admission/sampling, missing-base recovery, compatibility errors, presentation cue queues and duplicate tracking, retired rounds, visible-marker acknowledgments, and snapshot diagnostics. The snapshot buffer is private and no longer exposed by Runtime.
 
 Runtime injects the existing catalog snapshot policy and game/mode support predicate. Calls supply authority time, clock readiness, and detached local cursor positions. Playback accepts snapshot/event/phase data through focused methods; it never receives Runtime, RuntimeView, Network, or session authority. Effects are explicit callbacks for snapshot ACK, resync, venue statistics, presentation ACK, recovery warning and due audio cue. Read-only getters expose delay, limiting venue and the last immutable sampled state for the existing shell projection.
 

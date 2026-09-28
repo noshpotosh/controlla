@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DisplayPlayback } from '../src/client/playback/display-playback.ts';
+import { DisplayPlayback } from '../src/client/runtime/playback/display-playback.ts';
 import type {
   PresentationEvent,
   RoundSnapshot,
