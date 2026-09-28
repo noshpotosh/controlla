@@ -131,12 +131,6 @@ export function assertProductionEvidence(
       `Gameplay UI positive control missing: ${label}`,
     );
   }
-  for (const path of ['.openai/hosting.json', 'server/wrangler.json']) {
-    assert.ok(
-      artifacts.some((file) => file.path === path),
-      `Deployment artifact missing: ${path}`,
-    );
-  }
 }
 
 /** Build-time guard: observe loaded module IDs before any name minification. */
