@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { games } from './minigames/catalog.ts';
 import { createPresenter } from './game-screen/presenter.ts';
 import type { ScreenPort } from './game-screen/port.ts';
-import { PointerSmoother } from '../core/pointer.ts';
+import { PointerSmoother } from './controls/motion/pointer.ts';
 
 export function GameCanvas({ port }: { port: ScreenPort }) {
   const ref = useRef<HTMLCanvasElement>(null);

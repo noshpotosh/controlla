@@ -24,7 +24,8 @@ import {
   newer,
   type InputFrame,
 } from './engine/protocol.ts';
-import { Motion } from './motion.ts';
+import { Motion } from './controls/motion/provider.ts';
+import type { MotionStatus } from './controls/motion/contracts.ts';
 import { channelOf, PRESS_SLOTS, usesPressSlot } from './controls/registry.ts';
 import {
   parseActivationValue,
@@ -38,7 +39,7 @@ import {
   DEFAULT_GAIN,
   GyroPointer,
   PointerSmoother,
-} from '../core/pointer.ts';
+} from './controls/motion/pointer.ts';
 
 import type { Message } from './engine/messages.ts';
 import type { Point } from '../core/types.ts';
@@ -67,6 +68,7 @@ export interface RuntimeView {
   adjustingAim: boolean;
   sensitivity: number;
   motionEnabled: boolean;
+  motionStatus: MotionStatus;
   sensorHz: number;
   history: ReturnType<typeof completedResults>;
   panelLatency: number | null;
@@ -102,7 +104,7 @@ export class Runtime {
     advanceFrame: () => this.advanceFrame(),
     presented: (roundId, eventIds) => this.presented(roundId, eventIds),
   };
-  motion = new Motion();
+  readonly motion: Motion;
   private authority: SessionAuthority | null = null;
   private listeners = new Set<() => void>();
   private loop: ReturnType<typeof setInterval> | null = null;
@@ -130,7 +132,11 @@ export class Runtime {
     { generation: number; ready: boolean; seq: number | null }
   >();
   private gyroPointer = new GyroPointer();
-  private lastPointerSample = 0;
+  private lastPointerSample: number | null = null;
+  private motionEpoch = -1;
+  private lastShakeSample = -1;
+  private pageSuspended = false;
+  private motionCapabilitiesKey = '';
   private pointerPoint: Point = { x: 0.5, y: 0.5 };
   private recenters = 0;
   private events: (PresentationEvent & { roundId: string })[] = [];
@@ -177,13 +183,18 @@ export class Runtime {
     adjustingAim: false,
     sensitivity: DEFAULT_GAIN,
     motionEnabled: false,
+    motionStatus: 'prompt',
     sensorHz: 0,
     history: [],
     panelLatency: null,
     wakeLock: false,
     controllerPath: 'venue',
   };
-  constructor(public options: JoinOptions) {
+  constructor(
+    public options: JoinOptions,
+    motion = new Motion(),
+  ) {
+    this.motion = motion;
     this.network = new Network(options.endpoint, options);
     this.network.onWelcome = (i) => this.welcome(i);
     this.network.onRoster = (r) => this.roster(r);
@@ -192,6 +203,7 @@ export class Runtime {
     this.network.onStatus = (s) => {
       this.view.status = s;
       if (s === 'Reconnecting…' || s === 'Reload required') {
+        this.motion.suspend();
         this.events = [];
         this.clearLocalCursors();
         this.clearWidgetInput();
@@ -200,12 +212,16 @@ export class Runtime {
       }
       this.notify();
     };
+    this.motion.subscribe(() => this.motionChanged());
+    if (document.hidden) this.motion.suspend();
+    this.motionChanged();
     this.network.onEnded = (reason) => {
       this.view.ended = true;
       this.clearLocalCursors();
       this.warn(reason);
       this.view.status = 'Session ended';
-      this.motion.stop();
+      this.motion.dispose();
+      this.view.motionStatus = 'disposed';
       this.clearWidgetInput();
       this.buttonState = 0;
       this.events = [];
@@ -215,6 +231,23 @@ export class Runtime {
       this.authority = null;
       this.notify();
     };
+  }
+  private motionChanged() {
+    if (this.stopped || this.view.ended) return;
+    const snapshot = this.motion.getSnapshot();
+    this.view.motionEnabled = snapshot.permission === 'granted';
+    this.view.motionStatus = snapshot.status;
+    const capabilities = this.motion.capabilities;
+    const key = JSON.stringify(capabilities);
+    if (key !== this.motionCapabilitiesKey) {
+      this.motionCapabilitiesKey = key;
+      if (
+        this.view.identity?.role === 'controller' &&
+        this.view.status === 'Connected'
+      )
+        this.sendUp({ type: 'capabilities', capabilities });
+    }
+    this.notify();
   }
   subscribe(fn: () => void) {
     this.listeners.add(fn);
@@ -238,6 +271,7 @@ export class Runtime {
     document.addEventListener('visibilitychange', this.visibility);
     window.addEventListener('beforeunload', this.beforeUnload);
     window.addEventListener('pagehide', this.pageHide);
+    window.addEventListener('pageshow', this.pageShow);
   }
   private welcome(identity: Identity) {
     this.clearLocalCursors();
@@ -295,11 +329,12 @@ export class Runtime {
       const venue = roster.venues.find((v) => v.id === me.venueId);
       if (!venue?.connected) {
         this.view.status = 'Reconnecting — your screen went away';
-        this.motion.stop();
+        this.motion.suspend();
         this.clearWidgetInput();
         this.buttonState = 0;
       } else {
         this.view.status = 'Connected';
+        if (!document.hidden && !this.pageSuspended) this.motion.resume();
         this.sendUp({ type: 'hello', bootId: this.bootId });
         this.sendUp({
           type: 'capabilities',
@@ -608,9 +643,10 @@ export class Runtime {
         this.seq = 0;
         this.nextSend = 0;
         this.pointerSmoother.reset();
-        this.latestPoint =
-          config.sensors.pointer.enabled ||
-          config.widgets.some((w) => w.space === 'normalized')
+        this.lastPointerSample = null;
+        this.latestPoint = config.sensors.pointer.enabled
+          ? { ...this.pointerPoint }
+          : config.widgets.some((w) => w.space === 'normalized')
             ? { x: 0.5, y: 0.5 }
             : { x: 0, y: 0 };
       }
@@ -624,10 +660,7 @@ export class Runtime {
   private applySensorConfig() {
     const c = this.view.config;
     if (!c) return;
-    // Keep sampling whenever permission is granted, even under a touch-only
-    // config: the host only upgrades to pointer/tilt after it sees samples,
-    // and stopping here (e.g. on a roster update before that upgrade lands)
-    // made the no-samples check report the phone as having no motion sensors.
+    // A config may request sampling, but never overrides suspension/disposal.
     this.motion.start();
     this.sendRate = c.sensors.pointer.enabled
       ? Math.min(
@@ -653,9 +686,17 @@ export class Runtime {
       me?.role === 'controller' &&
       this.view.config &&
       this.view.status === 'Connected' &&
-      !document.hidden
+      !document.hidden &&
+      !this.pageSuspended
     ) {
       const config = this.view.config;
+      const motion = this.motion.getSnapshot();
+      if (motion.epoch !== this.motionEpoch) {
+        this.motionEpoch = motion.epoch;
+        this.lastPointerSample = null;
+        this.gyroPointer.resumeAt(this.pointerPoint);
+        this.pointerSmoother.reset();
+      }
       let point = this.latestPoint;
       if (me.venueId !== me.hostId && local - this.joinedAt > 8000) {
         this.view.controllerPath = this.network.isOpen(me.venueId)
@@ -666,7 +707,9 @@ export class Runtime {
       }
       if (
         config.sensors.shake.enabled &&
-        Math.abs(Math.hypot(...this.motion.gravity) - 9.81) >
+        motion.accelFresh &&
+        motion.sequence !== this.lastShakeSample &&
+        Math.abs(Math.hypot(...motion.gravity) - 9.81) >
           config.sensors.shake.thresholdG * 9.81 &&
         local - this.lastShake > 600
       ) {
@@ -674,19 +717,21 @@ export class Runtime {
         const shake = config.widgets.find((w) => w.type === 'shake');
         if (shake) this.action(shake.action, 1, config.generation);
       }
-      if (config.sensors.pointer.enabled && this.motion.confidence > 0) {
+      this.lastShakeSample = motion.sequence;
+      if (config.sensors.pointer.enabled && motion.pointerFresh) {
         // Integrate once per motion sample so a stalled sensor never replays
         // its last rate.
-        const sampleAt = this.motion.lastAt;
+        const sampleAt = motion.at!;
         if (sampleAt !== this.lastPointerSample) {
-          const dt = this.lastPointerSample
-            ? Math.min(0.05, (sampleAt - this.lastPointerSample) / 1000)
-            : 0;
+          const dt =
+            this.lastPointerSample !== null
+              ? Math.min(0.05, (sampleAt - this.lastPointerSample) / 1000)
+              : 0;
           this.lastPointerSample = sampleAt;
           this.pointerPoint = this.pointerSmoother.sample(
             this.gyroPointer.update(
-              this.motion.rate,
-              this.motion.up,
+              [...motion.rate],
+              [...motion.up],
               dt,
               sampleAt,
             ),
@@ -694,7 +739,8 @@ export class Runtime {
           );
         }
         point = this.pointerPoint;
-      } else if (config.sensors.tilt.enabled) point = this.motion.tilt;
+      } else if (config.sensors.tilt.enabled)
+        point = motion.accelFresh ? motion.tilt : { x: 0, y: 0 };
       if (local >= this.nextSend) {
         const interval = 1000 / this.sendRate;
         // Keep the deadline anchored instead of accumulating timer overshoot.
@@ -721,8 +767,10 @@ export class Runtime {
           edges: this.edges,
           edgeTimes: this.edgeTimes,
           confidence: config.sensors.pointer.enabled
-            ? this.motion.confidence
-            : 1,
+            ? motion.confidence
+            : config.sensors.tilt.enabled
+              ? Number(motion.accelFresh)
+              : 1,
         };
         this.network.send(
           this.view.controllerPath === 'direct-to-session'
@@ -742,40 +790,8 @@ export class Runtime {
   async enableMotion() {
     if (this.stopped || this.view.ended) return;
     await this.motion.enable();
-    // A permission prompt can outlive the joined session.
-    if (this.stopped || this.view.ended) {
-      this.motion.stop();
-      return;
-    }
-    this.view.motionEnabled =
-      this.motion.capabilities.sensors.gyro.permission === 'granted';
-    this.sendUp({
-      type: 'capabilities',
-      capabilities: this.motion.capabilities,
-    });
-    if (!this.view.motionEnabled)
-      this.warn(
-        'Motion is unavailable. Touch controls are ready. To try again, check motion permissions in your browser’s site settings.',
-      );
-    setTimeout(() => {
-      if (this.stopped || !this.view.motionEnabled) return;
-      if (!this.motion.lastAt) {
-        this.motion.capabilities.sensors.gyro.present = false;
-        this.motion.capabilities.sensors.accel.present = false;
-        this.sendUp({
-          type: 'capabilities',
-          capabilities: this.motion.capabilities,
-        });
-        this.warn(
-          'This browser is not delivering motion samples. Touch controls are active.',
-        );
-      } else
-        this.sendUp({
-          type: 'capabilities',
-          capabilities: this.motion.capabilities,
-        });
-    }, 1800);
-    this.notify();
+    if (this.stopped || this.view.ended) return;
+    this.motionChanged();
   }
   async unlock() {
     if (this.stopped || this.view.ended) return;
@@ -1181,14 +1197,6 @@ export class Runtime {
           ] ?? null,
         path: this.view.controllerPath,
       });
-      if (
-        this.motion.capabilities.sensors.gyro.permission === 'granted' &&
-        this.motion.lastAt &&
-        now() - this.motion.lastAt > 2000
-      )
-        this.warn(
-          'Motion samples stopped. Return to the browser or use touch controls.',
-        );
     }
     this.notify();
   }
@@ -1241,21 +1249,28 @@ export class Runtime {
     }
   };
   private pageHide = () => {
+    this.pageSuspended = true;
     this.clearWidgetInput();
-    this.motion.stop();
+    this.motion.suspend();
     this.buttonState = 0;
     this.notify();
   };
+  private pageShow = () => {
+    this.pageSuspended = false;
+    this.visibility();
+  };
   private visibility = () => {
+    if (this.stopped || this.view.ended) return;
     this.buttonState = 0;
-    if (document.hidden) {
+    if (document.hidden || this.pageSuspended) {
       this.clearWidgetInput();
-      this.motion.stop();
+      this.motion.suspend();
       if (this.view.identity?.role === 'host')
         this.warn(
           'Keep the host screen visible. Background throttling affects everyone.',
         );
     } else {
+      this.motion.resume();
       void this.acquireWake();
       this.applySensorConfig();
       this.probe();
@@ -1272,7 +1287,7 @@ export class Runtime {
       this.authority?.summary() ?? this.endedAuthoritySummary;
     this.authority?.dispose();
     this.authority = null;
-    this.motion.stop();
+    this.motion.dispose();
     if (this.loop) clearInterval(this.loop);
     if (this.syncTimer) clearInterval(this.syncTimer);
     if (this.diagnosticsTimer) clearInterval(this.diagnosticsTimer);
@@ -1286,5 +1301,6 @@ export class Runtime {
     document.removeEventListener('visibilitychange', this.visibility);
     window.removeEventListener('beforeunload', this.beforeUnload);
     window.removeEventListener('pagehide', this.pageHide);
+    window.removeEventListener('pageshow', this.pageShow);
   }
 }

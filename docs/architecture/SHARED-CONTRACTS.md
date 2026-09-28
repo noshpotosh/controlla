@@ -31,7 +31,9 @@ The subsequent [engine slice](ENGINE-OWNERSHIP.md), checkpoint `ec3344e` from `8
 | Engine declarations formerly in `types.ts` | Corresponding engine modules; generic `Message` lives in type-only `engine/messages.ts`. |
 | Remaining `pointer.ts`, `calibration.ts`, `motion/trace.ts`, `types.ts` | Controller-motion migration remains deferred. Types now contain only `Point`, `Quaternion`, and `clamp`, with no imports. |
 
-Runtime and network remain in their existing client locations. Provider lifecycle, runtime decomposition, controller-motion relocation and backend directory renaming remain separate work. Shared contracts and backend launch paths are unchanged.
+The subsequent [motion-provider slice](MOTION-PROVIDER.md) moves the remaining motion modules into controls; only `Point` and `clamp` remain in core.
+
+Runtime and network remain in their existing client locations. Runtime decomposition and backend directory renaming remain separate work. Shared contracts and backend launch paths are unchanged.
 
 ## Recovery and integration
 

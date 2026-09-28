@@ -75,9 +75,10 @@ export function ControllerMenu({
               Motion requires HTTPS. Touch controls still work.
             </p>
           )}
+          <output>{motionStatusText(v.motionStatus, v.motionEnabled)}</output>
           <div className="ctl-sheet__actions">
             <button type="button" onClick={() => void phone.enableMotion()}>
-              {v.motionEnabled ? 'Motion enabled' : 'Enable motion'}
+              {v.motionEnabled ? 'Motion permission granted' : 'Enable motion'}
             </button>
             {pointer && (
               <>
@@ -149,4 +150,28 @@ export function StatusToast({ view: v }: { view: ShellView }) {
       {text}
     </output>
   ) : null;
+}
+
+export function motionStatusText(
+  status: ShellView['motionStatus'],
+  permissionGranted: boolean,
+) {
+  switch (status) {
+    case 'prompt':
+      return 'Enable motion to use the phone’s sensors.';
+    case 'requesting':
+      return 'Waiting for motion permission…';
+    case 'waiting':
+      return 'Permission granted — waiting for motion samples…';
+    case 'active':
+      return 'Motion samples available.';
+    case 'suspended':
+      return 'Motion paused while the controller is inactive.';
+    case 'unavailable':
+      return permissionGranted
+        ? 'Motion unavailable. Available touch fallbacks remain usable; motion returns automatically when samples resume.'
+        : 'Motion permission unavailable. Use touch controls, or check browser site settings and enable motion to try again.';
+    case 'disposed':
+      return 'Motion stopped.';
+  }
 }

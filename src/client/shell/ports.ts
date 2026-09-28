@@ -1,3 +1,4 @@
+import type { MotionStatus } from '../controls/motion/contracts.ts';
 /** Application UI contracts; no runtime, transport, React or game implementation. */
 import type {
   ControllerConfig,
@@ -7,7 +8,7 @@ import type {
 } from '../controls/api.ts';
 import type { Point } from '../../core/types.ts';
 import type { Identity, Role, Player, Venue } from '../../shared/room.ts';
-import type { RawMotionSample } from '../../core/motion/trace.ts';
+import type { RawMotionSample } from '../controls/motion/trace.ts';
 import type { ScreenPort } from '../game-screen/port.ts';
 
 export interface JoinRequest {
@@ -96,6 +97,7 @@ export interface ShellView {
   readonly sensitivity: number;
   readonly sensitivityRange: Readonly<{ min: number; max: number }>;
   readonly motionEnabled: boolean;
+  readonly motionStatus: MotionStatus;
   readonly sensorHz: number;
   readonly panelLatency: number | null;
   readonly wakeLock: boolean;
