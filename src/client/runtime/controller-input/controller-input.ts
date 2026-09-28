@@ -1,3 +1,4 @@
+import type { InputEnvironment, InputEffects } from './contracts.ts';
 import type {
   ControlPort,
   ControllerConfig,
@@ -20,24 +21,9 @@ import {
   PointerSmoother,
 } from '../../controls/motion/pointer.ts';
 import { encodeInput, type InputFrame } from '../../engine/protocol.ts';
-import type { Press, WidgetValueMessage } from '../../engine/reliable-input.ts';
+import type { WidgetValueMessage } from '../../engine/reliable-input.ts';
 import type { Point } from '../../../core/types.ts';
 
-export interface InputEnvironment {
-  localTime(): number;
-  authorityTime(): number;
-  /** Schedule asynchronously; return cancellation. Retired callbacks are guarded too. */
-  schedule(callback: () => void, delay: number): () => void;
-}
-export interface InputEffects {
-  frame(data: ArrayBuffer): void;
-  reliable(
-    message:
-      | WidgetValueMessage
-      | { type: 'press'; press: Omit<Press, 'playerId'> },
-  ): void;
-  haptic(ms: number): void;
-}
 const WIDGET_THROTTLE_MS = 30;
 
 /** Phone-side input processing. Transport and browser resource ownership stay outside. */

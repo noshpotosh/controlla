@@ -1,5 +1,7 @@
 # Session routing ownership
 
+Follow-up: [runtime composition](RUNTIME-COMPOSITION.md) is the current ownership record. The implementation and acceptance below describe this earlier slice.
+
 Implemented at `d880905` on `codex/session-routing-0928`, worktree `.worktrees/session-routing-0928`, from fetched integration checkpoint `4362666`. Display playback and controller input are prerequisites. No deployment or merge is included.
 
 ## Responsibilities and interfaces

@@ -1,5 +1,7 @@
 # Display playback ownership
 
+Follow-up: [runtime composition](RUNTIME-COMPOSITION.md) is the current ownership record. The implementation and acceptance below describe this earlier slice.
+
 Implemented on `codex/display-playback-0928` in `.worktrees/display-playback-0928`, from fetched architecture integration checkpoint `8a059ef` (which includes motion checkpoint `34912ee`). Automated acceptance passed at delivery; the subsequent controller-input slice closes multi-client desktop acceptance on the combined build. The original run was blocked by browser URL policy. See the [validation ledger](../VALIDATION.md).
 
 ## Responsibilities and interfaces

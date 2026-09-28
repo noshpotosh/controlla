@@ -1,3 +1,8 @@
+import type {
+  PlaybackPhaseInput,
+  PlaybackPhase,
+  PlaybackEffects,
+} from './contracts.ts';
 import { CursorPlayback } from './cursor-playback.ts';
 import { ProgressAssembler } from '../../engine/history.ts';
 import { completedResults } from '../../engine/progress.ts';
@@ -22,29 +27,6 @@ import {
 
 export const SNAPSHOT_RETRY_MESSAGE =
   'A game update could not be read. Waiting for a fresh snapshot.';
-
-export interface PlaybackPhaseInput {
-  phase?: unknown;
-  roundId?: unknown;
-  gameId?: unknown;
-  mode?: unknown;
-  error?: unknown;
-}
-export interface PlaybackPhase {
-  phase: string;
-  roundId: string | null;
-  gameId: string | null;
-  mode: string | null;
-  roundError: string | null;
-}
-export interface PlaybackEffects {
-  acknowledge(id: number): void;
-  resync(): void;
-  venueStats(delay: number): void;
-  presented(roundId: string, eventId: string, at: number): void;
-  recoveryWarning(active: boolean): void;
-  playEvent(event: PresentationEvent): void;
-}
 
 /** Read-only display playback; routing and browser resources belong to its caller. */
 export class DisplayPlayback {

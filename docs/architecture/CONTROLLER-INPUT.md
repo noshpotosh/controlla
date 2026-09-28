@@ -1,5 +1,7 @@
 # Controller input ownership
 
+Follow-up: [runtime composition](RUNTIME-COMPOSITION.md) is the current ownership record. The implementation and acceptance below describe this earlier slice.
+
 Implemented on `codex/controller-input-0928` in `.worktrees/controller-input-0928`, from fetched architecture integration checkpoint `2a32c59` (including display playback). This is a behavior-preserving extraction with stale-callback lifecycle safeguards.
 
 ## Responsibilities and interfaces
