@@ -76,7 +76,10 @@ function phone(
     token: 'test',
   };
   runtime.view.status = 'Connected';
-  runtime.view.config = config;
+  Reflect.get(runtime, 'controllerMessage').call(runtime, {
+    type: 'config',
+    config: config,
+  });
   const sent: Message[] = [];
   t.mock.method(
     runtime.network,

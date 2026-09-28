@@ -171,15 +171,16 @@ void test('runtime neutralizes stale tilt and never repeats a stale shake', asyn
     label: 'Shake',
   });
   p.config(config);
-  const actions = t.mock.method(p.runtime, 'action', () => {});
+  const shakes = () =>
+    p.messages.filter((m) => m.type === 'widget' && m.action === 'shake');
   p.invoke('tick');
   assert.equal(p.frames.at(-1)!.x, 1);
-  assert.equal(actions.mock.callCount(), 1);
+  assert.equal(shakes().length, 1);
   p.advance(600);
   p.invoke('tick');
   assert.equal(p.frames.at(-1)!.x, 0);
   assert.equal(p.frames.at(-1)!.confidence, 0);
-  assert.equal(actions.mock.callCount(), 1);
+  assert.equal(shakes().length, 1);
 });
 void test('page suspension defeats config and diagnostics starts; pageshow restores sampling without a pointer jump', async (t) => {
   const p = setup(t);

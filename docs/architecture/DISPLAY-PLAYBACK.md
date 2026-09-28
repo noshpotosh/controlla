@@ -1,6 +1,6 @@
 # Display playback ownership
 
-Implemented on `codex/display-playback-0928` in `.worktrees/display-playback-0928`, from fetched architecture integration checkpoint `8a059ef` (which includes motion checkpoint `34912ee`). Automated acceptance passes; multi-client desktop acceptance remains open because browser URL policy blocked the additional test client. See the [validation ledger](../VALIDATION.md).
+Implemented on `codex/display-playback-0928` in `.worktrees/display-playback-0928`, from fetched architecture integration checkpoint `8a059ef` (which includes motion checkpoint `34912ee`). Automated acceptance passed at delivery; the subsequent controller-input slice closes multi-client desktop acceptance on the combined build. The original run was blocked by browser URL policy. See the [validation ledger](../VALIDATION.md).
 
 ## Responsibilities and interfaces
 
@@ -26,6 +26,6 @@ There is no protocol/schema migration, new dependency, gameplay change or deploy
 
 Baseline: 260 tests. The completed extraction passes 270 tests, typecheck, lint and production build/bundle checks. Direct tests run with a fixture snapshot policy and callback recorder without networking, motion, browser globals or a production game. Existing screen tests remain runtime integration checks, and the socket test explicitly samples host and remote frames from the same round.
 
-Current desktop evidence is limited to HTTP 200 and host-room creation. Browser policy blocked adding the controller client; completed round, rematch, reconnect, abort and post-host-loss file download remain unverified for this slice. Keep the PR draft until this acceptance gap is resolved. Hardware/network measurements remain separate.
+Current desktop evidence is limited to HTTP 200 and host-room creation. Browser policy blocked adding the controller client; completed round, rematch, reconnect, abort and post-host-loss file download remain unverified for this slice. This historical gap is now closed by the subsequent [controller-input acceptance](../VALIDATION.md) on the combined build; the original run above remains limited. Hardware/network measurements remain separate.
 
 Revert the topic implementation commit to restore the previous ownership; no data conversion is required. Preserve the source branch and worktree. Further controller-input and network decomposition belongs in a subsequent bounded slice.
