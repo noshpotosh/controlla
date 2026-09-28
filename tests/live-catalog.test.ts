@@ -1,16 +1,17 @@
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
-import { SessionAuthority } from '../src/core/session.ts';
+import { SessionAuthority } from '../src/client/engine/session.ts';
 import { games, findGame } from '../src/client/minigames/catalog.ts';
 import { catalogSnapshotPolicy } from '../src/client/engine/snapshots.ts';
 import { ProgressAssembler } from '../src/client/engine/history.ts';
-import { SnapshotTimeline } from '../src/core/snapshots.ts';
+import { SnapshotTimeline } from '../src/client/engine/replication.ts';
 import type {
   RoundSnapshot,
   PresentationEvent,
 } from '../src/client/api/index.ts';
 import type { ControllerConfig } from '../src/client/controls/api.ts';
-import type { Message, WireSnapshot } from '../src/core/types.ts';
+import type { Message } from '../src/client/engine/messages.ts';
+import type { WireSnapshot } from '../src/client/engine/replication.ts';
 import type { Player } from '../src/shared/room.ts';
 import {
   harvestPosition,

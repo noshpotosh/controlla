@@ -1,5 +1,5 @@
 import type { Player, Progress, RoundRecord } from '../api/index.ts';
-import type { Message } from '../../core/types.ts';
+import type { Message } from './messages.ts';
 import { dataRecord, normalizeOutcomes, reportPlayers } from './progress.ts';
 
 /** Leave room below the signaling server's 64 KiB WebSocket limit. */

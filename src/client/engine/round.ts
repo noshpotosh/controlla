@@ -1,7 +1,4 @@
-import {
-  ARBITRATION_MS,
-  partitionMatureActions,
-} from '../../core/arbitration.ts';
+import { ARBITRATION_MS, partitionMatureActions } from './arbitration.ts';
 import type {
   Action,
   GameDescriptor,

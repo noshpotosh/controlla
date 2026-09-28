@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ARBITRATION_MS } from '../src/core/arbitration.ts';
-import { SessionAuthority } from '../src/core/session.ts';
-import { encodeInput } from '../src/core/protocol.ts';
+import { ARBITRATION_MS } from '../src/client/engine/arbitration.ts';
+import { SessionAuthority } from '../src/client/engine/session.ts';
+import { encodeInput } from '../src/client/engine/protocol.ts';
 import type { ControllerConfig } from '../src/client/controls/api.ts';
-import type { InputFrame } from '../src/core/types.ts';
+import type { InputFrame } from '../src/client/engine/protocol.ts';
 import type { Player } from '../src/shared/room.ts';
 import type {
   GameContext,

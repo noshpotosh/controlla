@@ -9,9 +9,9 @@ import type {
   Progress,
   RoundSnapshot,
 } from '../src/client/api/index.ts';
-import type { Message } from '../src/core/types.ts';
+import type { Message } from '../src/client/engine/messages.ts';
 import { historyMessages } from '../src/client/engine/history.ts';
-import { SnapshotTimeline } from '../src/core/snapshots.ts';
+import { SnapshotTimeline } from '../src/client/engine/replication.ts';
 import { catalogSnapshotPolicy } from '../src/client/engine/snapshots.ts';
 
 function install(t: TestContext, name: string, value: unknown) {

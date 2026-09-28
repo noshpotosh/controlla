@@ -1,13 +1,14 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { Runtime } from '../src/client/runtime.ts';
-import { encodeInput } from '../src/core/protocol.ts';
+import { encodeInput } from '../src/client/engine/protocol.ts';
 import {
   defaultCapabilities,
   resolveConfig,
 } from '../src/client/controls/resolve.ts';
 import { pointerSpec } from './fixtures/games.ts';
-import type { InputFrame, Message } from '../src/core/types.ts';
+import type { InputFrame } from '../src/client/engine/protocol.ts';
+import type { Message } from '../src/client/engine/messages.ts';
 import type { Roster } from '../src/shared/room.ts';
 
 function localVenue(t: TestContext, role: 'host' | 'display') {

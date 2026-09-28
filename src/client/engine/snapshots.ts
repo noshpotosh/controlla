@@ -1,4 +1,4 @@
-import type { SnapshotPolicy } from '../../core/snapshots.ts';
+import type { SnapshotPolicy } from './replication.ts';
 import type { GameDescriptor, RoundSnapshot } from '../api/index.ts';
 
 export const MAX_ROUND_SNAPSHOT_BYTES = 47 * 1024;

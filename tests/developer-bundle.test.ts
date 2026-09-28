@@ -102,7 +102,7 @@ const modules = [
   'src/client/GameCanvas.tsx',
   'src/client/shell/ControllerMenu.tsx',
   'src/client/controls/ControllerSurface.tsx',
-  'src/core/session.ts',
+  'src/client/engine/session.ts',
   'src/client/engine/round.ts',
   'src/client/engine/progress.ts',
   'src/client/minigames/catalog.ts',

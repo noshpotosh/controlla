@@ -1,6 +1,6 @@
 import { Network, type Channel, type LinkStats } from './network.ts';
-import { ClockSync, Samples } from '../core/timing.ts';
-import { SnapshotTimeline } from '../core/snapshots.ts';
+import { ClockSync, Samples, now } from './engine/timing.ts';
+import { SnapshotTimeline } from './engine/replication.ts';
 import { games, findGame } from './minigames/catalog.ts';
 import { catalogSnapshotPolicy } from './engine/snapshots.ts';
 import { ProgressAssembler } from './engine/history.ts';
@@ -17,8 +17,13 @@ import type {
   RoundSnapshot,
   PresentationEvent,
 } from './api/index.ts';
-import { SessionAuthority } from '../core/session.ts';
-import { encodeInput, decodeInput, newer } from '../core/protocol.ts';
+import { SessionAuthority } from './engine/session.ts';
+import {
+  encodeInput,
+  decodeInput,
+  newer,
+  type InputFrame,
+} from './engine/protocol.ts';
 import { Motion } from './motion.ts';
 import { channelOf, PRESS_SLOTS, usesPressSlot } from './controls/registry.ts';
 import {
@@ -27,7 +32,7 @@ import {
   valueFitsEnvelope,
 } from './controls/value.ts';
 import type { ControlPort, ControllerConfig, Widget } from './controls/api.ts';
-import type { WidgetValueMessage } from '../core/reliable-input.ts';
+import type { WidgetValueMessage } from './engine/reliable-input.ts';
 import {
   clampGain,
   DEFAULT_GAIN,
@@ -35,12 +40,8 @@ import {
   PointerSmoother,
 } from '../core/pointer.ts';
 
-import {
-  now,
-  type InputFrame,
-  type Message,
-  type Point,
-} from '../core/types.ts';
+import type { Message } from './engine/messages.ts';
+import type { Point } from '../core/types.ts';
 import { type Identity, type Role, type Roster } from '../shared/room.ts';
 export interface RuntimeView {
   identity: Identity | null;

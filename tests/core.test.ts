@@ -15,31 +15,31 @@ import {
   TIME_WRAP_MS,
   SequenceWindow,
   newer,
-} from '../src/core/protocol.ts';
+} from '../src/client/engine/protocol.ts';
 import {
   ClockSync,
   Equalizer,
   Samples,
   ContinuousBuffer,
-} from '../src/core/timing.ts';
+} from '../src/client/engine/timing.ts';
 import {
   SnapshotTimeline,
   SnapshotEncoder,
   type SnapshotPolicy,
-} from '../src/core/snapshots.ts';
+} from '../src/client/engine/replication.ts';
 import {
   defaultCapabilities,
   resolveConfig,
 } from '../src/client/controls/resolve.ts';
-import { SessionAuthority } from '../src/core/session.ts';
+import { SessionAuthority } from '../src/client/engine/session.ts';
 import type { RoundSnapshot } from '../src/client/api/index.ts';
 import type { ControllerConfig } from '../src/client/controls/api.ts';
+import type { InputFrame } from '../src/client/engine/protocol.ts';
 import type {
-  InputFrame,
   Snapshot,
-  Message,
   WireSnapshot,
-} from '../src/core/types.ts';
+} from '../src/client/engine/replication.ts';
+import type { Message } from '../src/client/engine/messages.ts';
 import type { Player } from '../src/shared/room.ts';
 const frame = (time = 1000): InputFrame => ({
   seq: 65535,

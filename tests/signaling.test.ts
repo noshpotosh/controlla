@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import WebSocket from 'ws';
-import type { Message } from '../src/core/types.ts';
+import type { Message } from '../src/client/engine/messages.ts';
 
 void test(
   'live signaling supports venue relay, reconnect, isolation, and explicit host termination',

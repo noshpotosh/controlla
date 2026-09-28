@@ -1,42 +1,30 @@
-import { defaultCapabilities } from '../client/controls/resolve.ts';
-import {
-  defaultGame,
-  findGame,
-  resolveMode,
-} from '../client/minigames/catalog.ts';
-import { resolveController } from '../client/engine/input.ts';
-import { RoundRunner } from '../client/engine/round.ts';
-import {
-  SessionProgress,
-  completedResults,
-} from '../client/engine/progress.ts';
-import { historyMessages, messageFits } from '../client/engine/history.ts';
+import { defaultCapabilities } from '../controls/resolve.ts';
+import { defaultGame, findGame, resolveMode } from '../minigames/catalog.ts';
+import { resolveController } from './input.ts';
+import { RoundRunner } from './round.ts';
+import { SessionProgress, completedResults } from './progress.ts';
+import { historyMessages, messageFits } from './history.ts';
 import type {
   GameInput,
   Point,
   PresentationEvent,
   RoundSnapshot,
   ValueSample,
-} from '../client/api/index.ts';
-import { SequenceWindow, decodeInput } from './protocol.ts';
-import { ContinuousBuffer, Equalizer, Samples } from './timing.ts';
-import { SnapshotEncoder } from './snapshots.ts';
+} from '../api/index.ts';
+import { SequenceWindow, decodeInput, type InputFrame } from './protocol.ts';
+import { ContinuousBuffer, Equalizer, Samples, now } from './timing.ts';
+import { SnapshotEncoder, type Snapshot } from './replication.ts';
 import { ARBITRATION_MS } from './arbitration.ts';
-import { channelOf, usesPressSlot } from '../client/controls/registry.ts';
+import { channelOf, usesPressSlot } from '../controls/registry.ts';
 import {
   parseActivationValue,
   parseControlValue,
   valueFitsEnvelope,
-} from '../client/controls/value.ts';
-import type { Capabilities, ControllerConfig } from '../client/controls/api.ts';
-import {
-  now,
-  type InputFrame,
-  type Message,
-  type Press,
-  type Snapshot,
-} from './types.ts';
-import { type Player, type Roster } from '../shared/room.ts';
+} from '../controls/value.ts';
+import type { Capabilities, ControllerConfig } from '../controls/api.ts';
+import type { Message } from './messages.ts';
+import type { Press } from './reliable-input.ts';
+import { type Player, type Roster } from '../../shared/room.ts';
 export interface SessionPorts {
   toPlayer: (id: string, message: Message) => void;
   toVenue: (id: string, message: Message) => void;

@@ -3,7 +3,7 @@ import {
   PROTOCOL_MISMATCH,
   PROTOCOL_RELOAD_MESSAGE,
 } from '../shared/app-protocol.ts';
-import type { Message } from '../core/types.ts';
+import type { Message } from './engine/messages.ts';
 import type { Identity, Role, Roster } from '../shared/room.ts';
 import { MAX_MESSAGE_BYTES, messageFits } from './engine/history.ts';
 export type Channel = 'ctrl' | 'input' | 'snapshot' | 'events';

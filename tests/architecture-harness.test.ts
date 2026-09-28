@@ -22,7 +22,10 @@ import { capabilityProfile } from '../src/client/devtools/game-harness/input.ts'
 import { createScreen } from '../src/client/game-screen/screen.ts';
 import { SessionProgress } from '../src/client/engine/progress.ts';
 import { driveSimulatedPlayers } from '../src/client/devtools/game-harness/simulation.ts';
-import { SnapshotEncoder, SnapshotTimeline } from '../src/core/snapshots.ts';
+import {
+  SnapshotEncoder,
+  SnapshotTimeline,
+} from '../src/client/engine/replication.ts';
 
 void test('registered games run headlessly and host/remote share the production snapshot timeline', async () => {
   for (const descriptor of games) {

@@ -1,7 +1,7 @@
-import { SnapshotEncoder, SnapshotTimeline } from '../../../core/snapshots.ts';
+import { SnapshotEncoder, SnapshotTimeline } from '../../engine/replication.ts';
 import { channelOf, usesPressSlot } from '../../controls/registry.ts';
 import type { ControllerConfig } from '../../controls/api.ts';
-import type { WireSnapshot } from '../../../core/types.ts';
+import type { WireSnapshot } from '../../engine/replication.ts';
 import type {
   Action,
   GameDescriptor,
