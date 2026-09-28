@@ -1,5 +1,7 @@
 # Controlla main-menu concepts
 
+Follow-up: [three Toybox-style main menus](../toybox-main-menu-2026-09-28/README.md) explore the user's newer wooden game-screen reference.
+
 Three original landscape raster mockups exploring the collection-wide Create Room / Join Room menu. Generated on 2026-09-28 with the built-in image generation tool. The supplied Honey Hustle references informed the cheerful shapes, colors and tactile materials, without adopting honey-themed branding for the collection.
 
 | Concept | Image | Direction |
