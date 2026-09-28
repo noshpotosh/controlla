@@ -1,4 +1,4 @@
-import { Network, type Channel, type LinkStats } from './network.ts';
+import { Network, type LinkStats } from './network.ts';
 import { ClockSync, now } from './engine/timing.ts';
 import {
   DisplayPlayback,
@@ -17,14 +17,14 @@ import type {
   PresentationEvent,
 } from './api/index.ts';
 import { SessionAuthority } from './engine/session.ts';
-import { decodeInput, newer, type InputFrame } from './engine/protocol.ts';
 import { Motion } from './controls/motion/provider.ts';
 import type { MotionStatus } from './controls/motion/contracts.ts';
 import type { ControlPort, ControllerConfig, Widget } from './controls/api.ts';
 import { DEFAULT_GAIN } from './controls/motion/pointer.ts';
 import { ControllerInput } from './controller-input/controller-input.ts';
 
-import type { Message } from './engine/messages.ts';
+import type { Channel, Message } from './engine/messages.ts';
+import { SessionRouter } from './session-routing/session-router.ts';
 import type { Point } from '../core/types.ts';
 import { type Identity, type Role, type Roster } from '../shared/room.ts';
 export interface RuntimeView {
@@ -87,16 +87,7 @@ export class Runtime {
   private syncTimer: ReturnType<typeof setInterval> | null = null;
   private stopped = false;
   private lastUi = 0;
-  private localCursors = new Map<
-    string,
-    { point: Point; at: number; color: string; name: string }
-  >();
-  // Cursor admission mirrors the local phone's config/ACK and binary ordering.
-  // Remote venues observe the same trusted config as they relay it to the phone.
-  private cursorInputs = new Map<
-    string,
-    { generation: number; ready: boolean; seq: number | null }
-  >();
+  private readonly router: SessionRouter;
   private pageSuspended = false;
   private motionCapabilitiesKey = '';
   private audio: AudioContext | null = null;
@@ -158,6 +149,21 @@ export class Runtime {
         playEvent: (event) => this.playEvent(event),
       },
     );
+    this.router = new SessionRouter(
+      {
+        localTime: now,
+        authorityTime: () => this.time(),
+        defer: (callback) => queueMicrotask(callback),
+      },
+      {
+        send: (to, channel, data) => this.network.send(to, channel, data),
+        authorityInput: (id, data) => this.authority?.input(id, data),
+        authorityControl: (from, message) =>
+          this.authority?.control(from, message),
+        display: (channel, message) => this.displayMessage(channel, message),
+        controller: (message) => this.controllerMessage(message),
+      },
+    );
     this.input = new ControllerInput(
       {
         localTime: now,
@@ -168,17 +174,7 @@ export class Runtime {
         },
       },
       {
-        frame: (data) => {
-          const me = this.view.identity;
-          if (me)
-            this.network.send(
-              this.view.controllerPath === 'direct-to-session'
-                ? me.hostId
-                : me.venueId,
-              'input',
-              data,
-            );
-        },
+        frame: (data) => this.router.sendFrame(data),
         reliable: (message) => this.sendUp(message),
         haptic: (ms) => navigator.vibrate?.(ms),
       },
@@ -194,7 +190,7 @@ export class Runtime {
       if (s === 'Reconnecting…' || s === 'Reload required') {
         this.motion.suspend();
         this.playback.disconnect();
-        this.clearLocalCursors();
+        this.router.disconnect();
         this.input.setActive(false);
         this.disconnects.push({ at: Date.now(), status: s });
       }
@@ -207,7 +203,7 @@ export class Runtime {
       this.view.ended = true;
       this.playback.end();
       this.input.end();
-      this.clearLocalCursors();
+      this.router.end();
       this.warn(reason);
       this.view.status = 'Session ended';
       this.motion.dispose();
@@ -263,7 +259,7 @@ export class Runtime {
     window.addEventListener('pageshow', this.pageShow);
   }
   private welcome(identity: Identity) {
-    this.clearLocalCursors();
+    this.router.welcome(identity);
     // A request sent on the previous connection may never have reached authority.
     // The next missing-base update must be able to request a fresh snapshot again.
     this.playback.reconnect();
@@ -299,18 +295,7 @@ export class Runtime {
   }
   private roster(roster: Roster) {
     this.view.roster = roster;
-    for (const id of this.cursorInputs.keys())
-      if (
-        !roster.players.some(
-          (player) =>
-            player.id === id &&
-            player.connected &&
-            player.venueId === this.view.identity?.id,
-        )
-      ) {
-        this.cursorInputs.delete(id);
-        this.localCursors.delete(id);
-      }
+    this.router.setRoster(roster);
     this.authority?.setRoster(roster);
     const me = this.view.identity;
     if (me?.role === 'display') this.sendUp({ type: 'venueHello' });
@@ -333,171 +318,17 @@ export class Runtime {
     }
     this.notify();
   }
-  private toVenue(id: string, channel: Channel, msg: Message) {
-    if (id === this.view.identity?.id)
-      queueMicrotask(() => this.displayMessage(channel, structuredClone(msg)));
-    else this.network.send(id, channel, msg);
+  private toVenue(id: string, channel: Channel, message: Message) {
+    this.router.toVenue(id, channel, message);
   }
   private toPlayer(id: string, message: Message) {
-    const p = this.view.roster.players.find((p) => p.id === id);
-    if (!p) return;
-    if (p.venueId === this.view.identity?.id) {
-      this.cursorConfig(id, message);
-      this.network.send(id, 'ctrl', message);
-    } else
-      this.network.send(p.venueId, 'ctrl', {
-        type: 'toController',
-        target: id,
-        message,
-      });
+    this.router.toPlayer(id, message);
   }
   private sendUp(message: Message) {
-    const me = this.view.identity;
-    if (!me || this.view.ended) return;
-    if (me.role === 'host') this.authority?.control(me.id, message);
-    else if (me.role === 'display')
-      this.network.send(me.hostId, 'ctrl', message);
-    else
-      this.network.send(
-        this.view.controllerPath === 'direct-to-session'
-          ? me.hostId
-          : me.venueId,
-        'ctrl',
-        message,
-      );
+    this.router.sendUp(message);
   }
-  private receive(from: string, channel: Channel, raw: Message | ArrayBuffer) {
-    const data = raw as Message;
-    const me = this.view.identity;
-    if (!me) return;
-    if (me.role === 'controller') {
-      if (channel === 'ctrl' && (from === me.venueId || from === me.hostId))
-        this.controllerMessage(data);
-      return;
-    }
-    const player = this.view.roster.players.find(
-      (p) => p.id === from && (p.venueId === me.id || me.role === 'host'),
-    );
-    if (player) {
-      if (channel === 'input' && data instanceof ArrayBuffer) {
-        let frame: InputFrame;
-        try {
-          frame = decodeInput(data, this.time());
-        } catch {
-          return;
-        }
-        const cursor = this.cursorInputs.get(from);
-        const time = this.time();
-        if (
-          !this.stopped &&
-          !this.view.ended &&
-          player.connected &&
-          player.venueId === me.id &&
-          cursor?.ready &&
-          frame.generation === cursor.generation &&
-          frame.time <= time + 100 &&
-          time - frame.time <= 2000 &&
-          (cursor.seq === null || newer(frame.seq, cursor.seq))
-        ) {
-          cursor.seq = frame.seq;
-          this.localCursors.set(from, {
-            point: { x: frame.x, y: frame.y },
-            at: now(),
-            color: player.color,
-            name: player.name,
-          });
-        }
-        if (me.role === 'host') this.authority?.input(from, data);
-        else {
-          const packet = new Uint8Array(data.byteLength + 1);
-          packet[0] = player.seat;
-          packet.set(new Uint8Array(data), 1);
-          this.network.send(me.hostId, 'input', packet.buffer);
-        }
-      } else if (channel === 'ctrl') {
-        const cursor = this.cursorInputs.get(from);
-        if (cursor && player.connected && player.venueId === me.id) {
-          if (data.type === 'ready' && data.generation === cursor.generation)
-            cursor.ready = true;
-          else if (data.type === 'hello') {
-            cursor.ready = false;
-            this.localCursors.delete(from);
-          }
-        }
-        if (me.role === 'host') this.authority?.control(from, data);
-        else
-          this.network.send(me.hostId, 'ctrl', {
-            type: 'fromController',
-            playerId: from,
-            message: data,
-          });
-      }
-      return;
-    }
-    if (me.role === 'host') {
-      const venue = this.view.roster.venues.find(
-        (v) => v.id === from && v.connected,
-      );
-      if (!venue) return;
-      if (
-        channel === 'input' &&
-        data instanceof ArrayBuffer &&
-        data.byteLength === 48
-      ) {
-        const packet = new Uint8Array(data),
-          p = this.view.roster.players.find(
-            (p) => p.seat === packet[0] && p.venueId === from,
-          );
-        if (p) this.authority?.input(p.id, data.slice(1));
-      } else if (channel === 'ctrl') {
-        if (data.type === 'fromController') {
-          const p = this.view.roster.players.find(
-            (p) => p.id === data.playerId && p.venueId === from,
-          );
-          if (p) this.authority?.control(p.id, data.message);
-        } else this.authority?.control(from, data);
-      }
-      return;
-    }
-    if (from === me.hostId) {
-      if (channel === 'ctrl' && data.type === 'toController') {
-        if (
-          this.view.roster.players.some(
-            (p) => p.id === data.target && p.venueId === me.id,
-          )
-        ) {
-          this.cursorConfig(data.target, data.message);
-          this.network.send(data.target, 'ctrl', data.message);
-        }
-      } else this.displayMessage(channel, data);
-    }
-  }
-  private cursorConfig(playerId: string, message: Message) {
-    if (
-      this.stopped ||
-      this.view.ended ||
-      !message ||
-      message.type !== 'config' ||
-      message.config?.schemaVersion !== 1 ||
-      !Number.isInteger(message.config.generation) ||
-      message.config.generation < 0 ||
-      message.config.generation > 65535 ||
-      !this.view.roster.players.some(
-        (player) =>
-          player.id === playerId &&
-          player.connected &&
-          player.venueId === this.view.identity?.id,
-      )
-    )
-      return;
-    const generation = message.config.generation as number;
-    if (this.cursorInputs.get(playerId)?.generation === generation) return;
-    this.cursorInputs.set(playerId, { generation, ready: false, seq: null });
-    this.localCursors.delete(playerId);
-  }
-  private clearLocalCursors() {
-    this.cursorInputs.clear();
-    this.localCursors.clear();
+  private receive(from: string, channel: Channel, data: Message | ArrayBuffer) {
+    this.router.receive(from, channel, data);
   }
   private clockReply(msg: Message) {
     this.clock.observe(msg.t0, msg.t1, msg.t2, now());
@@ -594,6 +425,7 @@ export class Runtime {
         if (this.view.controllerPath === 'direct-to-session')
           this.network.ensureHostFallback();
       }
+      this.router.setControllerRoute(this.view.controllerPath);
       this.input.tick(this.motion.getSnapshot());
     }
 
@@ -751,9 +583,7 @@ export class Runtime {
     return this.advanceFrame().snapshot;
   }
   cursors() {
-    return [...this.localCursors.entries()]
-      .filter(([, c]) => now() - c.at < 1000)
-      .map(([id, c]) => ({ id, ...c }));
+    return this.router.cursors();
   }
   private playEvent(event: PresentationEvent) {
     if (!['hit', 'prompt', 'end'].includes(event.kind)) return;
@@ -878,7 +708,7 @@ export class Runtime {
     this.stopped = true;
     this.playback.dispose();
     this.input.dispose();
-    this.clearLocalCursors();
+    this.router.dispose();
     this.network.close();
     this.endedAuthoritySummary =
       this.authority?.summary() ?? this.endedAuthoritySummary;

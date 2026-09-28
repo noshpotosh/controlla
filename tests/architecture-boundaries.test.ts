@@ -1236,3 +1236,108 @@ void test('controller input rejects erased, indirect, dynamic, external and brow
     );
   }
 });
+
+const sessionRoutingDirectory = join(root, 'src/client/session-routing');
+function assertSessionRoutingBoundary(overrides = new Map<string, string>()) {
+  const allowed = [
+    'src/shared/room.ts',
+    'src/core/types.ts',
+    'src/client/engine/messages.ts',
+    'src/client/engine/protocol.ts',
+  ].map((path) => join(root, path));
+  assert.ok(existsSync(join(sessionRoutingDirectory, 'session-router.ts')));
+  for (const entry of productionFiles(sessionRoutingDirectory)) {
+    for (const file of dependencies(entry, true, overrides)) {
+      assert.ok(
+        within(file, sessionRoutingDirectory) || allowed.includes(file),
+        `session routing escapes: ${relative(root, file)}`,
+      );
+      for (const edge of imports(file, overrides.get(file)))
+        assert.ok(
+          edge.resolved &&
+            (within(edge.resolved, sessionRoutingDirectory) ||
+              allowed.includes(edge.resolved)),
+          `session routing dependency escapes: ${edge.specifier}`,
+        );
+    }
+  }
+}
+function assertSessionRoutingConsumers(overrides = new Map<string, string>()) {
+  for (const entry of [
+    ...productionFiles(join(root, 'src')),
+    ...productionFiles(join(root, 'server')),
+  ]) {
+    if (
+      within(entry, sessionRoutingDirectory) ||
+      entry === join(root, 'src/client/runtime.ts')
+    )
+      continue;
+    for (const edge of imports(entry, overrides.get(entry)))
+      assert.ok(
+        !edge.resolved || !within(edge.resolved, sessionRoutingDirectory),
+        `session routing consumer is not composition: ${relative(root, entry)}`,
+      );
+  }
+}
+void test('session routing has headless dependencies and composition-only consumers', () => {
+  assertSessionRoutingBoundary();
+  assertSessionRoutingConsumers();
+});
+void test('session routing rejects erased, transitive, alias, dynamic, external and opaque dependencies', () => {
+  const entry = join(sessionRoutingDirectory, 'session-router.ts');
+  const helper = join(root, 'src/client/engine/protocol.ts');
+  for (const source of [
+    "import '../runtime.ts';",
+    "import type { Network } from '../network.ts';",
+    "type Authority = import('../engine/session.ts').SessionAuthority;",
+    "export * from '@/src/client/shell/ports.ts';",
+    "const provider = () => import('../controls/motion/provider.ts');",
+    "import '../playback/display-playback.ts';",
+    "import '../controller-input/controller-input.ts';",
+    "import '../minigames/catalog.ts';",
+    "require('../devtools/routing.ts');",
+    "import '../../../server/rooms.ts';",
+    "import 'react';",
+    "import 'node:fs';",
+    "import './missing.ts';",
+    'import(variable);',
+  ]) {
+    assert.throws(
+      () => assertSessionRoutingBoundary(new Map([[entry, source]])),
+      /session routing|opaque/,
+    );
+    assert.throws(
+      () =>
+        assertSessionRoutingBoundary(
+          new Map([
+            [entry, "export * from '../engine/protocol.ts';"],
+            [helper, source],
+          ]),
+        ),
+      /session routing|opaque/,
+    );
+  }
+  for (const path of [
+    'src/client/engine/input.ts',
+    'src/client/shell/ports.ts',
+    'src/client/game-screen/port.ts',
+    'src/client/controls/api.ts',
+    'src/client/network.ts',
+    'server/rooms.ts',
+    'src/client/playback/display-playback.ts',
+    'src/client/controller-input/controller-input.ts',
+  ]) {
+    assert.throws(
+      () =>
+        assertSessionRoutingConsumers(
+          new Map([
+            [
+              join(root, path),
+              "export type { SessionRouter } from '@/src/client/session-routing/session-router.ts';",
+            ],
+          ]),
+        ),
+      /composition/,
+    );
+  }
+});

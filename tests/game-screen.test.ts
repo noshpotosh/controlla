@@ -56,6 +56,7 @@ function display(t: TestContext) {
     room: 'ABCD',
     token: 'test',
   };
+  runtime.network.onWelcome(runtime.view.identity);
   const sent: Message[] = [];
   t.mock.method(
     runtime.network,

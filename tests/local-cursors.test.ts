@@ -39,6 +39,7 @@ function localVenue(t: TestContext, role: 'host' | 'display') {
     room: 'TEST',
     token: 'token',
   };
+  runtime.network.onWelcome(runtime.view.identity);
   runtime.view.status = 'Connected';
   const roster: Roster = {
     players: [
@@ -56,7 +57,7 @@ function localVenue(t: TestContext, role: 'host' | 'display') {
       { id: 'remote', name: 'Remote', connected: true },
     ],
   };
-  runtime.view.roster = structuredClone(roster);
+  runtime.network.onRoster(structuredClone(roster));
   const sent: { id: string; channel: string; message: unknown }[] = [];
   t.mock.method(
     runtime.network,
@@ -234,7 +235,10 @@ void test('local cursor cleanup closes admission on disconnect, relocation, hell
   h.runtime.network.onStatus('Reconnecting…');
   h.input({ seq: 2 });
   assert.equal(h.point(), undefined);
+  h.runtime.network.onWelcome(h.runtime.view.identity!);
+  h.runtime.network.onRoster(h.roster);
   ready();
+  assert.ok(h.point());
   h.runtime.network.onEnded('Host left');
   ready();
   assert.equal(
@@ -257,4 +261,41 @@ void test('rejected duplicate packets do not keep a stalled local cursor alive',
     undefined,
     'the one-second display expiry uses the last accepted packet',
   );
+});
+
+void test('runtime schedules local delivery without rebinding browser microtasks and retires it on close', (t) => {
+  const queued: (() => void)[] = [];
+  t.mock.method(
+    globalThis,
+    'queueMicrotask',
+    function (this: unknown, callback: () => void) {
+      assert.ok(
+        this === undefined || this === globalThis,
+        'browser scheduler must not receive the routing environment as its receiver',
+      );
+      queued.push(callback);
+    },
+  );
+  const h = localVenue(t, 'host');
+  queued.length = 0;
+  const delivered: Message[] = [];
+  t.mock.method(
+    h.runtime as unknown as {
+      displayMessage(channel: string, message: Message): void;
+    },
+    'displayMessage',
+    (_channel, message) => {
+      delivered.push(message);
+    },
+  );
+  const deliver = (message: Message) =>
+    Reflect.get(h.runtime, 'toVenue').call(h.runtime, 'host', 'ctrl', message);
+  deliver({ type: 'phase', phase: 'lobby' });
+  assert.equal(delivered.length, 0);
+  queued.shift()!();
+  assert.equal(delivered.length, 1);
+  deliver({ type: 'phase', phase: 'running' });
+  h.runtime.close();
+  queued.shift()!();
+  assert.equal(delivered.length, 1);
 });

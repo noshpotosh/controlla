@@ -75,6 +75,7 @@ function phone(
     room: 'ABCD',
     token: 'test',
   };
+  runtime.network.onWelcome(runtime.view.identity);
   runtime.view.status = 'Connected';
   Reflect.get(runtime, 'controllerMessage').call(runtime, {
     type: 'config',
@@ -85,7 +86,8 @@ function phone(
     runtime.network,
     'send',
     (_id: string, channel: string, data: unknown) => {
-      if (channel === 'ctrl') sent.push(data as Message);
+      if (channel === 'ctrl' && (data as Message).type !== 'clock')
+        sent.push(data as Message);
     },
   );
   return {
@@ -337,7 +339,8 @@ void test('suspension retires retained view ports without restarting same-genera
     runtime.network,
     'send',
     (_peer: string, channel: string, data: unknown) => {
-      if (channel === 'ctrl') sent.push(data as Message);
+      if (channel === 'ctrl' && (data as Message).type !== 'clock')
+        sent.push(data as Message);
       if (channel === 'input')
         frames.push(decodeInput(data as ArrayBuffer, 1000));
     },

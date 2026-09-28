@@ -38,6 +38,7 @@ function setup(t: TestContext) {
     room: 'ABCD',
     token: 'test',
   };
+  runtime.network.onWelcome(runtime.view.identity);
   runtime.view.status = 'Connected';
   const messages: Message[] = [],
     frames: InputFrame[] = [];

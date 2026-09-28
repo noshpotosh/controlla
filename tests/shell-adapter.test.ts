@@ -38,6 +38,7 @@ function fixture(t: TestContext, role: Role = 'host') {
     hostId: 'host',
     token: 'secret',
   };
+  runtime.network.onWelcome(runtime.view.identity);
   runtime.view.roster = {
     players: [
       {
