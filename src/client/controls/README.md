@@ -52,14 +52,14 @@ Run the dev server over HTTPS (`HTTPS=1 npm run dev`) and open **`/?role=designe
 1. **Open the library.** It lists every layout with a live thumbnail, its motion inputs, and the games using it. You can create a **New layout** (blank or from a template, portrait or landscape), or **Duplicate**, **Preview**, **Edit** or **Delete** an existing one. You can't delete a layout while a game uses it.
 2. **Name it.** The name you type becomes the file name (`src/client/controls/layouts/<id>.json`) and is fixed once created. The display name can change anytime.
 3. **Place touch controls.** Drag them from the palette, or click one to drop it in the first free spot. The phone is an uninterrupted grid: 12×24 cells in portrait, 24×12 in landscape. The hatched corner is reserved for the in-game menu button, and you can move it with the top-bar menu.
-4. **Switch on motion** with the checkboxes under the palette.
+4. **Switch on motion** with the checkboxes under the palette. Pointer and tilt also put a Recenter button beside the menu, so the menu corner grows to make room for it.
 5. **Adjust controls:**
    - drag to move; drag an edge or corner to resize, down to a single cell (everything snaps to the grid, ⇧ keeps proportions, and guides show where edges and centres line up)
    - `R` rotates 90°
    - arrow keys nudge, ⇧ + arrows resize from the far edge, and ⌥⇧ + arrows from the near edge
    - Delete removes
    - ⌘Z undoes
-6. **Tune them in the inspector:** name (what game inputs bind to), label, which control it is, variant, shape, appearance, caption, props, rotation and size (S / M / L presets around the recommended size, or fill the free row or column). Each control's editable props come from `fields` in its `definition.ts`. With nothing selected, the inspector shows which games use the layout and whether every one of their inputs has a control.
+6. **Tune them in the inspector:** name (what game inputs bind to), label, which control it is, variant, shape, appearance, colour, caption, props, rotation and size (S / M / L presets around the recommended size, or fill the free row or column). Each control's editable props come from `fields` in its `definition.ts`. With nothing selected, the inspector shows which games use the layout and whether every one of their inputs has a control.
 7. **Fix the checks.** Items that overlap, stray off the grid, cover the menu, or share a name turn red and block saving. Items smaller than their recommended size turn amber: that's advice, and the layout still saves.
 8. **Save.** Valid layouts autosave; commit the JSON. The generated `src/client/controls/layouts/index.ts` updates when layouts are created or deleted.
 9. **Test on a phone.** **Test on phone** shows a QR code for `/?role=preview&layout=<id>` on this computer's LAN address. The preview hot-reloads on every save, so the phone follows your edits live. If the phone is held the wrong way it asks you to rotate it, and tapping the menu corner shows what each control sends.
@@ -111,7 +111,7 @@ This copies the folder under a new type, renaming symbols owned by the control, 
 The full guide, with rationale, tokens and a spec per control, is [docs/design/CONTROLLER-DESIGN.md](../../../docs/design/CONTROLLER-DESIGN.md). In short, review new controls against these in the gallery on a real phone:
 
 1. **Tokens only.** Raw colours, sizes and timings live in [tokens.css](tokens.css). Controls use `var(--ctl-*)`.
-2. **The player's colour is the accent**, and it means "you're touching this". Controls rest in neutral graphite (filled buttons excepted), and engaged states use `--ctl-accent`, so each phone matches that player's cursor on the TV. Check all 8 colours with the gallery swatches.
+2. **The player's colour is the accent**, and it means "you're touching this". Controls rest in neutral graphite (filled buttons excepted), and engaged states use `--ctl-accent`, so each phone matches that player's cursor on the TV. A layout may give a control its own colour (`props.color`, from `colors.ts`); the frame then overrides `--ctl-accent` for that control alone. Check all 8 player colours with the gallery swatches.
 3. **Material, not plastic.** Hairline edge, specular top light, soft ambient shadow. No solid lips or bevels.
 4. **Every activation shows three cues together:** light (the accent edge, fill or ring), a press (discrete controls scale to `--ctl-press-scale`; tracking pads never move), and a short haptic (`port.haptic()`).
 5. **Same chrome everywhere.** The caption is a quiet sentence-case label top-left (centred on round shapes), and the hint sits faint at the bottom. Both hide as the control shrinks, and neither is part of the play area.

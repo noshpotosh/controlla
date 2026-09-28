@@ -48,6 +48,9 @@ export class ControllerInput {
   private lastShakeSample = -1;
   private pointerPoint: Point = { x: 0.5, y: 0.5 };
   private recenters = 0;
+  /** Tilt that reads as level: the grip the player last recentered at. */
+  private tiltZero: Point = { x: 0, y: 0 };
+  private lastTilt: Point = { x: 0, y: 0 };
   private sendRate = 60;
   private lastShake = 0;
   private widgetLastSent = new Map<string, number>();
@@ -146,6 +149,8 @@ export class ControllerInput {
     this.gyroPointer.recenter();
     this.pointerSmoother.reset();
     this.pointerPoint = this.latestPoint = this.gyroPointer.current;
+    // Tilt is absolute, so recentering makes the current grip level.
+    this.tiltZero = { ...this.lastTilt };
     this.recenters++;
   }
   tick(motion: MotionSnapshot) {
@@ -194,8 +199,15 @@ export class ControllerInput {
         );
       }
       point = this.pointerPoint;
-    } else if (config.sensors.tilt.enabled)
-      point = motion.accelFresh ? motion.tilt : { x: 0, y: 0 };
+    } else if (config.sensors.tilt.enabled) {
+      if (motion.accelFresh) this.lastTilt = { ...motion.tilt };
+      point = motion.accelFresh
+        ? {
+            x: clampUnit(motion.tilt.x - this.tiltZero.x),
+            y: clampUnit(motion.tilt.y - this.tiltZero.y),
+          }
+        : { x: 0, y: 0 };
+    }
     if (local >= this.nextSend) {
       const interval = 1000 / this.sendRate;
       // Keep the deadline anchored instead of accumulating timer overshoot.
@@ -412,3 +424,5 @@ export class ControllerInput {
       this.effects.haptic(ms);
   }
 }
+
+const clampUnit = (v: number) => Math.max(-1, Math.min(1, v));

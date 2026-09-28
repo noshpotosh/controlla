@@ -56,6 +56,7 @@ export function Dpad({ widget, port, props }: ControlViewProps<DpadProps>) {
       bare={props.bare}
       shape={props.shape}
       appearance={props.appearance}
+      color={props.color}
       {...handlers}
     >
       <span className="ctl-dpad__cross">

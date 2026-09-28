@@ -33,6 +33,10 @@ import {
 } from '../src/client/controls/resolve.ts';
 import { layouts } from '../src/client/controls/layouts/index.ts';
 import { emptyLayout } from '../src/client/controls/layout/schema.ts';
+import {
+  CONTROL_COLORS,
+  isControlColor,
+} from '../src/client/controls/colors.ts';
 
 void test('every library control has one definition and a view', () => {
   const types = definitions.map((d) => d.type);
@@ -211,5 +215,18 @@ void test('resolveConfig rejects more press controls than the frame carries', ()
     );
   } finally {
     delete layouts['five-buttons'];
+  }
+});
+
+void test('control colours: player first, then a palette with a token each', async () => {
+  assert.equal(CONTROL_COLORS[0], 'player');
+  assert.equal(new Set(CONTROL_COLORS).size, CONTROL_COLORS.length);
+  assert.ok(isControlColor('blue') && !isControlColor('chartreuse'));
+  const { readFile } = await import('node:fs/promises');
+  const tokens = await readFile('src/client/controls/tokens.css', 'utf8'),
+    frame = await readFile('src/client/controls/kit/frame.css', 'utf8');
+  for (const color of CONTROL_COLORS.slice(1)) {
+    assert.match(tokens, new RegExp(`--ctl-hue-${color}:`), color);
+    assert.match(frame, new RegExp(`data-color='${color}'`), color);
   }
 });

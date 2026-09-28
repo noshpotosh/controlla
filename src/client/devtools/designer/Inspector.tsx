@@ -18,6 +18,7 @@ const specs: ControllerSpec[] = catalog.map(({ id, name, controls }) => ({
 import { Readout, type Reading } from '../gallery/readings.tsx';
 import { ICONS } from '../../controls/kit/icons.ts';
 import { definitionFor, definitions } from '../../controls/registry.ts';
+import { CONTROL_COLORS, isControlColor } from '../../controls/colors.ts';
 
 import {
   checkAssignment,
@@ -170,6 +171,7 @@ function ItemFields({
       ...item.props,
     } as Record<string, unknown>,
     recommended = recommendedFootprint(item),
+    color = isControlColor(props.color) ? props.color : 'player',
     setProp = (key: string, value: unknown) =>
       onChange({ props: { ...item.props, [key]: value } }),
     [draftName, setDraftName] = useState(item.name),
@@ -225,6 +227,9 @@ function ItemFields({
                   item.props?.appearance as never,
                 ) && { appearance: item.props?.appearance }),
                 ...(item.props?.bare === true && { bare: true }),
+                ...(isControlColor(item.props?.color) && {
+                  color: item.props.color,
+                }),
               };
             onChange({
               type,
@@ -282,6 +287,26 @@ function ItemFields({
               >
                 {appearance}
               </button>
+            ))}
+          </div>
+          <div className="dz-label">Colour · {color}</div>
+          <div className="dz-colors">
+            {CONTROL_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                title={c === 'player' ? "Player's colour" : c}
+                aria-label={c}
+                aria-pressed={c === color}
+                data-color={c}
+                style={{
+                  background:
+                    c === 'player'
+                      ? 'var(--ctl-accent)'
+                      : `var(--ctl-hue-${c})`,
+                }}
+                onClick={() => setProp('color', c === 'player' ? undefined : c)}
+              />
             ))}
           </div>
           <label className="dz-check">

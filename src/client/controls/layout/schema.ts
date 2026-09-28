@@ -30,6 +30,10 @@ export const GRID: Record<Orientation, { cols: number; rows: number }> = {
 /** The menu button's reserved footprint, in cells. */
 export const MENU_SIZE = 2;
 
+/** Aimed motion (pointer, tilt) drifts, so those layouts always show Recenter. */
+export const needsRecenter = (motion: Record<MotionInput, boolean>) =>
+  motion.pointer || motion.tilt;
+
 export const ROTATIONS: readonly Rotation[] = [0, 90, 180, 270];
 export const MENU_CORNERS: readonly MenuCorner[] = [
   'top-left',
@@ -44,15 +48,25 @@ export const NO_MOTION: Record<MotionInput, boolean> = {
   shake: false,
 };
 
+/**
+ * The corner the phone chrome owns. With aimed motion on, it also holds the
+ * Recenter button beside the menu, along the screen's short edge: two cells
+ * more across in portrait, down in landscape.
+ */
 export function menuRect(
-  layout: Pick<ControllerLayout, 'grid' | 'menu'>,
+  layout: Pick<ControllerLayout, 'grid' | 'menu'> &
+    Partial<Pick<ControllerLayout, 'motion'>>,
 ): GridRect {
-  const { cols, rows } = layout.grid;
+  const { cols, rows } = layout.grid,
+    extra = layout.motion && needsRecenter(layout.motion) ? MENU_SIZE : 0,
+    portrait = cols <= rows,
+    w = MENU_SIZE + (portrait ? extra : 0),
+    h = MENU_SIZE + (portrait ? 0 : extra);
   return {
-    x: layout.menu.endsWith('left') ? 0 : cols - MENU_SIZE,
-    y: layout.menu.startsWith('top') ? 0 : rows - MENU_SIZE,
-    w: MENU_SIZE,
-    h: MENU_SIZE,
+    x: layout.menu.endsWith('left') ? 0 : cols - w,
+    y: layout.menu.startsWith('top') ? 0 : rows - h,
+    w,
+    h,
   };
 }
 

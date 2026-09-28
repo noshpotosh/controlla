@@ -39,6 +39,7 @@ export function AimPad({ widget, port, props }: ControlViewProps) {
       bare={props.bare}
       shape={props.shape}
       appearance={props.appearance}
+      color={props.color}
       tabIndex={0}
       role="application"
       aria-roledescription="aim pad"

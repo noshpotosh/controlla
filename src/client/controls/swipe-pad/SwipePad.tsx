@@ -58,6 +58,7 @@ export function SwipePad({
       bare={props.bare}
       shape={props.shape}
       appearance={props.appearance}
+      color={props.color}
       {...handlers}
     >
       <span className="ctl-swipe-pad__dots" />

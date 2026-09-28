@@ -4,7 +4,12 @@
 // active state, variant class and focus ring. Controls only draw their play
 // area. See docs/design/CONTROLLER-DESIGN.md.
 import type { HTMLAttributes, ReactNode } from 'react';
-import type { ControlAppearance, ControlShape, Widget } from '../api.ts';
+import type {
+  ControlAppearance,
+  ControlColor,
+  ControlShape,
+  Widget,
+} from '../api.ts';
 
 export interface ControlFrameProps extends HTMLAttributes<HTMLElement> {
   /** Render as a native <button> for controls that are one big button. */
@@ -15,6 +20,7 @@ export interface ControlFrameProps extends HTMLAttributes<HTMLElement> {
   bare?: boolean;
   shape?: ControlShape;
   appearance?: ControlAppearance;
+  color?: ControlColor;
   children: ReactNode;
 }
 
@@ -26,6 +32,7 @@ export function ControlFrame({
   bare = false,
   shape = 'rounded',
   appearance = 'plain',
+  color = 'player',
   className,
   children,
   ...rest
@@ -45,6 +52,7 @@ export function ControlFrame({
       data-active={active || undefined}
       data-shape={shape}
       data-appearance={appearance}
+      data-color={color === 'player' ? undefined : color}
       aria-label={rest['aria-label'] ?? widget.label}
     >
       {children}

@@ -264,6 +264,38 @@
   padding: 0 var(--ctl-space-1);
   white-space: nowrap;
 }
+/* Colour picker: player colour first (marked), then the palette. */
+.dz-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dz-colors button {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
+  cursor: pointer;
+}
+.dz-colors button[data-color='player']::after {
+  /* "P" marks the swatch that follows the player. */
+  content: 'P';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ctl-accent-ink);
+}
+.dz-colors button[aria-pressed='true'] {
+  box-shadow:
+    0 0 0 2px var(--ctl-bg),
+    0 0 0 4px var(--ctl-ink);
+}
 /* Shape glyphs in the inspector's shape picker. */
 .dz-shape {
   display: inline-block;
@@ -343,6 +375,7 @@
   );
   color: var(--ctl-ink-muted);
   font-size: 10px;
+  text-align: center;
   font-weight: 800;
   text-transform: uppercase;
 }

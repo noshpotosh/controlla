@@ -463,3 +463,40 @@ void test('designer model: size presets and fill', () => {
     h: 22,
   });
 });
+
+void test('aimed motion reserves room for Recenter beside the menu', () => {
+  const portrait = emptyLayout('x', 'X', 'portrait'),
+    landscape = emptyLayout('x', 'X', 'landscape'),
+    on = (layout: ControllerLayout, m: 'pointer' | 'tilt' | 'shake') => ({
+      ...layout,
+      motion: { ...layout.motion, [m]: true },
+    });
+  assert.deepEqual(menuRect(portrait), { x: 10, y: 0, w: 2, h: 2 });
+  // Along the short edge: wider in portrait, taller in landscape.
+  assert.deepEqual(menuRect(on(portrait, 'pointer')), {
+    x: 8,
+    y: 0,
+    w: 4,
+    h: 2,
+  });
+  assert.deepEqual(menuRect(on(landscape, 'tilt')), {
+    x: 22,
+    y: 0,
+    w: 2,
+    h: 4,
+  });
+  assert.deepEqual(menuRect({ ...on(portrait, 'tilt'), menu: 'bottom-left' }), {
+    x: 0,
+    y: 22,
+    w: 4,
+    h: 2,
+  });
+  // Shake has nothing to recenter.
+  assert.deepEqual(menuRect(on(portrait, 'shake')), menuRect(portrait));
+  // A control in the Recenter slot now fails validation.
+  const crowded = on(
+    layoutOf([item('a', 'button', { x: 7, y: 0, w: 2, h: 2 })]),
+    'pointer',
+  );
+  assert.match(messages(validateLayout(crowded)), /menu corner/);
+});

@@ -20,12 +20,16 @@ with each control against all eight player colours.
    and halo appear, and a short haptic fires. Releases spring back with
    `--ctl-ease-spring`. Pads that track a finger never scale, because the
    surface under the thumb must not move.
-3. **Colour means you.** The player's roster colour (`--ctl-accent`) is the
-   only saturated hue on the phone, so it matches that player's cursor on the
-   TV. At rest, controls are neutral graphite. The accent marks what is being
-   touched: the active edge, the lit D-pad arm, the knob ring, the reticle and
-   the charge ring. `filled` buttons are the one exception, because the
-   primary action should be obvious before it is touched.
+3. **Colour means you, unless the layout says otherwise.** By default the
+   player's roster colour (`--ctl-accent`) is the only saturated hue on the
+   phone, so it matches that player's cursor on the TV. A layout can give any
+   single control its own colour from a fixed palette to colour-code actions
+   (red for fire, blue for shield); that control then uses its colour everywhere
+   the player colour would appear. At rest, controls are neutral graphite. The
+   control's colour marks what is being touched: the active edge, the lit D-pad
+   arm, the knob ring, the reticle and the charge ring. `filled` buttons are the
+   exception, because the primary action should be obvious before it is
+   touched.
 4. **One family at any size.** Radii, glyphs and numerals scale with the
    control (`cqmin`), so a 1×1 button and a full-width pad read as siblings.
    Chrome gets out of the way as space runs out.
@@ -35,22 +39,29 @@ with each control against all eight player colours.
 
 ## Colour
 
-| Token                                               | Use                                                      |
-| --------------------------------------------------- | -------------------------------------------------------- |
-| `--ctl-bg`                                          | The phone behind everything. Near-black graphite.        |
-| `--ctl-well`                                        | Recessed fields: aim pad, swipe pad, stick gate.         |
-| `--ctl-surface`                                     | The resting control face.                                |
-| `--ctl-surface-raised`                              | Parts that stand proud: D-pad cross, hold-meter key.     |
-| `--ctl-knob-top/bottom`                             | The stick knob's lit dome.                               |
-| `--ctl-line`, `--ctl-line-strong`                   | Hairlines: edges, grids, dead-zone ring.                 |
-| `--ctl-specular`, `--ctl-sheen`, `--ctl-sheen-soft` | Light from above: top edge, filled sheen, surface sheen. |
-| `--ctl-ink`, `--ctl-ink-muted`, `--ctl-ink-faint`   | Text: active caption, resting caption and glyph, hint.   |
-| `--ctl-accent` (+ `-glow`, `-soft`, `-edge`)        | The player. Engaged states only (see principle 3).       |
-| `--ctl-neutral`, `--ctl-danger`                     | Button tones for the `neutral` and `danger` variants.    |
-| `--ctl-warning`                                     | Designer-only advice (undersized controls).              |
+| Token                                               | Use                                                                                                         |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `--ctl-bg`                                          | The phone behind everything. Near-black graphite.                                                           |
+| `--ctl-well`                                        | Recessed fields: aim pad, swipe pad, stick gate.                                                            |
+| `--ctl-surface`                                     | The resting control face.                                                                                   |
+| `--ctl-surface-raised`                              | Parts that stand proud: D-pad cross, hold-meter key.                                                        |
+| `--ctl-knob-top/bottom`                             | The stick knob's lit dome.                                                                                  |
+| `--ctl-line`, `--ctl-line-strong`                   | Hairlines: edges, grids, dead-zone ring.                                                                    |
+| `--ctl-specular`, `--ctl-sheen`, `--ctl-sheen-soft` | Light from above: top edge, filled sheen, surface sheen.                                                    |
+| `--ctl-ink`, `--ctl-ink-muted`, `--ctl-ink-faint`   | Text: active caption, resting caption and glyph, hint.                                                      |
+| `--ctl-accent` (+ `-glow`, `-soft`, `-edge`)        | The player. Engaged states only (see principle 3).                                                          |
+| `--ctl-hue-*`                                       | Control colours (`props.color`): red, orange, yellow, green, mint, teal, blue, indigo, purple, pink, white. |
+| `--ctl-neutral`, `--ctl-danger`                     | Button tones for the `neutral` and `danger` variants.                                                       |
+| `--ctl-warning`                                     | Designer-only advice (undersized controls).                                                                 |
 
-**Contrast.** All eight player colours in `src/shared/room.ts` are light, so
-`--ctl-accent-ink` stays near-black on every accent. Adding a dark player colour
+**Per-control colour.** `props.color` is `player` (the default) or a palette name.
+The frame sets `data-color`, which overrides `--ctl-accent` for that control only.
+The frame also re-derives the glow, soft and edge tokens, so everything inside
+follows. Use colour to group or distinguish actions, not to decorate; keep to
+two or three colours per layout.
+
+**Contrast.** All eight player colours in `src/shared/room.ts`, and every
+control colour, are light, so `--ctl-accent-ink` stays near-black on all of them. Adding a dark player colour
 would break that assumption; derive the ink per colour first.
 
 ## Type
@@ -116,6 +127,19 @@ Buttons default to `filled`; every other control defaults to `plain`.
   edges.
 - The menu corner reserves 2×2 cells.
 
+## Phone chrome
+
+- **Menu button:** a 44pt circle in the layout's menu corner.
+- **Recenter button:** mandatory whenever the layout turns on aimed motion
+  (pointer or tilt). It sits beside the menu button, never inside the menu, and
+  is tinted with the player colour so it is easy to find. The corner the layout
+  reserves grows from 2×2 to 4×2 (portrait) or 2×4 (landscape) to make room,
+  and the designer refuses controls that cover it.
+- **Browser toolbar:** in landscape, the first touch takes the page fullscreen
+  where the browser allows it. iPhone Safari doesn't allow page fullscreen, so
+  the menu there suggests adding Controlla to the Home Screen, which launches
+  without browser chrome.
+
 ## Motion
 
 | Token               | Value | Use                                                  |
@@ -164,7 +188,7 @@ with a light-stroke icon in the accent colour.
 ## Checklist for a new or changed control
 
 - [ ] Uses only `--ctl-*` tokens; new raw values go into `tokens.css` with a comment.
-- [ ] Renders inside `ControlFrame` and passes `shape` and `appearance` through.
+- [ ] Renders inside `ControlFrame` and passes `shape`, `appearance` and `color` through.
 - [ ] Declares `shapes`, `appearances` and `recommendedSize` in its definition.
 - [ ] Resting state is neutral; engaged state uses the accent; the activation has a haptic.
 - [ ] Looks right at 1×1, at its recommended size, and full-width, in every declared shape.

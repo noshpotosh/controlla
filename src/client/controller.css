@@ -43,6 +43,83 @@
 .ctl-menu-button[data-corner$='right'] {
   right: var(--ctl-space-2);
 }
+/* Recenter: the menu button's twin, one button further along the short edge
+ * (across in portrait, down in landscape). The layout reserves the room. */
+.ctl-recenter-button {
+  --ctl-chrome-button: 44px;
+  --ctl-chrome-step: calc(var(--ctl-space-2) * 2 + var(--ctl-chrome-button));
+  position: absolute;
+  z-index: 5;
+  width: var(--ctl-chrome-button);
+  height: var(--ctl-chrome-button);
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(
+    in oklab,
+    var(--ctl-accent) 18%,
+    var(--ctl-surface-raised)
+  );
+  color: var(--ctl-accent);
+  box-shadow:
+    inset 0 1px 0 var(--ctl-specular),
+    inset 0 0 0 1px var(--ctl-accent-edge),
+    var(--ctl-shadow-1);
+  -webkit-tap-highlight-color: transparent;
+  transition: scale var(--ctl-spring-ms) var(--ctl-ease-spring);
+}
+.ctl-recenter-button:active {
+  scale: var(--ctl-press-scale);
+  transition-duration: var(--ctl-press-ms);
+}
+.ctl-recenter-button svg {
+  width: 22px;
+  height: 22px;
+}
+.ctl-recenter-button[data-done] svg {
+  animation: ctl-recenter-done var(--ctl-flash-ms) var(--ctl-ease-out);
+}
+@keyframes ctl-recenter-done {
+  from {
+    rotate: -90deg;
+    scale: 0.6;
+  }
+}
+.ctl-recenter-button[data-corner^='top'] {
+  top: var(--ctl-space-2);
+}
+.ctl-recenter-button[data-corner^='bottom'] {
+  bottom: var(--ctl-space-2);
+}
+.ctl-recenter-button[data-corner$='left'] {
+  left: var(--ctl-space-2);
+}
+.ctl-recenter-button[data-corner$='right'] {
+  right: var(--ctl-space-2);
+}
+.ctl-recenter-button[data-orientation='portrait'][data-corner$='left'] {
+  left: var(--ctl-chrome-step);
+}
+.ctl-recenter-button[data-orientation='portrait'][data-corner$='right'] {
+  right: var(--ctl-chrome-step);
+}
+.ctl-recenter-button[data-orientation='landscape'][data-corner^='top'] {
+  top: var(--ctl-chrome-step);
+}
+.ctl-recenter-button[data-orientation='landscape'][data-corner^='bottom'] {
+  bottom: var(--ctl-chrome-step);
+}
+.ctl-home-screen-tip {
+  margin: 0;
+  padding: var(--ctl-space-2) var(--ctl-space-3);
+  border-radius: var(--ctl-radius-sm);
+  background: var(--ctl-well);
+  color: var(--ctl-ink-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
 .ctl-menu-button[data-alert]::after {
   content: '';
   position: absolute;

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { RotateCcw } from 'lucide-react';
 import { ControllerSurface } from '../controls/ControllerSurface.tsx';
+import { useImmersive } from '../controls/kit/immersive.ts';
 import { LegacyWidget } from './LegacyWidget.tsx';
 import { ControllerMenu, StatusToast } from './ControllerMenu.tsx';
 import type {
@@ -31,6 +32,8 @@ export function ControllerScreen({
   const [panelOpen, setPanelOpen] = useState(false);
   const Panel = panel?.Component;
   const me = v.identity!;
+  // Landscape: hide the browser toolbar where the browser allows it.
+  const { suggestHomeScreen } = useImmersive(!!v.config && !v.ended);
   useEffect(() => {
     const cancel = (e: TouchEvent) => e.preventDefault();
     document.addEventListener('touchmove', cancel, { passive: false });
@@ -48,6 +51,7 @@ export function ControllerScreen({
         view={v}
         phone={phone}
         corner={v.config?.menu ?? 'top-right'}
+        homeScreenTip={suggestHomeScreen}
         extraAction={
           panel
             ? { label: panel.label, run: () => setPanelOpen(true) }

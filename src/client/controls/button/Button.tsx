@@ -30,6 +30,7 @@ export function Button({ widget, port, props }: ControlViewProps<ButtonProps>) {
       bare={props.bare}
       shape={props.shape}
       appearance={props.appearance}
+      color={props.color}
       as="button"
       aria-pressed={active}
       onKeyDown={key(true)}

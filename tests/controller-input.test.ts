@@ -268,6 +268,23 @@ void test('motion freshness neutralizes tilt and consumes each shake sample only
   f.input.tick(motion);
   assert.equal(f.messages.filter((m) => m.type === 'press').length, 1);
 });
+void test('recentering makes the current tilt level', () => {
+  const config = configuration();
+  config.sensors.tilt.enabled = true;
+  const f = fixture(config);
+  f.input.tick(f.motion);
+  assert.ok(Math.abs(f.frames.at(-1)!.x - 0.4) < 0.001);
+  f.input.recenter();
+  f.at(1700);
+  f.input.tick(f.motion);
+  assert.ok(Math.abs(f.frames.at(-1)!.x) < 0.001);
+  assert.ok(Math.abs(f.frames.at(-1)!.y) < 0.001);
+  // Tipping further from the new level still reads, clamped to the unit range.
+  f.at(2400);
+  f.input.tick({ ...f.motion, tilt: { x: -0.9, y: 0.9 } });
+  assert.equal(f.frames.at(-1)!.x, -1);
+  assert.equal(f.frames.at(-1)!.y, 1);
+});
 void test('pointer sampling and recovery preserve position, press anchoring and player settings', () => {
   const config = configuration();
   config.sensors.pointer.enabled = true;

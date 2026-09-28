@@ -3,6 +3,11 @@
  * appearance come from data attributes. See docs/design/CONTROLLER-DESIGN.md.
  */
 .ctl-frame {
+  /* Re-derived here so a control with its own colour (data-color) gets
+   * matching glows and edges; otherwise they follow the player. */
+  --ctl-accent-glow: color-mix(in oklab, var(--ctl-accent) 45%, transparent);
+  --ctl-accent-soft: color-mix(in oklab, var(--ctl-accent) 16%, transparent);
+  --ctl-accent-edge: color-mix(in oklab, var(--ctl-accent) 55%, transparent);
   /* The colour this control speaks in; variants may override. */
   --ctl-tone: var(--ctl-accent);
   --ctl-tone-ink: var(--ctl-accent-ink);
@@ -33,6 +38,41 @@
 .ctl-frame:focus-visible {
   outline: var(--ctl-stroke) solid var(--ctl-accent);
   outline-offset: var(--ctl-space-1);
+}
+
+/* Control colours: the whole control speaks in its own hue. */
+.ctl-frame[data-color='red'] {
+  --ctl-accent: var(--ctl-hue-red);
+}
+.ctl-frame[data-color='orange'] {
+  --ctl-accent: var(--ctl-hue-orange);
+}
+.ctl-frame[data-color='yellow'] {
+  --ctl-accent: var(--ctl-hue-yellow);
+}
+.ctl-frame[data-color='green'] {
+  --ctl-accent: var(--ctl-hue-green);
+}
+.ctl-frame[data-color='mint'] {
+  --ctl-accent: var(--ctl-hue-mint);
+}
+.ctl-frame[data-color='teal'] {
+  --ctl-accent: var(--ctl-hue-teal);
+}
+.ctl-frame[data-color='blue'] {
+  --ctl-accent: var(--ctl-hue-blue);
+}
+.ctl-frame[data-color='indigo'] {
+  --ctl-accent: var(--ctl-hue-indigo);
+}
+.ctl-frame[data-color='purple'] {
+  --ctl-accent: var(--ctl-hue-purple);
+}
+.ctl-frame[data-color='pink'] {
+  --ctl-accent: var(--ctl-hue-pink);
+}
+.ctl-frame[data-color='white'] {
+  --ctl-accent: var(--ctl-hue-white);
 }
 
 /* Shapes. The frame sits centred in its cell. */

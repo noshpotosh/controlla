@@ -1,10 +1,12 @@
 'use client';
 // In-game chrome for the phone. The controller layout owns the whole screen;
 // everything else lives behind one floating button in the layout's reserved
-// corner, plus short status toasts.
+// corner, plus short status toasts. Aimed motion adds an always-visible
+// Recenter button beside it.
 import { useEffect, useState } from 'react';
 import { Crosshair, Menu, RotateCcw, X } from 'lucide-react';
 import type { MenuCorner } from '../controls/api.ts';
+import { RecenterButton } from '../controls/kit/RecenterButton.tsx';
 import type { ShellView, PhoneActions } from './ports.ts';
 
 export function ControllerMenu({
@@ -12,18 +14,22 @@ export function ControllerMenu({
   phone,
   corner,
   extraAction,
+  homeScreenTip = false,
   leave,
 }: {
   view: ShellView;
   phone: PhoneActions;
   corner: MenuCorner;
   extraAction?: { label: string; run(): void };
+  /** Landscape on a browser that can't hide its toolbar (iPhone Safari). */
+  homeScreenTip?: boolean;
   leave: () => void;
 }) {
   const [open, setOpen] = useState(false),
     me = v.identity,
     player = v.roster.players.find((p) => p.id === me?.id),
     pointer = v.config?.sensors.pointer.enabled,
+    aimed = !!(pointer || v.config?.sensors.tilt.enabled),
     needsMotion =
       !v.motionEnabled &&
       !!(v.config?.sensors.pointer.enabled || v.config?.sensors.tilt.enabled);
@@ -39,6 +45,13 @@ export function ControllerMenu({
       >
         <Menu />
       </button>
+      {aimed && v.config && (
+        <RecenterButton
+          corner={corner}
+          orientation={v.config.orientation}
+          onRecenter={phone.recenter}
+        />
+      )}
       {needsMotion && !open && (
         <button
           type="button"
@@ -91,10 +104,12 @@ export function ControllerMenu({
                 >
                   <Crosshair /> Aim settings
                 </button>
-                <button type="button" onClick={() => phone.recenter()}>
-                  <RotateCcw /> Recenter
-                </button>
               </>
+            )}
+            {aimed && (
+              <button type="button" onClick={() => phone.recenter()}>
+                <RotateCcw /> Recenter
+              </button>
             )}
             {extraAction && (
               <button
@@ -108,6 +123,12 @@ export function ControllerMenu({
               </button>
             )}
           </div>
+          {homeScreenTip && (
+            <p className="ctl-home-screen-tip">
+              To hide the browser bar, tap Share, then Add to Home Screen, and
+              open Controlla from there.
+            </p>
+          )}
           <p className="ctl-sheet__meta">
             {v.controllerPath === 'direct-to-session'
               ? 'Degraded connection — aiming goes through the host · '

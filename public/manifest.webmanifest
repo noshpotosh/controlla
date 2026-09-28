@@ -1,0 +1,17 @@
+{
+  "name": "Controlla",
+  "short_name": "Controlla",
+  "description": "Turn every phone into a game controller.",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#0a0b0d",
+  "theme_color": "#0a0b0d",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

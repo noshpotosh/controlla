@@ -1,6 +1,7 @@
 /** UI props for control views. Shared controller contracts live in api.ts. */
 import type {
   ControlAppearance,
+  ControlColor,
   ControlPort,
   ControlShape,
   Widget,
@@ -22,4 +23,6 @@ export interface CommonProps {
   shape?: ControlShape;
   /** Resting colour treatment; one of the definition's `appearances`. */
   appearance?: ControlAppearance;
+  /** The control's own colour; `player` (default) follows the player. */
+  color?: ControlColor;
 }

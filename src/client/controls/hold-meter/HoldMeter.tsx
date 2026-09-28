@@ -67,6 +67,7 @@ export function HoldMeter({
       bare={props.bare}
       shape={props.shape}
       appearance={props.appearance}
+      color={props.color}
       data-full={charge === 1 || undefined}
       {...handlers}
     >

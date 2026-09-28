@@ -50,6 +50,20 @@
   --ctl-ink: #f5f5f7;
   --ctl-ink-muted: rgb(235 235 245 / 0.6);
   --ctl-ink-faint: rgb(235 235 245 / 0.3);
+  /* Control colours: a palette a layout can give single controls instead of
+   * the player colour (props.color). All light enough for dark ink. */
+  --ctl-hue-red: #ff6b61;
+  --ctl-hue-orange: #ffa94d;
+  --ctl-hue-yellow: #ffd84d;
+  --ctl-hue-green: #5fe07c;
+  --ctl-hue-mint: #63e6d2;
+  --ctl-hue-teal: #5ccfee;
+  --ctl-hue-blue: #6aa8ff;
+  --ctl-hue-indigo: #9d9bff;
+  --ctl-hue-purple: #d59bff;
+  --ctl-hue-pink: #ff85b0;
+  --ctl-hue-white: #f2f2f7;
+
   /* Tones for variants. */
   --ctl-neutral: #e5e5ea;
   --ctl-danger: #ff5a4f;

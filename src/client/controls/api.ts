@@ -168,6 +168,25 @@ export type ControlShape = 'rounded' | 'square' | 'circle' | 'capsule';
  */
 export type ControlAppearance = 'filled' | 'tinted' | 'plain';
 
+/**
+ * A control's own colour. `player` follows the player's roster colour (the
+ * default); the rest are a fixed palette, so one layout can colour-code its
+ * controls. Every hue is light enough for dark ink.
+ */
+export type ControlColor =
+  | 'player'
+  | 'red'
+  | 'orange'
+  | 'yellow'
+  | 'green'
+  | 'mint'
+  | 'teal'
+  | 'blue'
+  | 'indigo'
+  | 'purple'
+  | 'pink'
+  | 'white';
+
 /** An editable prop, rendered by the designer's inspector. */
 export type Field = { key: string; label: string } & (
   | { type: 'number'; min: number; max: number; step: number }

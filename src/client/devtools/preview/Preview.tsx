@@ -10,8 +10,10 @@ import { ControllerSurface } from '../../controls/ControllerSurface.tsx';
 import { Readout, useReadings } from '../gallery/readings.tsx';
 import { layoutWidgets } from '../../controls/layout/widgets.ts';
 import type { Orientation } from '../../controls/api.ts';
-import { MOTION } from '../../controls/layout/schema.ts';
+import { MOTION, needsRecenter } from '../../controls/layout/schema.ts';
 import { SensorTile } from '../../controls/SensorTile.tsx';
+import { useImmersive } from '../../controls/kit/immersive.ts';
+import { RecenterButton } from '../../controls/kit/RecenterButton.tsx';
 
 function useOrientation(): Orientation {
   const query = '(orientation: landscape)';
@@ -32,7 +34,8 @@ export function Preview({ layoutId }: { layoutId: string | null }) {
   const layout = (layoutId && layouts[layoutId]) || null,
     orientation = useOrientation(),
     [panel, setPanel] = useState(false),
-    { readings, portFor } = useReadings();
+    { readings, portFor } = useReadings(),
+    { suggestHomeScreen } = useImmersive(!!layout);
   if (!layout)
     return (
       <main className="ctl-preview-pick ctl-scope">
@@ -64,6 +67,14 @@ export function Preview({ layoutId }: { layoutId: string | null }) {
         >
           {panel ? <X /> : <Menu />}
         </button>
+        {needsRecenter(layout.motion) && (
+          // No sensors in the preview; the button shows where it will be.
+          <RecenterButton
+            corner={layout.menu}
+            orientation={layout.orientation}
+            onRecenter={() => {}}
+          />
+        )}
       </ControllerSurface>
       {panel && (
         <dialog open className="ctl-sheet" aria-label="Preview readout">
@@ -92,6 +103,12 @@ export function Preview({ layoutId }: { layoutId: string | null }) {
               <Readout reading={readings[w.id]} />
             </div>
           ))}
+          {suggestHomeScreen && (
+            <p className="ctl-home-screen-tip">
+              To hide the browser bar, tap Share, then Add to Home Screen, and
+              open Controlla from there.
+            </p>
+          )}
           <button
             type="button"
             className="ctl-sheet__leave"

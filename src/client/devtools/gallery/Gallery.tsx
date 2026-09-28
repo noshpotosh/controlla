@@ -17,6 +17,7 @@ import { layoutWidgets } from '../../controls/layout/widgets.ts';
 
 import { LAYOUTS, templateLayout } from '../../controls/layouts.ts';
 import { definitions } from '../../controls/registry.ts';
+import { CONTROL_COLORS } from '../../controls/colors.ts';
 
 import { Readout, useReadings } from './readings.tsx';
 
@@ -272,6 +273,12 @@ const SWATCHES: { group: string; tokens: string[] }[] = [
     group: 'Tone',
     tokens: ['--ctl-accent', '--ctl-neutral', '--ctl-danger', '--ctl-warning'],
   },
+  {
+    group: 'Control colours',
+    tokens: CONTROL_COLORS.filter((c) => c !== 'player').map(
+      (c) => `--ctl-hue-${c}`,
+    ),
+  },
 ];
 
 /** One sample control, rendered through the real surface at a fixed size. */
@@ -378,6 +385,29 @@ function DesignSheet({ accent }: { accent: string }) {
               />
             )),
           )}
+        </div>
+      </section>
+      <section className="ctl-gallery__card">
+        <div className="ctl-gallery__card-head">
+          <h2>Control colours</h2>
+        </div>
+        <p className="ctl-gallery__desc">
+          By default every control speaks in the player&rsquo;s colour. A layout
+          can give any control its own, to colour-code actions.
+        </p>
+        <div className="ctl-gallery__sizes">
+          {CONTROL_COLORS.map((color) => (
+            <Sample
+              key={color}
+              accent={accent}
+              size={84}
+              widget={{
+                type: 'button',
+                label: color,
+                props: { color, appearance: 'tinted', icon: 'zap', bare: true },
+              }}
+            />
+          ))}
         </div>
       </section>
       <section className="ctl-gallery__card">

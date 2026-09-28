@@ -17,7 +17,7 @@ import type {
 import { ControllerSurface } from '../../controls/ControllerSurface.tsx';
 import type { useReadings } from '../gallery/readings.tsx';
 
-import { menuRect } from '../../controls/layout/schema.ts';
+import { menuRect, needsRecenter } from '../../controls/layout/schema.ts';
 import { layoutWidgets } from '../../controls/layout/widgets.ts';
 import { SensorTile } from '../../controls/SensorTile.tsx';
 import {
@@ -167,7 +167,7 @@ export function Canvas({
           }}
         >
           <div className="dz-menu" style={pct(menuRect(layout), grid)}>
-            menu
+            {needsRecenter(layout.motion) ? 'menu · recenter' : 'menu'}
           </div>
           {drag?.guides.x.map((x) => (
             <span
