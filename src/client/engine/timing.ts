@@ -1,3 +1,5 @@
+export const now = () => performance.now();
+
 export class Samples {
   values: number[] = [];
   constructor(public capacity = 600) {}

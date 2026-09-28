@@ -2,7 +2,7 @@
 
 A browser-authoritative party-game framework. Each venue has a screen and its own phone controllers. Phones send local input to their venue; screens relay input to the host and render snapshots of its simulation. No video streaming.
 
-**Status: Neon Harvest is the sole game; controller, shell, and shared-contract boundaries are implemented. All 244 tests and the production build pass, with desktop browser observations recorded. Hardware/multi-household acceptance remains unverified.** The acceptance budgets in the specification are targets, not measured claims. See [validation](docs/VALIDATION.md) and [design decisions](docs/ADR-001.md).
+**Status: Neon Harvest is the sole game; controller, shell, shared-contract, and browser-engine boundaries are implemented. All 248 tests and the production build pass, with desktop browser observations recorded. Hardware/multi-household acceptance remains unverified.** The acceptance budgets in the specification are targets, not measured claims. See [validation](docs/VALIDATION.md) and [design decisions](docs/ADR-001.md).
 
 ## Run locally
 
@@ -99,11 +99,12 @@ The gallery, designer, phone preview, Motion Lab and game harness are developmen
 
 - [`src/client/shell`](src/client/shell): composition, join/room/phone views, diagnostics and read-only runtime ports. See the [shell boundary and acceptance](docs/architecture/NEXT-SHELL-BOUNDARY.md).
 - `src/shared`: platform-independent room/identity/roster contracts, player colors, and application protocol constants; the only project contracts consumed by signaling. See the [shared boundary record](docs/architecture/SHARED-CONTRACTS.md).
-- `src/core`: binary input protocol, clock sync, jitter buffer, calibration, snapshot replication and authoritative session.
+- `src/core`: remaining pointer/calibration algorithms, motion traces, and geometry/motion primitives (`Point`, `Quaternion`, `clamp`); their controller ownership migration is deferred.
+- `src/client/engine`: session authority, input transport, clocks/buffers, arbitration, generic replication, game snapshot policy, round runner and progress/history. See the [engine ownership record](docs/architecture/ENGINE-OWNERSHIP.md).
 - `src/client/runtime.ts`, `network.ts`, `motion.ts`: existing session orchestration, peer transport and phone sensor fusion.
 - `src/client/controls`: controller contracts, validated resolution, reusable controls and saved layouts (`layouts/`).
 - `src/client/devtools`: development entry, controller designer/gallery/preview, Motion Lab and isolated game harness.
-- `src/client/api`, `engine`, `game-screen`, `minigames`: author contracts, shared lifecycle/progress, read-only presentation, and the production game catalog.
+- `src/client/api`, `game-screen`, `minigames`: author contracts, read-only presentation, and the production game catalog.
 - `src/client/minigames/neon-harvest`: independent rules, state, renderer and colocated tests. Lab, Tilt Rally, Target Practice and their combined legacy adapters/state are retired; cross-game guarantees use test-only descriptors.
 - `server`: signed identity/resume tokens, room codes, source/global join limits, authorized signaling and relay routes, heartbeat-based host termination.
 - `tests`: protocol/math/lifecycle tests, room security/reconnect tests, a live WebSocket integration test, and clone benchmark.

@@ -1,4 +1,18 @@
-import type { InputFrame } from './types.ts';
+export interface InputFrame {
+  seq: number;
+  time: number;
+  generation: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  buttons: number;
+  edges: number[];
+  edgeTimes: number[];
+  confidence: number;
+  values?: Record<string, unknown>;
+}
+
 export const INPUT_BYTES = 47;
 export const TIME_WRAP_MS = 2 ** 32 / 1000;
 export function unwrapTime(micros: number, near: number) {

@@ -12,20 +12,26 @@ import {
   APP_PROTOCOL_VERSION,
   PROTOCOL_MISMATCH,
 } from '../src/shared/app-protocol.ts';
-import { SessionAuthority } from '../src/core/session.ts';
+import { SessionAuthority } from '../src/client/engine/session.ts';
 import { games, findGame } from '../src/client/minigames/catalog.ts';
 import type { GameInput, GameDescriptor } from '../src/client/api/index.ts';
 import {
   defaultCapabilities,
   resolveConfig,
 } from '../src/client/controls/resolve.ts';
-import { decodeInput, encodeInput, INPUT_BYTES } from '../src/core/protocol.ts';
+import {
+  decodeInput,
+  encodeInput,
+  INPUT_BYTES,
+} from '../src/client/engine/protocol.ts';
 import {
   parseControlValue,
   valueFitsEnvelope,
 } from '../src/client/controls/value.ts';
 import type { ControllerConfig } from '../src/client/controls/api.ts';
-import type { InputFrame, Message, Press } from '../src/core/types.ts';
+import type { InputFrame } from '../src/client/engine/protocol.ts';
+import type { Message } from '../src/client/engine/messages.ts';
+import type { Press } from '../src/client/engine/reliable-input.ts';
 import type { Identity, Player } from '../src/shared/room.ts';
 
 function globals(t: TestContext, values: Record<string, unknown>) {

@@ -12,7 +12,7 @@ import {
   defaultCapabilities,
   resolveConfig,
 } from '../src/client/controls/resolve.ts';
-import { decodeInput } from '../src/core/protocol.ts';
+import { decodeInput } from '../src/client/engine/protocol.ts';
 import type { Identity } from '../src/shared/room.ts';
 
 // Executes the real role routing and Session on actual WebSockets. Browser APIs

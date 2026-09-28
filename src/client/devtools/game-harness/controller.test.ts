@@ -13,10 +13,11 @@ import {
   validateLayout,
 } from '../../controls/layout/validate.ts';
 import { RoundRunner } from '../../engine/round.ts';
-import { SessionAuthority } from '../../../core/session.ts';
-import { encodeInput } from '../../../core/protocol.ts';
+import { SessionAuthority } from '../../engine/session.ts';
+import { encodeInput } from '../../engine/protocol.ts';
 import type { ControllerConfig } from '../../controls/api.ts';
-import type { InputFrame, Message } from '../../../core/types.ts';
+import type { InputFrame } from '../../engine/protocol.ts';
+import type { Message } from '../../engine/messages.ts';
 import type { Player } from '../../../shared/room.ts';
 
 void test('four-control layout passes production validation and preserves adapted button props', () => {

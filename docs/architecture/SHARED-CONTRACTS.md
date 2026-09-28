@@ -18,18 +18,20 @@ Negative fixtures cover direct leaks, backend-helper leaks and leaks through sha
 
 The unchanged baseline passed 241 tests. The completed implementation passes **244 tests**, typecheck, project lint and production build/bundle audit. Current browser observations are recorded in the [validation ledger](../VALIDATION.md). Physical phones, TVs, motion sensors and multi-household latency remain unverified.
 
-## Remaining core inventory
+## Core inventory after browser-engine relocation
 
-| Current modules                                   | Actual consumers                                                        | Future owner; deferred work                                                                                                               |
-| ------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `session.ts`                                      | Browser runtime and tests                                               | Client engine/session authority; no backend consumer.                                                                                     |
-| `protocol.ts`, `reliable-input.ts`                | Browser runtime/session and tests                                       | Client engine input transport; preserve frame format and freshness/ACK behavior.                                                          |
-| `timing.ts`, `arbitration.ts`                     | Runtime/session/round runner and tests                                  | Client engine timing/lifecycle.                                                                                                           |
-| `snapshots.ts`                                    | Runtime/session, harness and engine snapshot policy                     | Client engine replication. Existing `engine/snapshots.ts` already owns catalog policy, so select a distinct destination during that plan. |
-| `pointer.ts`, `calibration.ts`, `motion/trace.ts` | Browser motion/runtime/screen/shell observation, tools and replay tests | Controller motion algorithms/contracts. Node replay usage does not make these backend-shared.                                             |
-| Remaining `types.ts`                              | Browser domains and tests                                               | Split by the corresponding engine/controller owner during those migrations.                                                               |
+The subsequent [engine slice](ENGINE-OWNERSHIP.md), checkpoint `ec3344e` from `8d03840`, implements the bounded browser-engine move identified by this record.
 
-Next, plan a bounded browser-engine ownership relocation against this inventory. Keep provider lifecycle changes, runtime decomposition, controller motion relocation and backend directory renaming separately scoped. The `server/` name and launch paths remain useful and unchanged.
+| Former core modules | Current owner |
+| --- | --- |
+| `session.ts` | `client/engine/session.ts`: unchanged host-browser authority. |
+| `protocol.ts`, `reliable-input.ts` | Client engine input transport and its colocated frame/press contracts. |
+| `timing.ts`, `arbitration.ts` | Client engine timing/lifecycle; `now` lives in timing. |
+| `snapshots.ts` | `client/engine/replication.ts`: generic encoder/timeline/envelopes. Existing engine `snapshots.ts` retains game policy. |
+| Engine declarations formerly in `types.ts` | Corresponding engine modules; generic `Message` lives in type-only `engine/messages.ts`. |
+| Remaining `pointer.ts`, `calibration.ts`, `motion/trace.ts`, `types.ts` | Controller-motion migration remains deferred. Types now contain only `Point`, `Quaternion`, and `clamp`, with no imports. |
+
+Runtime and network remain in their existing client locations. Provider lifecycle, runtime decomposition, controller-motion relocation and backend directory renaming remain separate work. Shared contracts and backend launch paths are unchanged.
 
 ## Recovery and integration
 

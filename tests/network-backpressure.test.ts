@@ -7,7 +7,7 @@ import {
   historyMessages,
   ProgressAssembler,
 } from '../src/client/engine/history.ts';
-import type { Message } from '../src/core/types.ts';
+import type { Message } from '../src/client/engine/messages.ts';
 import type { Identity, Player, Roster } from '../src/shared/room.ts';
 
 const utf8 = new TextEncoder();

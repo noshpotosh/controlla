@@ -1,4 +1,16 @@
-import type { Snapshot, WireSnapshot } from './types.ts';
+export interface WireSnapshot<S extends object = object> {
+  id: number;
+  time: number;
+  base: number | null;
+  patch: Partial<S>;
+}
+
+export interface Snapshot<S extends object = object> {
+  id: number;
+  time: number;
+  state: S;
+}
+
 export class SnapshotEncoder<S extends object = object> {
   history = new Map<number, Snapshot<S>>();
   acks = new Map<string, number>();

@@ -152,6 +152,10 @@ function dependencies(
     const file = pending.pop()!;
     if (seen.has(file)) continue;
     seen.add(file);
+    assert.ok(
+      existsSync(file),
+      `Missing graph target: ${relative(root, file)}`,
+    );
     if (!isSource(file)) continue;
     for (const edge of imports(file, overrides.get(file))) {
       if (edge.typeOnly && !includeTypes) continue;
@@ -219,6 +223,142 @@ void test('backend and shared contracts have independent implementation boundari
   assert.equal(existsSync(join(root, 'src/core/app-protocol.ts')), false);
 });
 
+const engine = join(root, 'src/client/engine');
+const engineForbidden = [
+  'src/client/shell',
+  'src/client/runtime.ts',
+  'src/client/network.ts',
+  'src/client/motion.ts',
+  'src/client/GameCanvas.tsx',
+  'src/client/game-screen',
+  'src/client/devtools',
+  'src/core/pointer.ts',
+  'src/core/calibration.ts',
+  'src/core/motion',
+  'server',
+].map((path) => join(root, path));
+
+function assertEngineBoundary(
+  entry: string,
+  overrides = new Map<string, string>(),
+) {
+  for (const path of engineForbidden) assert.ok(existsSync(path));
+  const iconVocabulary = join(root, 'src/client/controls/kit/icons.ts');
+  for (const file of dependencies(entry, true, overrides)) {
+    assert.ok(
+      !engineForbidden.some((path) => within(file, path)) &&
+        !file.endsWith('.tsx'),
+      `engine reaches implementation outside its boundary: ${relative(root, file)}`,
+    );
+    for (const edge of imports(file, overrides.get(file)))
+      assert.ok(
+        edge.resolved &&
+          ((within(edge.resolved, root) &&
+            !edge.resolved.includes(`${sep}node_modules${sep}`)) ||
+            (file === iconVocabulary && edge.specifier === 'lucide-react')),
+        `engine imports an unresolved or external dependency: ${edge.specifier}`,
+      );
+  }
+  // Controller definitions reference IconName through an erased import. Its
+  // existing UI owner may be inspected above, but must never execute here.
+  for (const file of dependencies(entry, false, overrides)) {
+    assert.notEqual(file, iconVocabulary, 'engine executes controller icon UI');
+    for (const edge of imports(file, overrides.get(file)).filter(
+      (edge) => !edge.typeOnly,
+    ))
+      assert.ok(
+        edge.resolved &&
+          within(edge.resolved, root) &&
+          !edge.resolved.includes(`${sep}node_modules${sep}`),
+        `engine executes an external dependency: ${edge.specifier}`,
+      );
+  }
+}
+
+void test('engine owns headless session, input, timing and replication without browser orchestration', () => {
+  for (const entry of productionFiles(engine)) assertEngineBoundary(entry);
+  for (const file of dependencies(api, true))
+    assert.ok(
+      !within(file, engine),
+      'author contracts must not reach engine internals',
+    );
+});
+
+void test('engine boundary rejects erased, indirect, dynamic and unresolved dependency leaks', () => {
+  const entry = join(engine, 'session.ts');
+  const helper = join(engine, 'timing.ts');
+  for (const source of [
+    "import { Runtime } from '../runtime.ts';",
+    "import type { Network } from '../network.ts';",
+    "type M = import('../motion.ts').Motion;",
+    "export * from '@/src/client/shell/runtime-adapter.ts';",
+    "const load = () => import('../devtools/routing.ts');",
+    "const load = () => require('@/server/rooms.ts');",
+    "export * from '../../core/pointer.ts';",
+    "import type { ReactNode } from 'react';",
+    "import { ICONS } from '../controls/kit/icons.ts';",
+    "import type { Missing } from './missing-contract.ts';",
+    'const load = (path: string) => import(path);',
+  ]) {
+    assert.throws(() =>
+      assertEngineBoundary(entry, new Map([[entry, source]])),
+    );
+    assert.throws(() =>
+      assertEngineBoundary(
+        entry,
+        new Map([
+          [entry, "export * from './timing.ts';"],
+          [helper, source],
+        ]),
+      ),
+    );
+  }
+});
+
+void test('engine relocation removes old modules and leaves only geometry and motion primitives in core types', () => {
+  for (const name of [
+    'session',
+    'protocol',
+    'reliable-input',
+    'timing',
+    'arbitration',
+    'snapshots',
+  ]) {
+    assert.equal(existsSync(join(root, 'src/core', `${name}.ts`)), false);
+    assert.ok(
+      existsSync(
+        join(engine, `${name === 'snapshots' ? 'replication' : name}.ts`),
+      ),
+    );
+  }
+  const file = join(root, 'src/core/types.ts');
+  assert.deepEqual(imports(file), []);
+  const source = ts.createSourceFile(
+    file,
+    readFileSync(file, 'utf8'),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  assert.deepEqual(
+    source.statements
+      .map((statement) => {
+        if (ts.isTypeAliasDeclaration(statement)) return statement.name.text;
+        if (ts.isVariableStatement(statement))
+          return statement.declarationList.declarations[0].name.getText(source);
+        return ts.SyntaxKind[statement.kind];
+      })
+      .sort(),
+    ['Point', 'Quaternion', 'clamp'],
+  );
+  const messages = ts.createSourceFile(
+    'messages.ts',
+    readFileSync(join(engine, 'messages.ts'), 'utf8'),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  assert.ok(messages.statements.every(ts.isTypeAliasDeclaration));
+});
+
 void test('shared and backend boundaries reject erased, indirect and dynamic dependency leaks', () => {
   const room = join(shared, 'room.ts');
   const protocol = join(shared, 'app-protocol.ts');
@@ -230,6 +370,8 @@ void test('shared and backend boundaries reject erased, indirect and dynamic dep
     "type Capabilities = import('@/src/client/controls/api.ts').Capabilities;",
     "export type { Player } from '@/src/client/api/index.ts';",
     "export * from '@/src/core/types.ts';",
+    "export * from '@/src/client/engine/session.ts';",
+    "import type { Message } from '@/src/client/engine/messages.ts';",
     "const load = () => import('@/src/client/network.ts');",
     "const load = () => require('@/src/client/network.ts');",
     'const load = (path: string) => import(path);',
@@ -473,13 +615,13 @@ void test('screen exposes detached, deeply frozen progress and no completion cap
   screen.dispose();
 });
 
-void test('the production canvas and game screen can read presentation but cannot reach session authority or progress mutation', () => {
+function assertScreenBoundary(overrides = new Map<string, string>()) {
   const screenDirectory = join(root, 'src/client/game-screen');
   const canvas = join(root, 'src/client/GameCanvas.tsx');
   const forbidden = [
     'src/client/runtime.ts',
     'src/client/network.ts',
-    'src/core/session.ts',
+    'src/client/engine/session.ts',
     'src/client/engine/round.ts',
     'src/client/engine/progress.ts',
     'src/client/engine/history.ts',
@@ -488,8 +630,9 @@ void test('the production canvas and game screen can read presentation but canno
     'src/experiments',
     'server',
   ].map((path) => join(root, path));
+  assert.ok(existsSync(join(engine, 'session.ts')));
   for (const entry of [canvas, ...productionFiles(screenDirectory)]) {
-    for (const file of dependencies(entry, true)) {
+    for (const file of dependencies(entry, true, overrides)) {
       assert.ok(
         !forbidden.some((path) => within(file, path)),
         `${relative(root, entry)} reaches authority or a broad runtime: ${relative(root, file)}`,
@@ -497,7 +640,7 @@ void test('the production canvas and game screen can read presentation but canno
     }
   }
   for (const file of productionFiles(screenDirectory)) {
-    for (const edge of imports(file)) {
+    for (const edge of imports(file, overrides.get(file))) {
       assert.ok(
         edge.resolved &&
           (within(edge.resolved, screenDirectory) ||
@@ -506,6 +649,11 @@ void test('the production canvas and game screen can read presentation but canno
       );
     }
   }
+}
+
+void test('the production canvas and game screen can read presentation but cannot reach session authority or progress mutation', () => {
+  assertScreenBoundary();
+  const screenDirectory = join(root, 'src/client/game-screen');
   const source = ts.createSourceFile(
     'port.ts',
     readFileSync(join(screenDirectory, 'port.ts'), 'utf8'),
@@ -544,6 +692,33 @@ void test('shell ports stay type-only and UI leaves cannot reach the runtime', (
   for (const entry of shellLeaves()) assertShellLeaf(entry);
 });
 
+void test('screen boundary rejects relocated authority through direct and indirect erased imports', () => {
+  const canvas = join(root, 'src/client/GameCanvas.tsx');
+  const helper = join(root, 'src/client/game-screen/presenter.ts');
+  for (const source of [
+    "import { SessionAuthority } from '@/src/client/engine/session.ts';",
+    "import type { SessionPorts } from '@/src/client/engine/session.ts';",
+    "type S = import('@/src/client/engine/session.ts').SessionAuthority;",
+    "export * from '@/src/client/engine/session.ts';",
+    "const load = () => import('@/src/client/engine/session.ts');",
+  ]) {
+    assert.throws(
+      () => assertScreenBoundary(new Map([[canvas, source]])),
+      /reaches authority/,
+    );
+    assert.throws(
+      () =>
+        assertScreenBoundary(
+          new Map([
+            [canvas, "export * from './game-screen/presenter.ts';"],
+            [helper, source],
+          ]),
+        ),
+      /reaches authority/,
+    );
+  }
+});
+
 const shell = join(root, 'src/client/shell');
 const composition = join(shell, 'App.tsx');
 const adapter = join(shell, 'runtime-adapter.ts');
@@ -563,7 +738,6 @@ function assertShellLeaf(entry: string, overrides = new Map<string, string>()) {
       'src/client/GameCanvas.tsx',
       'src/client/engine',
       'src/client/minigames',
-      'src/core/session.ts',
       'src/core/pointer.ts',
       'src/client/devtools',
       'src/client/devtools/motion-lab/MotionLab.tsx',
@@ -601,6 +775,7 @@ void test('shell boundary rejects direct, type-only, alias, re-export and dynami
     "export { default } from './App.tsx';",
     "import { games } from '../minigames/catalog.ts';",
     "import '../devtools/motion-lab/MotionLab.tsx';",
+    "import type { SessionAuthority } from '../engine/session.ts';",
   ]) {
     assert.throws(
       () => assertShellLeaf(entry, new Map([[entry, source]])),
@@ -680,7 +855,6 @@ void test('engine, screen, controls and backend cannot depend back on the shell;
       'src/client/network.ts',
       'src/client/motion.ts',
       'src/client/GameCanvas.tsx',
-      'src/core/session.ts',
     ].map((path) => join(root, path)),
   ].filter(
     (file) =>
@@ -731,7 +905,7 @@ void test('shell composition can assemble catalog, screen and ports but cannot b
   for (const source of [
     "import { Runtime } from '../runtime.ts';",
     "import type { Runtime } from '../runtime.ts';",
-    "export * from '@/src/core/session.ts';",
+    "export * from '@/src/client/engine/session.ts';",
     "const load = () => import('../network.ts');",
     "import '../motion.ts';",
     "export * from '../devtools/DevelopmentApp.tsx';",
@@ -779,7 +953,7 @@ void test('all production source graphs exclude developer tools, including erase
 });
 void test('production tool exclusion rejects import forms and transitive helpers at the new paths', () => {
   const entry = join(root, 'src/client/network.ts');
-  const helper = join(root, 'src/core/timing.ts');
+  const helper = join(root, 'src/client/engine/timing.ts');
   for (const injected of [
     "import './devtools/routing.ts';",
     "import type { HarnessOptions } from './devtools/game-harness/harness.ts';",
@@ -796,8 +970,8 @@ void test('production tool exclusion rejects import forms and transitive helpers
         assertNoDeveloperDependencies(
           entry,
           new Map([
-            [entry, "export * from '../core/timing.ts';"],
-            [helper, injected.replaceAll('./devtools/', '../client/devtools/')],
+            [entry, "export * from './engine/timing.ts';"],
+            [helper, injected.replaceAll('./devtools/', '../devtools/')],
           ]),
         ),
       /reaches developer tools/,
