@@ -48,12 +48,12 @@ void test('motion permission granted after close cannot reactivate sensors or se
   assert.equal(
     add.mock.calls.filter((c) => String(c.arguments[0]) === 'devicemotion')
       .length,
-    1,
+    0,
   );
   assert.equal(
     remove.mock.calls.filter((c) => String(c.arguments[0]) === 'devicemotion')
       .length,
-    1,
+    0,
   );
   assert.equal(r.view.motionEnabled, false);
   assert.equal(send.mock.callCount(), 0);

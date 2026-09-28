@@ -1,7 +1,7 @@
 import { Runtime, type JoinOptions } from '../runtime.ts';
-import type { Motion } from '../motion.ts';
+import type { Motion } from '../controls/motion/provider.ts';
 import type { Identity } from '../../shared/room.ts';
-import { MAX_GAIN, MIN_GAIN } from '../../core/pointer.ts';
+import { MAX_GAIN, MIN_GAIN } from '../controls/motion/pointer.ts';
 import { standingsForPresentation } from './standings.ts';
 import type {
   JoinRequest,
@@ -112,6 +112,7 @@ function project(runtime: Runtime): ShellView {
     sensitivity: v.sensitivity,
     sensitivityRange: { min: MIN_GAIN, max: MAX_GAIN },
     motionEnabled: v.motionEnabled,
+    motionStatus: v.motionStatus,
     sensorHz: v.sensorHz,
     panelLatency: v.panelLatency,
     wakeLock: v.wakeLock,
@@ -145,13 +146,13 @@ function project(runtime: Runtime): ShellView {
   });
 }
 export function motionDiagnostics(
-  source: Pick<Motion, 'start' | 'onSample' | 'samples' | 'capabilities'>,
+  source: Pick<Motion, 'start' | 'onSample' | 'recentSamples' | 'capabilities'>,
 ): MotionDiagnosticsPort {
   return {
     start: () => source.start(),
     subscribe: (listener) =>
       source.onSample((sample) => listener(structuredClone(sample))),
-    recentSamples: () => structuredClone(source.samples.toArray()),
+    recentSamples: () => source.recentSamples(),
     permission: () => source.capabilities.sensors.gyro.permission,
   };
 }

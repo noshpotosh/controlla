@@ -12,7 +12,10 @@ import {
 } from '../scripts/production-boundary.ts';
 import { toolRequest } from '../src/client/devtools/routing.ts';
 import { motionDiagnostics } from '../src/client/shell/runtime-adapter.ts';
-import { RingBuffer, type RawMotionSample } from '../src/core/motion/trace.ts';
+import {
+  RingBuffer,
+  type RawMotionSample,
+} from '../src/client/controls/motion/trace.ts';
 import { defaultCapabilities } from '../src/client/controls/resolve.ts';
 
 void test('build selection excludes dev routes before Vinext scans client imports', () => {
@@ -191,7 +194,7 @@ void test('motion extension observes cloned samples without exposing runtime or 
     start() {
       starts++;
     },
-    samples,
+    recentSamples: () => structuredClone(samples.toArray()),
     capabilities: defaultCapabilities(),
     onSample(next) {
       listener = next;

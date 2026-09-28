@@ -1,4 +1,4 @@
-import type { Quaternion } from './types.ts';
+export type Quaternion = [number, number, number, number];
 export const identity: Quaternion = [0, 0, 0, 1];
 export const normalize = (q: Quaternion): Quaternion => {
   const n = Math.hypot(...q);

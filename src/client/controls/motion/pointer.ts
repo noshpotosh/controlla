@@ -1,4 +1,4 @@
-import { clamp, type Point } from './types.ts';
+import { clamp, type Point } from '../../../core/types.ts';
 
 // Screen widths per radian of turn at a curve multiplier of 1.
 export const DEFAULT_GAIN = 1.9,
@@ -85,10 +85,15 @@ export class GyroPointer {
     return { ...this.point };
   }
 
-  recenter() {
-    this.point = { x: 0.5, y: 0.5 };
+  /** Retire pre-suspension history while preserving the last displayed aim. */
+  resumeAt(point: Point) {
+    this.point = { x: clamp(point.x), y: clamp(point.y) };
     this.history = [];
     this.holdUntil = -Infinity;
+  }
+
+  recenter() {
+    this.resumeAt({ x: 0.5, y: 0.5 });
   }
 
   get current(): Point {

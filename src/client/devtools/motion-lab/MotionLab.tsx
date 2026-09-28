@@ -11,7 +11,7 @@ import type {
   RawMotionSample,
   TraceSegment,
   Vec3,
-} from '../../../core/motion/trace.ts';
+} from '../../controls/motion/trace.ts';
 
 interface Step {
   label: string;

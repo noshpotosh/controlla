@@ -72,7 +72,9 @@ const xyz = (
     | null
     | undefined,
 ): Vec3 | null =>
-  v && v.x !== null && v.y !== null && v.z !== null ? [v.x, v.y, v.z] : null;
+  v && [v.x, v.y, v.z].every((n) => typeof n === 'number' && Number.isFinite(n))
+    ? [v.x!, v.y!, v.z!]
+    : null;
 
 export function toRawSample(e: MotionEventLike, at: number): RawMotionSample {
   const r = e.rotationRate;
@@ -83,8 +85,11 @@ export function toRawSample(e: MotionEventLike, at: number): RawMotionSample {
     accel: xyz(e.acceleration),
     accelG: xyz(e.accelerationIncludingGravity),
     rate:
-      r && r.alpha !== null && r.beta !== null && r.gamma !== null
-        ? [r.alpha, r.beta, r.gamma]
+      r &&
+      [r.alpha!, r.beta!, r.gamma!].every(
+        (n) => typeof n === 'number' && Number.isFinite(n),
+      )
+        ? [r.alpha!, r.beta!, r.gamma!]
         : null,
   };
 }

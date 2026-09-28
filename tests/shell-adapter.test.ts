@@ -12,7 +12,7 @@ import {
 import { pointerSpec } from './fixtures/games.ts';
 import type { Role } from '../src/shared/room.ts';
 import type { RoundSnapshot } from '../src/client/api/index.ts';
-import type { RawMotionSample } from '../src/core/motion/trace.ts';
+import type { RawMotionSample } from '../src/client/controls/motion/trace.ts';
 
 function fixture(t: TestContext, role: Role = 'host') {
   for (const [name, value] of Object.entries({

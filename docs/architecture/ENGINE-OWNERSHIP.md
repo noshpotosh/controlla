@@ -16,7 +16,9 @@ The former core `session.ts`, `protocol.ts`, `reliable-input.ts`, `timing.ts` an
 
 Runtime, network, harness and tests import these owners directly. Old modules and moved core exports have no forwards; there is no engine barrel. Author APIs are unchanged and do not depend on engine internals. The game API still exports `Point` from core and `Player` from shared.
 
-Remaining core files are `pointer.ts`, `calibration.ts`, `motion/trace.ts` and `types.ts`. Types now contain only `Point`, `Quaternion` and `clamp`, with no imports. Their controller-motion ownership migration is deferred, along with provider lifecycle changes. `src/client/runtime.ts`, `network.ts` and `motion.ts` retain their current locations and implementations apart from necessary import updates.
+At this checkpoint, remaining core files were `pointer.ts`, `calibration.ts`, `motion/trace.ts` and `types.ts`. Types now contain only `Point`, `Quaternion` and `clamp`, with no imports. Their controller-motion ownership migration is deferred, along with provider lifecycle changes. `src/client/runtime.ts`, `network.ts` and `motion.ts` retain their current locations and implementations apart from necessary import updates.
+
+The subsequent [motion-provider slice](MOTION-PROVIDER.md) moves those motion algorithms under controls, leaving only general `Point`/`clamp` in core. Runtime and network ownership remain deferred.
 
 ## Enforcement and evidence
 

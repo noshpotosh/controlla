@@ -9,13 +9,15 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { GyroPointer, PointerSmoother } from '../src/core/pointer.ts';
+import {
+  GyroPointer,
+  PointerSmoother,
+} from '../src/client/controls/motion/pointer.ts';
 import {
   isMotionTrace,
   type MotionTrace,
-  type RawMotionSample,
   type TraceSegment,
-} from '../src/core/motion/trace.ts';
+} from '../src/client/controls/motion/trace.ts';
 import type { Point } from '../src/core/types.ts';
 
 export const FIXTURE_DIR = resolve(import.meta.dirname, 'fixtures', 'motion');
@@ -44,57 +46,8 @@ export interface CursorSample extends Point {
   t: number;
 }
 
-/** Browser globals `Motion` touches, stubbed for Node. */
-function withBrowserStubs<T>(clock: { now: number }, run: () => T): T {
-  const g = globalThis as Record<string, unknown>;
-  const saved = new Map<string, PropertyDescriptor | undefined>();
-  const stub = (key: string, value: unknown) => {
-    saved.set(key, Object.getOwnPropertyDescriptor(g, key));
-    Object.defineProperty(g, key, {
-      value,
-      configurable: true,
-      writable: true,
-    });
-  };
-  stub('window', globalThis);
-  stub('innerWidth', 390);
-  stub('innerHeight', 844);
-  stub('devicePixelRatio', 3);
-  const nowDescriptor = Object.getOwnPropertyDescriptor(performance, 'now');
-  Object.defineProperty(performance, 'now', {
-    value: () => clock.now,
-    configurable: true,
-  });
-  try {
-    return run();
-  } finally {
-    if (nowDescriptor) Object.defineProperty(performance, 'now', nowDescriptor);
-    else Reflect.deleteProperty(performance, 'now');
-    for (const [key, descriptor] of saved)
-      if (descriptor) Object.defineProperty(g, key, descriptor);
-      else Reflect.deleteProperty(g, key);
-  }
-}
-
-const toEvent = (s: RawMotionSample) =>
-  ({
-    timeStamp: s.t,
-    interval: s.interval,
-    acceleration: s.accel && { x: s.accel[0], y: s.accel[1], z: s.accel[2] },
-    accelerationIncludingGravity: s.accelG && {
-      x: s.accelG[0],
-      y: s.accelG[1],
-      z: s.accelG[2],
-    },
-    rotationRate: s.rate && {
-      alpha: s.rate[0],
-      beta: s.rate[1],
-      gamma: s.rate[2],
-    },
-  }) as unknown as DeviceMotionEvent;
-
 /**
- * The tilt pointer exactly as the controller runs it: `Motion.sample` per
+ * The tilt pointer exactly as the controller runs it: `MotionProcessor.sample` per
  * event, one pointer integration per sample (dt capped at 50 ms), then the
  * adaptive smoother. Recorded taps act as presses.
  */
@@ -102,37 +55,35 @@ export async function replayTilt(
   trace: MotionTrace,
   gain?: number,
 ): Promise<CursorSample[]> {
-  const { Motion } = await import('../src/client/motion.ts');
-  const clock = { now: trace.samples[0]?.at ?? 0 };
-  return withBrowserStubs(clock, () => {
-    const motion = new Motion(),
-      pointer = new GyroPointer(),
-      smoother = new PointerSmoother();
-    if (gain !== undefined) pointer.gain = gain;
-    const taps = trace.segments
-      .flatMap((s) => s.taps ?? [])
-      .sort((a, b) => a - b);
-    const out: CursorSample[] = [];
-    let last = 0,
-      tap = 0;
-    for (const sample of trace.samples) {
-      while (tap < taps.length && taps[tap] <= sample.t) {
-        pointer.holdForPress(taps[tap] - sample.t + sample.at);
-        smoother.reset();
-        tap++;
-      }
-      clock.now = sample.at;
-      motion.sample(toEvent(sample));
-      const dt = last ? Math.min(0.05, (sample.at - last) / 1000) : 0;
-      last = sample.at;
-      const p = smoother.sample(
-        pointer.update(motion.rate, motion.up, dt, sample.at),
-        sample.at,
-      );
-      out.push({ ...p, at: sample.at, t: sample.t });
+  const { MotionProcessor } =
+    await import('../src/client/controls/motion/processor.ts');
+
+  const motion = new MotionProcessor(),
+    pointer = new GyroPointer(),
+    smoother = new PointerSmoother();
+  if (gain !== undefined) pointer.gain = gain;
+  const taps = trace.segments
+    .flatMap((s) => s.taps ?? [])
+    .sort((a, b) => a - b);
+  const out: CursorSample[] = [];
+  let last = 0,
+    tap = 0;
+  for (const sample of trace.samples) {
+    while (tap < taps.length && taps[tap] <= sample.t) {
+      pointer.holdForPress(taps[tap] - sample.t + sample.at);
+      smoother.reset();
+      tap++;
     }
-    return out;
-  });
+    motion.sample(sample);
+    const dt = last ? Math.min(0.05, (sample.at - last) / 1000) : 0;
+    last = sample.at;
+    const p = smoother.sample(
+      pointer.update(motion.rate, motion.up, dt, sample.at),
+      sample.at,
+    );
+    out.push({ ...p, at: sample.at, t: sample.t });
+  }
+  return out;
 }
 
 const rms = (values: number[]) =>

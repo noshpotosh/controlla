@@ -227,7 +227,8 @@ void test('production controller dependencies stay inside controls, with only th
       assert.ok(
         (within(file, controls) &&
           !tools.some((directory) => within(file, directory))) ||
-          within(file, layouts),
+          within(file, layouts) ||
+          file === join(root, 'src/core/types.ts'),
         `${relative(root, entry)} reaches ${relative(root, file)} outside the controller boundary`,
       );
       for (const edge of edges(file)) {

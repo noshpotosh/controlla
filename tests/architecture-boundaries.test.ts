@@ -228,13 +228,13 @@ const engineForbidden = [
   'src/client/shell',
   'src/client/runtime.ts',
   'src/client/network.ts',
-  'src/client/motion.ts',
+  'src/client/controls/motion/processor.ts',
   'src/client/GameCanvas.tsx',
   'src/client/game-screen',
   'src/client/devtools',
-  'src/core/pointer.ts',
-  'src/core/calibration.ts',
-  'src/core/motion',
+  'src/client/controls/motion/pointer.ts',
+  'src/client/controls/motion/calibration.ts',
+  'src/client/controls/motion/provider.ts',
   'server',
 ].map((path) => join(root, path));
 
@@ -290,11 +290,11 @@ void test('engine boundary rejects erased, indirect, dynamic and unresolved depe
   for (const source of [
     "import { Runtime } from '../runtime.ts';",
     "import type { Network } from '../network.ts';",
-    "type M = import('../motion.ts').Motion;",
+    "type M = import('../controls/motion/provider.ts').Motion;",
     "export * from '@/src/client/shell/runtime-adapter.ts';",
     "const load = () => import('../devtools/routing.ts');",
     "const load = () => require('@/server/rooms.ts');",
-    "export * from '../../core/pointer.ts';",
+    "export * from '../controls/motion/pointer.ts';",
     "import type { ReactNode } from 'react';",
     "import { ICONS } from '../controls/kit/icons.ts';",
     "import type { Missing } from './missing-contract.ts';",
@@ -315,7 +315,7 @@ void test('engine boundary rejects erased, indirect, dynamic and unresolved depe
   }
 });
 
-void test('engine relocation removes old modules and leaves only geometry and motion primitives in core types', () => {
+void test('engine relocation removes old modules and leaves only general geometry primitives in core types', () => {
   for (const name of [
     'session',
     'protocol',
@@ -348,7 +348,7 @@ void test('engine relocation removes old modules and leaves only geometry and mo
         return ts.SyntaxKind[statement.kind];
       })
       .sort(),
-    ['Point', 'Quaternion', 'clamp'],
+    ['Point', 'clamp'],
   );
   const messages = ts.createSourceFile(
     'messages.ts',
@@ -681,7 +681,8 @@ void test('shell ports stay type-only and UI leaves cannot reach the runtime', (
     'src/shared/room.ts',
     'src/client/controls/api.ts',
     'src/core/types.ts',
-    'src/core/motion/trace.ts',
+    'src/client/controls/motion/trace.ts',
+    'src/client/controls/motion/contracts.ts',
     'src/client/game-screen/port.ts',
   ].map((path) => join(root, path));
   for (const edge of imports(ports))
@@ -734,11 +735,12 @@ function assertShellLeaf(entry: string, overrides = new Map<string, string>()) {
     ...[
       'src/client/runtime.ts',
       'src/client/network.ts',
-      'src/client/motion.ts',
+      'src/client/controls/motion/processor.ts',
+      'src/client/controls/motion/provider.ts',
       'src/client/GameCanvas.tsx',
       'src/client/engine',
       'src/client/minigames',
-      'src/core/pointer.ts',
+      'src/client/controls/motion/pointer.ts',
       'src/client/devtools',
       'src/client/devtools/motion-lab/MotionLab.tsx',
       'src/experiments',
@@ -770,7 +772,7 @@ void test('shell boundary rejects direct, type-only, alias, re-export and dynami
     "type R = import('../runtime.ts').Runtime;",
     "export { Runtime } from '@/src/client/runtime.ts';",
     "export * from '../network.ts';",
-    "const lazy = () => import('../motion.ts');",
+    "const lazy = () => import('../controls/motion/provider.ts');",
     "import './runtime-adapter.ts';",
     "export { default } from './App.tsx';",
     "import { games } from '../minigames/catalog.ts';",
@@ -853,7 +855,8 @@ void test('engine, screen, controls and backend cannot depend back on the shell;
     ...[
       'src/client/runtime.ts',
       'src/client/network.ts',
-      'src/client/motion.ts',
+      'src/client/controls/motion/processor.ts',
+      'src/client/controls/motion/provider.ts',
       'src/client/GameCanvas.tsx',
     ].map((path) => join(root, path)),
   ].filter(
@@ -907,7 +910,7 @@ void test('shell composition can assemble catalog, screen and ports but cannot b
     "import type { Runtime } from '../runtime.ts';",
     "export * from '@/src/client/engine/session.ts';",
     "const load = () => import('../network.ts');",
-    "import '../motion.ts';",
+    "import '../controls/motion/provider.ts';",
     "export * from '../devtools/DevelopmentApp.tsx';",
   ])
     assert.throws(() => assertShellComposition(source), /composition bypasses/);
@@ -975,6 +978,64 @@ void test('production tool exclusion rejects import forms and transitive helpers
           ]),
         ),
       /reaches developer tools/,
+    );
+  }
+});
+
+const motionDirectory = join(root, 'src/client/controls/motion');
+function assertMotionBoundary(
+  entry: string,
+  overrides = new Map<string, string>(),
+) {
+  for (const file of dependencies(entry, true, overrides)) {
+    assert.ok(
+      within(file, motionDirectory) ||
+        file === join(root, 'src/client/controls/api.ts') ||
+        file === join(root, 'src/core/types.ts'),
+      `motion reaches outside its boundary: ${relative(root, file)}`,
+    );
+    for (const edge of imports(file, overrides.get(file)))
+      assert.ok(
+        edge.resolved &&
+          (within(edge.resolved, motionDirectory) ||
+            edge.resolved === join(root, 'src/client/controls/api.ts') ||
+            edge.resolved === join(root, 'src/core/types.ts')),
+        `motion dependency escapes: ${edge.specifier}`,
+      );
+  }
+}
+void test('motion provider and processing stay independent of runtime, transport, engine and UI', () => {
+  for (const entry of productionFiles(motionDirectory))
+    assertMotionBoundary(entry);
+  for (const path of [
+    'src/client/motion.ts',
+    'src/core/pointer.ts',
+    'src/core/calibration.ts',
+    'src/core/motion/trace.ts',
+  ])
+    assert.equal(existsSync(join(root, path)), false);
+});
+void test('motion boundary rejects direct, erased, indirect, dynamic and external leaks', () => {
+  const entry = join(motionDirectory, 'provider.ts');
+  const helper = join(motionDirectory, 'processor.ts');
+  for (const leak of [
+    "import type { Runtime } from '@/src/client/runtime.ts';",
+    "type N = import('@/src/client/network.ts').Network;",
+    "export * from '@/src/client/engine/session.ts';",
+    "const load = () => import('@/src/client/devtools/routing.ts');",
+    "import 'react';",
+    "import './missing.ts';",
+    'const load = (path: string) => import(path);',
+  ]) {
+    assert.throws(() => assertMotionBoundary(entry, new Map([[entry, leak]])));
+    assert.throws(() =>
+      assertMotionBoundary(
+        entry,
+        new Map([
+          [entry, "export * from './processor.ts';"],
+          [helper, leak],
+        ]),
+      ),
     );
   }
 });

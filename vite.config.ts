@@ -11,7 +11,7 @@ import type { Duplex } from 'node:stream';
 import { defineConfig, type Plugin } from 'vite';
 import hostingConfig from './.openai/hosting.json' with { type: 'json' };
 import nextConfig from './next.config.ts';
-import { isMotionTrace } from './src/core/motion/trace.ts';
+import { isMotionTrace } from './src/client/controls/motion/trace.ts';
 import { developmentEntry } from './scripts/development-entry.ts';
 import { productionBundleBoundary } from './scripts/production-boundary.ts';
 import { renderLayoutIndex } from './src/client/controls/layout/index-file.ts';
