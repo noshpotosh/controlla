@@ -253,7 +253,10 @@ void test('controller maintains 60 Hz despite timer rounding and skips missed fr
     hostId: 'host',
   } as Identity;
   runtime.view.status = 'Connected';
-  runtime.view.config = resolveConfig(pointerSpec, defaultCapabilities(), 1);
+  Reflect.get(runtime, 'controllerMessage').call(runtime, {
+    type: 'config',
+    config: resolveConfig(pointerSpec, defaultCapabilities(), 1),
+  });
   const frames: number[] = [];
   t.mock.method(
     runtime.network,

@@ -51,7 +51,10 @@ function fixture(t: TestContext, role: Role = 'host') {
     ],
     venues: [],
   };
-  runtime.view.config = resolveConfig(pointerSpec, defaultCapabilities(), 1);
+  Reflect.get(runtime, 'controllerMessage').call(runtime, {
+    type: 'config',
+    config: resolveConfig(pointerSpec, defaultCapabilities(), 1),
+  });
   // No live transport, audio, or timers are started by these adapter tests.
   t.mock.method(runtime, 'start', () => {});
   t.mock.method(runtime, 'unlock', async () => {});
@@ -140,30 +143,42 @@ void test('shell projection follows presented progress without sampling frames o
 
 void test('phone ports retain configuration generation and local epoch, and stop after close', (t) => {
   const runtime = fixture(t, 'controller');
-  const action = t.mock.method(runtime, 'action', () => {}),
-    haptic = t.mock.method(runtime, 'haptic', () => {});
+  runtime.view.status = 'Connected';
+  const sends = t.mock.method(runtime.network, 'send', () => {});
+  const vibrations = t.mock.fn();
+  Object.defineProperty(navigator, 'vibrate', {
+    configurable: true,
+    value: vibrations,
+  });
+  const values = () =>
+    sends.mock.calls
+      .map((c) => c.arguments[2] as { type?: string; generation?: number })
+      .filter((m) => m.type === 'widget');
   const session = adaptRuntime(runtime),
     widget = runtime.view.config!.widgets[0];
   const old = session.phone.portFor(widget, 1);
   old.value({ x: 0.2, y: 0.3 });
-  assert.equal(action.mock.callCount(), 1);
-  runtime.view.config = resolveConfig(pointerSpec, defaultCapabilities(), 2);
+  assert.equal(values().length, 1);
+  Reflect.get(runtime, 'controllerMessage').call(runtime, {
+    type: 'config',
+    config: resolveConfig(pointerSpec, defaultCapabilities(), 2),
+  });
   old.value({ x: 0.9, y: 0.9 });
   old.haptic();
-  assert.equal(action.mock.callCount(), 1);
-  assert.equal(haptic.mock.callCount(), 0);
-  const current = session.phone.portFor(runtime.view.config.widgets[0], 2);
+  assert.equal(values().length, 1);
+  const current = session.phone.portFor(runtime.view.config!.widgets[0], 2);
   current.value({ x: 0.4, y: 0.6 });
-  assert.equal(action.mock.calls.at(-1)!.arguments[2], 2);
-  runtime.view.inputEpoch++;
+  assert.equal(values().at(-1)!.generation, 2);
+  Reflect.get(runtime, 'pageHide').call(runtime);
+  Reflect.get(runtime, 'pageShow').call(runtime);
   current.value({ x: 0, y: 0 });
-  assert.equal(action.mock.callCount(), 2);
-  const resumed = session.phone.portFor(runtime.view.config.widgets[0], 2);
+  assert.equal(values().length, 2);
+  const resumed = session.phone.portFor(runtime.view.config!.widgets[0], 2);
   session.close();
   resumed.value({ x: 1, y: 1 });
   resumed.haptic();
-  assert.equal(action.mock.callCount(), 2);
-  assert.equal(haptic.mock.callCount(), 0);
+  assert.equal(values().length, 2);
+  assert.equal(vibrations.mock.callCount(), 0);
 });
 
 void test('close retires subscriptions, motion observers and retained commands exactly once', async (t) => {

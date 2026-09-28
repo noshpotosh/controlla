@@ -1,6 +1,22 @@
 # Validation and acceptance ledger
 
-The current slice uses **Neon Harvest as the sole production game**: 45 seconds, 1–8 players, one `standard` mode. Harness and live rooms share the public author contracts, round runner, validated snapshots and session ledger. **270 tests, typecheck, project lint and production build pass (2026-09-28) on the display-playback topic branch.** Current desktop observations are recorded below; earlier slices remain separate historical evidence. Physical latency, cross-country fairness and device compatibility remain uncertified.
+The current slice uses **Neon Harvest as the sole production game**: 45 seconds, 1–8 players, one `standard` mode. Harness and live rooms share the public author contracts, round runner, validated snapshots and session ledger. **282 tests, typecheck, project lint and production build pass (2026-09-28) on the controller-input topic branch.** Current desktop observations are recorded below; earlier slices remain separate historical evidence. Physical latency, cross-country fairness and device compatibility remain uncertified.
+
+## Controller input — 2026-09-28
+
+| Check | Result |
+| --- | --- |
+| Baseline and isolation | Fetched origin and confirmed integration checkpoint `2a32c59`. Created `codex/controller-input-0928` in `.worktrees/controller-input-0928`. Recorded predecessor acceptance was 270 tests. Initial local baseline attempts encountered socket sandbox restrictions and a missing worktree dependency link; reused the existing dependency installation without changing the lockfile. |
+| Automated acceptance | **282 tests pass**, typecheck, lint and production build/bundle audit pass. Ten standalone input tests and two boundary tests are added. Existing runtime/shell tests now use configuration handlers and emitted effects. |
+| Preserved behavior | Coverage includes source timestamps/detached values, trailing throttles, independent actions, captured activation payloads, press/frame counter wrapping, 60 Hz cadence/no catch-up, same-generation sequence retention, stale ports/timers, motion freshness/anchoring, immutable observation and terminal haptic suppression. Existing socket, ready/ACK, fallback, report and playback tests pass. |
+| Local browser setup | Task-owned preview `http://localhost:3004/` returned HTTP 200. Dedicated signaling on port 8902 allowed only that origin. Four browser tabs used the ordinary root join form: host `97F7`, remote screen `350E`, AdaInput on host and BeaInput on remote, room `GV86G`. No browser URL-policy rejection occurred in this run. |
+| Round and rematch | Aim keyboard input and PULSE were exercised on both simulated phones. First round: AdaInput score 0 / award 0; BeaInput score 20 / award 1. Both screens displayed the same standings. A rematch completed with the same scores and cumulative totals AdaInput 0 / BeaInput 2. |
+| Reconnect | BeaInput reloaded during the rematch and rejoined through the form with saved-identity resume enabled. The phone showed “You’re playing”; the host inspection retained the same player ID, seat and two-player roster. |
+| Abort | The third round was aborted through the host UI. Both screens retained totals 0 / 2. The downloaded ledger records the third round as aborted with empty outcomes/awards. |
+| Host loss and export | Closing the host tab put the remote screen into SESSION ENDED while retaining standings. Its Save session report action created `controlla-GV86G.json` in Downloads. Although the browser download-event waiter timed out, filesystem inspection verified the actual version-2 JSON: two completed records, three ledger rounds (last aborted), revision 4 and totals 0 / 2. |
+| Acceptance limits | This combined build closes the predecessor's multi-client desktop gate. It does not certify physical sensors, simultaneous multi-finger input, TV motion-to-photon timing, TURN or cross-household behavior. No merge or deployment. |
+
+See [CONTROLLER-INPUT](architecture/CONTROLLER-INPUT.md). Task-owned preview/signaling processes are stopped at handoff; existing services and worktrees are preserved.
 
 ## Display playback — 2026-09-28
 

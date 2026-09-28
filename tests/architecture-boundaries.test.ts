@@ -1110,3 +1110,129 @@ void test('playback rejects direct, erased, indirect, opaque and external depend
     );
   }
 });
+
+const controllerInputDirectory = join(root, 'src/client/controller-input');
+function assertControllerInputBoundary(overrides = new Map<string, string>()) {
+  const allowed = [
+    'src/client/controls/api.ts',
+    'src/client/controls/registry.ts',
+    'src/client/controls/value.ts',
+    'src/client/controls/layout/rotation.ts',
+    'src/client/controls/motion/contracts.ts',
+    'src/client/controls/motion/pointer.ts',
+    'src/client/controls/kit/icons.ts',
+    'src/client/engine/protocol.ts',
+    'src/client/engine/reliable-input.ts',
+    'src/core/types.ts',
+    ...['button', 'dpad', 'stick', 'aim-pad', 'swipe-pad', 'hold-meter'].map(
+      (name) => `src/client/controls/${name}/definition.ts`,
+    ),
+  ].map((path) => join(root, path));
+  const icons = join(root, 'src/client/controls/kit/icons.ts');
+  assert.ok(existsSync(join(controllerInputDirectory, 'controller-input.ts')));
+  for (const entry of productionFiles(controllerInputDirectory)) {
+    for (const file of dependencies(entry, true, overrides)) {
+      assert.ok(
+        within(file, controllerInputDirectory) || allowed.includes(file),
+        `controller input escapes: ${relative(root, file)}`,
+      );
+      for (const edge of imports(file, overrides.get(file)))
+        assert.ok(
+          edge.resolved &&
+            (within(edge.resolved, controllerInputDirectory) ||
+              allowed.includes(edge.resolved) ||
+              (file === icons && edge.specifier === 'lucide-react')),
+          `controller input dependency escapes: ${edge.specifier}`,
+        );
+    }
+    for (const file of dependencies(entry, false, overrides)) {
+      assert.notEqual(file, icons, 'controller input executes icon UI');
+      for (const edge of imports(file, overrides.get(file)).filter(
+        (edge) => !edge.typeOnly,
+      ))
+        assert.ok(
+          edge.resolved &&
+            (within(edge.resolved, controllerInputDirectory) ||
+              allowed.includes(edge.resolved)),
+          `controller input executes external code: ${edge.specifier}`,
+        );
+    }
+  }
+}
+function assertControllerInputConsumers(overrides = new Map<string, string>()) {
+  for (const entry of [
+    ...productionFiles(join(root, 'src')),
+    ...productionFiles(join(root, 'server')),
+  ]) {
+    if (
+      within(entry, controllerInputDirectory) ||
+      entry === join(root, 'src/client/runtime.ts')
+    )
+      continue;
+    for (const edge of imports(entry, overrides.get(entry)))
+      assert.ok(
+        !edge.resolved || !within(edge.resolved, controllerInputDirectory),
+        `controller input consumer is not composition: ${relative(root, entry)}`,
+      );
+  }
+}
+void test('controller input has explicit headless dependencies and composition-only consumers', () => {
+  assertControllerInputBoundary();
+  assertControllerInputConsumers();
+});
+void test('controller input rejects erased, indirect, dynamic, external and browser provider escapes', () => {
+  const entry = join(controllerInputDirectory, 'controller-input.ts');
+  const helper = join(root, 'src/client/controls/value.ts');
+  for (const source of [
+    "import '../runtime.ts';",
+    "import type { Network } from '../network.ts';",
+    "type Authority = import('../engine/session.ts').SessionAuthority;",
+    "export * from '@/src/client/shell/ports.ts';",
+    "const provider = () => import('../controls/motion/provider.ts');",
+    "import '../playback/display-playback.ts';",
+    "import '../minigames/catalog.ts';",
+    "require('../devtools/routing.ts');",
+    "import '../../../server/rooms.ts';",
+    "import 'react';",
+    "import './missing.ts';",
+    'import(variable);',
+    "import '../controls/kit/icons.ts';",
+  ]) {
+    assert.throws(
+      () => assertControllerInputBoundary(new Map([[entry, source]])),
+      /controller input|opaque/,
+    );
+    assert.throws(
+      () =>
+        assertControllerInputBoundary(
+          new Map([
+            [entry, "export * from '../controls/value.ts';"],
+            [helper, source],
+          ]),
+        ),
+      /controller input|opaque/,
+    );
+  }
+  for (const path of [
+    'src/client/engine/input.ts',
+    'src/client/shell/ports.ts',
+    'src/client/game-screen/port.ts',
+    'src/client/controls/api.ts',
+    'src/client/network.ts',
+    'server/rooms.ts',
+  ]) {
+    const entry = join(root, path);
+    assert.throws(
+      () =>
+        assertControllerInputConsumers(
+          new Map([
+            [
+              entry,
+              "export type { ControllerInput } from '@/src/client/controller-input/controller-input.ts';",
+            ],
+          ]),
+        ),
+      /composition/,
+    );
+  }
+});
