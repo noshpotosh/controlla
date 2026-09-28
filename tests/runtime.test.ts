@@ -166,6 +166,15 @@ void test(
     );
     host.startGame('neon-harvest', 'standard');
     await wait(() => host.renderState()?.phase === 'running', 6000);
+    await wait(
+      () => venue.screenPort.advanceFrame().snapshot?.phase === 'running',
+    );
+    assert.equal(
+      venue.screenPort.advanceFrame().snapshot?.roundId,
+      host.screenPort.advanceFrame().snapshot?.roundId,
+    );
+    assert.ok(host.snapshotMetrics().lastBytes > 0);
+    assert.ok(venue.snapshotMetrics().lastBytes > 0);
     await wait(() => {
       const round = host.renderState();
       const state = round?.state as NeonHarvestState | null;

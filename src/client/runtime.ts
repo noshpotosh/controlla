@@ -1,16 +1,15 @@
 import { Network, type Channel, type LinkStats } from './network.ts';
-import { ClockSync, Samples, now } from './engine/timing.ts';
-import { SnapshotTimeline } from './engine/replication.ts';
+import { ClockSync, now } from './engine/timing.ts';
+import {
+  DisplayPlayback,
+  SNAPSHOT_RETRY_MESSAGE,
+} from './playback/display-playback.ts';
 import { games, findGame } from './minigames/catalog.ts';
 import { catalogSnapshotPolicy } from './engine/snapshots.ts';
 import { ProgressAssembler } from './engine/history.ts';
 import { completedResults } from './engine/progress.ts';
 import { freezeSnapshot } from './game-screen/screen.ts';
-import {
-  RELOAD_DISPLAY_MESSAGE,
-  type ScreenPort,
-  type ScreenFrame,
-} from './game-screen/port.ts';
+import type { ScreenPort, ScreenFrame } from './game-screen/port.ts';
 import type {
   Progress,
   ReadonlyDeep,
@@ -86,19 +85,11 @@ export interface JoinOptions {
   token?: string;
 }
 const WIDGET_THROTTLE_MS = 30;
-const SNAPSHOT_RETRY_MESSAGE =
-  'A game update could not be read. Waiting for a fresh snapshot.';
 export class Runtime {
   network: Network;
   clock = new ClockSync();
-  buffer = new SnapshotTimeline<RoundSnapshot<object>>(
-    catalogSnapshotPolicy(games),
-  );
+  private readonly playback: DisplayPlayback;
   private progress = new ProgressAssembler();
-  private resyncPending = false;
-  private displayProblem: string | null = null;
-  private retiredRounds = new Set<string>();
-  private presentedIds = new Set<string>();
   private endedAuthoritySummary: unknown = null;
   readonly screenPort: ScreenPort = {
     advanceFrame: () => this.advanceFrame(),
@@ -139,15 +130,10 @@ export class Runtime {
   private motionCapabilitiesKey = '';
   private pointerPoint: Point = { x: 0.5, y: 0.5 };
   private recenters = 0;
-  private events: (PresentationEvent & { roundId: string })[] = [];
-  private eventIds = new Set<string>();
   private audio: AudioContext | null = null;
   private wake: WakeLockSentinel | null = null;
   private wakePending = false;
   private disconnects: { at: number; status: string }[] = [];
-  private snapshotDelays = new Samples();
-  private lastSnapshotSize = 0;
-  private lastFullSize = 0;
   private sendRate = 60;
   private bootId = crypto.randomUUID();
   private joinedAt = now();
@@ -194,6 +180,26 @@ export class Runtime {
     public options: JoinOptions,
     motion = new Motion(),
   ) {
+    this.playback = new DisplayPlayback(
+      catalogSnapshotPolicy(games),
+      (gameId, mode) =>
+        !!findGame(gameId)?.modes.some((candidate) => candidate.id === mode),
+      {
+        acknowledge: (id) => this.sendUp({ type: 'snapshotAck', id }),
+        resync: () => this.sendUp({ type: 'resync' }),
+        venueStats: (delay) => this.sendUp({ type: 'venueStats', delay }),
+        presented: (roundId, eventId, at) =>
+          this.sendUp({ type: 'presented', roundId, eventId, at }),
+        recoveryWarning: (active) => {
+          if (active) this.warn(SNAPSHOT_RETRY_MESSAGE);
+          else if (this.view.warning === SNAPSHOT_RETRY_MESSAGE) {
+            this.view.warning = '';
+            this.notify();
+          }
+        },
+        playEvent: (event) => this.playEvent(event),
+      },
+    );
     this.motion = motion;
     this.network = new Network(options.endpoint, options);
     this.network.onWelcome = (i) => this.welcome(i);
@@ -204,7 +210,7 @@ export class Runtime {
       this.view.status = s;
       if (s === 'Reconnecting…' || s === 'Reload required') {
         this.motion.suspend();
-        this.events = [];
+        this.playback.disconnect();
         this.clearLocalCursors();
         this.clearWidgetInput();
         this.buttonState = 0;
@@ -217,6 +223,7 @@ export class Runtime {
     this.motionChanged();
     this.network.onEnded = (reason) => {
       this.view.ended = true;
+      this.playback.end();
       this.clearLocalCursors();
       this.warn(reason);
       this.view.status = 'Session ended';
@@ -224,7 +231,6 @@ export class Runtime {
       this.view.motionStatus = 'disposed';
       this.clearWidgetInput();
       this.buttonState = 0;
-      this.events = [];
       this.endedAuthoritySummary =
         this.authority?.summary() ?? this.endedAuthoritySummary;
       this.authority?.dispose();
@@ -277,7 +283,7 @@ export class Runtime {
     this.clearLocalCursors();
     // A request sent on the previous connection may never have reached authority.
     // The next missing-base update must be able to request a fresh snapshot again.
-    this.resyncPending = false;
+    this.playback.reconnect();
     this.view.identity = identity;
     this.view.warning = '';
     try {
@@ -522,99 +528,30 @@ export class Runtime {
     this.notify();
   }
   private acceptPhase(msg: Message) {
-    if (
-      ![
-        'lobby',
-        'loading',
-        'countdown',
-        'running',
-        'settling',
-        'results',
-        'aborted',
-        'error',
-      ].includes(msg.phase)
-    )
-      return;
-    const roundId = typeof msg.roundId === 'string' ? msg.roundId : null;
-    if (roundId !== this.view.roundId) {
-      if (this.view.roundId) this.retiredRounds.add(this.view.roundId);
-      while (this.retiredRounds.size > 50)
-        this.retiredRounds.delete(this.retiredRounds.values().next().value!);
-      this.events = this.events.filter((event) => event.roundId === roundId);
-      this.presentedIds.clear();
-    }
-    this.view.phase = msg.phase;
-    this.view.roundId = roundId;
-    this.view.gameId = typeof msg.gameId === 'string' ? msg.gameId : null;
-    this.view.mode = typeof msg.mode === 'string' ? msg.mode : null;
-    this.view.roundError = typeof msg.error === 'string' ? msg.error : null;
-    if (['aborted', 'error'].includes(msg.phase)) this.events = [];
+    const phase = this.playback.acceptPhase({
+      phase: msg.phase,
+      roundId: msg.roundId,
+      gameId: msg.gameId,
+      mode: msg.mode,
+      error: msg.error,
+    });
+    if (!phase) return;
+    Object.assign(this.view, phase);
     this.notify();
   }
   private displayMessage(channel: Channel, msg: Message) {
     if (channel === 'snapshot' && msg.type === 'snapshot') {
-      if (
-        msg.snapshot?.patch?.schemaVersion !== undefined &&
-        msg.snapshot.patch.schemaVersion !== 1
-      ) {
-        this.displayProblem = RELOAD_DISPLAY_MESSAGE;
-        this.events = [];
-        return;
-      }
-      if (this.buffer.receive(msg.snapshot)) {
-        this.displayProblem = null;
-        if (msg.snapshot.base === null) {
-          this.resyncPending = false;
-          if (this.view.warning === SNAPSHOT_RETRY_MESSAGE) {
-            this.view.warning = '';
-            this.notify();
-          }
-        }
-        this.sendUp({ type: 'snapshotAck', id: msg.snapshot.id });
-        if (Number.isFinite(msg.delay) && msg.delay >= 0)
-          this.view.D = msg.delay;
-        this.view.limitingVenue =
-          typeof msg.limitingVenue === 'string' ? msg.limitingVenue : null;
-        this.snapshotDelays.add(Math.max(0, this.time() - msg.snapshot.time));
-        this.lastSnapshotSize = JSON.stringify(msg.snapshot).length;
-        this.lastFullSize = JSON.stringify(
-          this.buffer.history.get(msg.snapshot.id)?.state,
-        ).length;
-        if (this.view.identity?.role === 'host' || this.clock.samples >= 10)
-          this.sendUp({
-            type: 'venueStats',
-            delay: Math.max(0, this.time() - msg.snapshot.time),
-          });
-      } else if (!this.resyncPending) {
-        this.resyncPending = true;
-        if (!this.view.ended) this.warn(SNAPSHOT_RETRY_MESSAGE);
-        this.sendUp({ type: 'resync' });
-      }
+      this.playback.acceptSnapshot(
+        msg.snapshot,
+        msg.delay,
+        msg.limitingVenue,
+        this.time(),
+        this.view.identity?.role === 'host' || this.clock.samples >= 10,
+      );
+      this.view.D = this.playback.delay;
+      this.view.limitingVenue = this.playback.limitingVenue;
     } else if (channel === 'events' && msg.type === 'event') {
-      const event = msg.event as
-        | Partial<PresentationEvent & { roundId: string }>
-        | undefined;
-      if (
-        !event ||
-        typeof event.id !== 'string' ||
-        typeof event.roundId !== 'string' ||
-        typeof event.kind !== 'string' ||
-        !Number.isFinite(event.time) ||
-        !['presentation', 'authority'].includes(event.clock ?? '') ||
-        this.view.ended ||
-        this.retiredRounds.has(event.roundId)
-      )
-        return;
-      const key = `${event.roundId}:${event.id}`;
-      if (!this.eventIds.has(key)) {
-        this.eventIds.add(key);
-        this.events.push(
-          structuredClone(event) as PresentationEvent & { roundId: string },
-        );
-        this.events = this.events.slice(-256);
-        while (this.eventIds.size > 2000)
-          this.eventIds.delete(this.eventIds.values().next().value!);
-      }
+      this.playback.acceptEvent(msg.event);
     } else if (msg.type === 'clockReply') this.clockReply(msg);
     else if (msg.type === 'phase') this.acceptPhase(msg);
     else if (msg.type === 'progressBatch') this.acceptProgress(msg);
@@ -1056,97 +993,20 @@ export class Runtime {
     this.authority?.abort();
   }
   presented(roundId: string, eventIds: readonly string[]) {
-    const snapshot = this.view.state;
-    if (
-      this.view.ended ||
-      !snapshot ||
-      snapshot.roundId !== roundId ||
-      (this.view.roundId && this.view.roundId !== roundId) ||
-      this.view.phase === 'loading'
-    )
-      return;
-    for (const eventId of eventIds) {
-      const event = snapshot.events.find(
-        (candidate) => candidate.id === eventId && candidate.measure,
-      );
-      const key = `${roundId}:${eventId}`;
-      if (!event || this.presentedIds.has(key)) continue;
-      this.presentedIds.add(key);
-      this.sendUp({ type: 'presented', roundId, eventId, at: this.time() });
-    }
+    this.playback.presented(roundId, eventIds, this.time());
   }
   snapshotMetrics() {
-    return {
-      oneWay: this.snapshotDelays.summary(),
-      lastBytes: this.lastSnapshotSize,
-      deltaRatio: this.lastFullSize
-        ? this.lastSnapshotSize / this.lastFullSize
-        : null,
-      starvations: this.buffer.starvations,
-    };
+    return this.playback.metrics();
   }
   private advanceFrame(): ReadonlyDeep<ScreenFrame> {
-    const authorityTime = this.time(),
-      delay = this.view.D;
-    const presentationTime = authorityTime - delay;
-    const sampled = this.buffer.sample(presentationTime);
-    this.view.state = sampled ? freezeSnapshot(sampled) : null;
-    const snapshot =
-      this.view.phase === 'loading' ||
-      (!this.view.roundId && ['aborted', 'error'].includes(this.view.phase)) ||
-      (this.view.roundId && sampled?.roundId !== this.view.roundId)
-        ? null
-        : sampled;
-    let status: ScreenFrame['status'] = snapshot ? 'ready' : 'waiting';
-    let message: string | null = null;
-    if (this.view.ended) {
-      status = 'ended';
-      message = 'Session ended. Completed results remain available to save.';
-    } else if (
-      this.displayProblem ||
-      (snapshot &&
-        !findGame(snapshot.gameId)?.modes.some(
-          (mode) => mode.id === snapshot.mode,
-        ))
-    ) {
-      status = 'unsupported';
-      message = this.displayProblem ?? RELOAD_DISPLAY_MESSAGE;
-    } else if (this.view.phase === 'loading') {
-      status = 'loading';
-      message = 'Preparing round…';
-    } else if (!snapshot && this.view.phase === 'aborted') {
-      status = 'aborted';
-      message = 'Round aborted. No points awarded.';
-    } else if (!snapshot && this.view.phase === 'error') {
-      status = 'error';
-      message = this.view.roundError ?? 'The round could not start.';
-    }
-    if (status === 'ready' && snapshot) {
-      const keep: typeof this.events = [];
-      for (const event of this.events) {
-        if (event.roundId !== snapshot.roundId) {
-          if (!this.retiredRounds.has(event.roundId)) keep.push(event);
-          continue;
-        }
-        const time =
-          event.clock === 'authority' ? authorityTime : presentationTime;
-        if (event.time > time) keep.push(event);
-        else if (time - event.time <= 1000) this.playEvent(event);
-      }
-      this.events = keep;
-    } else if (['ended', 'unsupported', 'error', 'aborted'].includes(status))
-      this.events = [];
-    const localCursors = Object.fromEntries(
-      this.cursors().map((cursor) => [cursor.id, { ...cursor.point }]),
+    const frame = this.playback.advanceFrame(
+      this.time(),
+      Object.fromEntries(
+        this.cursors().map((cursor) => [cursor.id, { ...cursor.point }]),
+      ),
     );
-    return freezeSnapshot({
-      snapshot,
-      presentationTime,
-      delay,
-      localCursors,
-      status,
-      message,
-    });
+    this.view.state = this.playback.sampledSnapshot;
+    return frame;
   }
   renderState() {
     return this.advanceFrame().snapshot;
@@ -1205,6 +1065,7 @@ export class Runtime {
     this.notify();
   }
   exportSummary() {
+    const metrics = this.snapshotMetrics();
     const summary = {
       version: 2,
       at: new Date().toISOString(),
@@ -1212,12 +1073,10 @@ export class Runtime {
       softwareOnly: true,
       motionToPhotonCameraMs: this.view.panelLatency,
       snapshots: {
-        delay: this.snapshotDelays.summary(),
-        lastBytes: this.lastSnapshotSize,
-        deltaRatio: this.lastFullSize
-          ? this.lastSnapshotSize / this.lastFullSize
-          : null,
-        starvations: this.buffer.starvations,
+        delay: metrics.oneWay,
+        lastBytes: metrics.lastBytes,
+        deltaRatio: metrics.deltaRatio,
+        starvations: metrics.starvations,
       },
       telemetry: this.view.telemetry,
       links: this.view.links,
@@ -1280,9 +1139,9 @@ export class Runtime {
   };
   close() {
     this.stopped = true;
+    this.playback.dispose();
     this.clearLocalCursors();
     this.network.close();
-    this.events = [];
     this.endedAuthoritySummary =
       this.authority?.summary() ?? this.endedAuthoritySummary;
     this.authority?.dispose();

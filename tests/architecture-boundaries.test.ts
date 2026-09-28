@@ -226,6 +226,7 @@ void test('backend and shared contracts have independent implementation boundari
 const engine = join(root, 'src/client/engine');
 const engineForbidden = [
   'src/client/shell',
+  'src/client/playback',
   'src/client/runtime.ts',
   'src/client/network.ts',
   'src/client/controls/motion/processor.ts',
@@ -288,6 +289,7 @@ void test('engine boundary rejects erased, indirect, dynamic and unresolved depe
   const entry = join(engine, 'session.ts');
   const helper = join(engine, 'timing.ts');
   for (const source of [
+    "import '../playback/display-playback.ts';",
     "import { Runtime } from '../runtime.ts';",
     "import type { Network } from '../network.ts';",
     "type M = import('../controls/motion/provider.ts').Motion;",
@@ -495,6 +497,7 @@ void test('the catalog is the only production module that imports Neon Harvest',
 void test('game and harness dependency graphs stay outside shell, network ownership and tooling', () => {
   const forbidden = [
     'src/client/shell',
+    'src/client/playback',
     'src/client/runtime.ts',
     'server',
     'src/client/devtools/motion-lab',
@@ -619,6 +622,7 @@ function assertScreenBoundary(overrides = new Map<string, string>()) {
   const screenDirectory = join(root, 'src/client/game-screen');
   const canvas = join(root, 'src/client/GameCanvas.tsx');
   const forbidden = [
+    'src/client/playback',
     'src/client/runtime.ts',
     'src/client/network.ts',
     'src/client/engine/session.ts',
@@ -767,6 +771,7 @@ void test('shell boundary rejects direct, type-only, alias, re-export and dynami
   const entry = join(shell, 'RoomScreen.tsx'),
     helper = join(shell, 'standings.ts');
   for (const source of [
+    "import '../playback/display-playback.ts';",
     "import { Runtime } from '../runtime.ts';",
     "import type { Runtime } from '../runtime.ts';",
     "type R = import('../runtime.ts').Runtime;",
@@ -848,6 +853,7 @@ void test('engine, screen, controls and backend cannot depend back on the shell;
   const entries = [
     ...[
       'src/client/engine',
+      'src/client/playback',
       'src/client/game-screen',
       'src/client/controls',
       'server',
@@ -906,6 +912,7 @@ function assertShellComposition(sourceText?: string) {
 void test('shell composition can assemble catalog, screen and ports but cannot bypass the runtime adapter', () => {
   assertShellComposition();
   for (const source of [
+    "import '../playback/display-playback.ts';",
     "import { Runtime } from '../runtime.ts';",
     "import type { Runtime } from '../runtime.ts';",
     "export * from '@/src/client/engine/session.ts';",
@@ -1036,6 +1043,70 @@ void test('motion boundary rejects direct, erased, indirect, dynamic and externa
           [helper, leak],
         ]),
       ),
+    );
+  }
+});
+
+const playbackDirectory = join(root, 'src/client/playback');
+function assertPlaybackBoundary(overrides = new Map<string, string>()) {
+  const allowed = [
+    'src/client/engine/replication.ts',
+    'src/client/engine/timing.ts',
+    'src/client/game-screen/port.ts',
+    'src/client/game-screen/screen.ts',
+    'src/client/api/index.ts',
+    'src/client/controls/api.ts',
+    'src/core/types.ts',
+    'src/shared/room.ts',
+  ].map((path) => join(root, path));
+  assert.ok(existsSync(join(playbackDirectory, 'display-playback.ts')));
+  for (const entry of productionFiles(playbackDirectory)) {
+    for (const file of dependencies(entry, true, overrides)) {
+      assert.ok(
+        within(file, playbackDirectory) || allowed.includes(file),
+        `playback reaches outside its boundary: ${relative(root, file)}`,
+      );
+      for (const edge of imports(file, overrides.get(file)))
+        assert.ok(
+          edge.resolved &&
+            (within(edge.resolved, playbackDirectory) ||
+              allowed.includes(edge.resolved)),
+          `playback dependency escapes: ${edge.specifier}`,
+        );
+    }
+  }
+}
+void test('display playback only reaches its explicit replication and presentation dependencies', () => {
+  assertPlaybackBoundary();
+});
+void test('playback rejects direct, erased, indirect, opaque and external dependency escapes', () => {
+  const entry = join(playbackDirectory, 'display-playback.ts');
+  const helper = join(root, 'src/client/engine/timing.ts');
+  for (const source of [
+    "import '../runtime.ts';",
+    "import type { Network } from '../network.ts';",
+    "type Authority = import('../engine/session.ts').SessionAuthority;",
+    "export * from '@/src/client/shell/ports.ts';",
+    "const control = () => import('../controls/motion/provider.ts');",
+    "require('../devtools/routing.ts');",
+    "import '../../../server/rooms.ts';",
+    "import 'react';",
+    "import './missing.ts';",
+    'import(variable);',
+  ]) {
+    assert.throws(
+      () => assertPlaybackBoundary(new Map([[entry, source]])),
+      /playback|opaque/,
+    );
+    assert.throws(
+      () =>
+        assertPlaybackBoundary(
+          new Map([
+            [entry, "export * from '../engine/timing.ts';"],
+            [helper, source],
+          ]),
+        ),
+      /playback|opaque/,
     );
   }
 });
