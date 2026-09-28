@@ -67,6 +67,19 @@ export interface JoinOptions {
   endpoint: string;
   token?: string;
 }
+
+let fallbackBootSequence = 0;
+
+/** LAN HTTP is not a secure context, so Web Crypto UUIDs may be unavailable. */
+export function runtimeBootId(
+  cryptoApi: { randomUUID?(): string } | null = globalThis.crypto,
+): string {
+  return (
+    cryptoApi?.randomUUID?.() ??
+    `boot-${Date.now().toString(36)}-${++fallbackBootSequence}-${Math.random().toString(36).slice(2)}`
+  );
+}
+
 export class Runtime {
   readonly network: Transport;
   clock = new ClockSync();
@@ -93,7 +106,7 @@ export class Runtime {
   private connectionEpoch = 0;
   private probeTimers = new Set<ReturnType<typeof setTimeout>>();
   private motionCapabilitiesKey = '';
-  private bootId = crypto.randomUUID();
+  private bootId = runtimeBootId();
   view: RuntimeView = {
     identity: null,
     roster: { players: [], venues: [] },
