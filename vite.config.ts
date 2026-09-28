@@ -10,7 +10,10 @@ import { resolve, sep } from 'node:path';
 import type { Duplex } from 'node:stream';
 import { defineConfig, type Plugin } from 'vite';
 import hostingConfig from './.openai/hosting.json' with { type: 'json' };
+import nextConfig from './next.config.ts';
 import { isMotionTrace } from './src/core/motion/trace.ts';
+import { developmentEntry } from './scripts/development-entry.ts';
+import { productionBundleBoundary } from './scripts/production-boundary.ts';
 import { renderLayoutIndex } from './src/controls/layout/index-file.ts';
 import {
   isControllerLayout,
@@ -270,7 +273,12 @@ const localBindingConfig = {
     : [],
 };
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ command }) => {
+  const entry = developmentEntry(
+    import.meta.dirname,
+    command,
+    nextConfig.pageExtensions,
+  );
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= 'false';
@@ -281,6 +289,7 @@ export default defineConfig(async () => {
   const { cloudflare } = await import('@cloudflare/vite-plugin');
 
   return {
+    resolve: { alias: entry.alias },
     css: { postcss: { plugins: [tailwindcss()] } },
     server: {
       // vinext dev ignores --host, so bind every interface here for phones.
@@ -294,7 +303,10 @@ export default defineConfig(async () => {
       motionTraceUpload(),
       controllerLayouts(),
       ...(useHttps ? [basicSsl()] : []),
-      vinext(),
+      productionBundleBoundary(),
+      vinext({
+        nextConfig: { ...nextConfig, pageExtensions: entry.pageExtensions },
+      }),
       sites(),
       cloudflare({
         viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },

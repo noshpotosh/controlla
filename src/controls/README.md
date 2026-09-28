@@ -2,7 +2,7 @@
 
 The phone-side component library. A game names the inputs it needs; the phone renders a consistent controller from these controls; the game reads back semantic values. **Games never draw their own controls.**
 
-Open **`/?role=gallery`** on a phone to play with every control and layout, with a live readout of what the game receives. Deep links: `?role=gallery&tab=layouts&layout=duo&landscape`.
+On the development server, open **`/?role=gallery`** on a phone to play with every control and layout, with a live readout of what the game receives. Deep links: `?role=gallery&tab=layouts&layout=duo&landscape`.
 
 ## Using controls in a game
 
@@ -19,7 +19,7 @@ export const racer: Manifest = {
 };
 ```
 
-- **Touch inputs** (`button`, `stick`, `dpad`, `swipe-pad`, `hold-meter`) need a control of the same **kind** (vector, press, swipe, charge…) with the input's name. A D-pad can stand in for a stick, but a button can't.
+- **Touch inputs** (`button`, `stick`, `aim-pad`, `dpad`, `swipe-pad`, `hold-meter`) need a control of the same **kind** (vector, press, swipe, charge…) with the input's name. A D-pad can stand in for a stick, but a button can't.
 - **Motion inputs** (`pointer`, `tilt`, `shake`) are switched on per layout with checkboxes; they have no on-screen control. If the layout switches the motion on and the phone allows it, the motion input drives the game. Otherwise a touch control with the input's name stands in, so `steer` above falls back to the layout's `steer` stick. (Richer motion fallbacks are still to be designed.)
 - **Different names:** use `controller: { layout: 'x', bind: { boost: 'a' } }`.
 - **No layout chosen:** the game gets a generated default from its inputs.
@@ -31,7 +31,9 @@ The game then receives:
 - **Press-channel controls** (`button`, `swipe-pad`, `hold-meter`, plus `shake`) as timestamped `Press` edges, across four slots. A controller can have at most 4.
 - **Values** in `InputFrame.values[action]`, typed with `StickOutput`, `DpadOutput`, `SwipeOutput` and `HoldOutput` from [types.ts](types.ts). Rotated controls report in the frame the player sees, so a D-pad turned 90° still says "right" when the player presses the arm pointing right.
 
-The **Game receives** line in the gallery is the contract for each control.
+**Aim pad** maps the entire control rectangle to signed `{x, y}` coordinates from −1 to 1. It starts at the center, retains its last accepted position on release, cancel, lost capture, or unmount, and emits no activation. Arrow keys move the retained position; Home explicitly centers it. The reusable `aim-and-pulse` layout pairs it with a separate `pulse` button and can substitute it for motion aim. Runtime suspension still clears cached input and retires the port like other controls.
+
+The **Game receives** line in the gallery is the contract for each control. The gallery, designer, phone preview and Motion Lab are development-only; calibration, connection diagnostics and reports remain available during production play.
 
 ## Designing a controller
 
@@ -65,6 +67,8 @@ Each control is a folder with the same files:
 | `<Name>.tsx`    | The view: composes `ControlFrame` + `useTrackedPointer` and talks only to its `ControlPort`.                                                                                                                                                               |
 | `styles.css`    | Classes `.ctl-<type>__part`, using only `--ctl-*` tokens.                                                                                                                                                                                                  |
 
+All room participants and the signaling server must use the same application protocol version. After an upgrade, reload screens and phones; version mismatches stop connection retries and show a reload message.
+
 The shared kit:
 
 - `kit/ControlFrame.tsx`: the shell that draws the caption, hint, active state, variant class and focus ring.
@@ -72,7 +76,7 @@ The shared kit:
 - `kit/geometry.ts`: clamp, dead zone and direction snapping.
 - `kit/icons.ts`: the only icon vocabulary games may name.
 
-`registry.ts` (pure) and `views.ts` (React) list every control. The runtime reads `channel` and `throttle` from the registry, so a new control needs no runtime changes. Throttled values always deliver their latest value, and a press flushes its value first.
+`registry.ts` (pure) and `views.ts` (React) list every control. The runtime reads `channel` and `throttle` from the registry, so a new control needs no runtime changes. Throttled values retain the latest sample's original generation, sequence and authority-clock timestamp. Values are cloned at sampling and validated at the authority. Ports belong to one configuration; retired callbacks are inert. A value-bearing activation carries its own detached `Press.value`, rather than depending on the latest continuous value reaching the host first. Only press-only controls use binary edge recovery; the binary frame retains four slots.
 
 ## Adding a control
 

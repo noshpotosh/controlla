@@ -11,54 +11,6 @@ import { isMotion } from '../controls/layout/schema.ts';
 import { boundName } from '../controls/layout/validate.ts';
 import { layouts } from '../layouts/index.ts';
 import { PRESS_SLOTS, usesPressSlot } from '../controls/registry.ts';
-export const labManifest: Manifest = {
-  id: 'latency-lab',
-  name: 'Latency Lab',
-  players: { min: 2, max: 8 },
-  inputs: {
-    aim: { required: true, prefer: 'pointer', fallback: 'stick', label: 'Aim' },
-    fire: {
-      required: true,
-      prefer: 'button',
-      label: 'Fire',
-      props: { icon: 'fire' },
-    },
-  },
-  controller: { layout: 'aim-and-fire' },
-  expectedDurationSec: 30,
-  scoring: 'time',
-  onPlayerDropped: 'freeze',
-  retroactiveInput: false,
-  interpolatable: ['cursors', 'target'],
-  discrete: ['scores', 'phase', 'targetAt', 'promptId', 'results'],
-};
-export const raceManifest: Manifest = {
-  id: 'tilt-rally',
-  name: 'Tilt Rally',
-  players: { min: 2, max: 8 },
-  inputs: {
-    steer: {
-      required: true,
-      prefer: 'tilt',
-      fallback: 'stick',
-      label: 'Steer',
-    },
-    boost: {
-      required: true,
-      prefer: 'swipe-pad',
-      label: 'Boost',
-      props: { hint: 'Swipe for a burst of speed' },
-    },
-  },
-  controller: { layout: 'steer-and-boost' },
-  expectedDurationSec: 30,
-  scoring: 'points',
-  onPlayerDropped: 'freeze',
-  retroactiveInput: false,
-  interpolatable: ['racers', 'cursors'],
-  discrete: ['scores', 'phase', 'results'],
-};
-export const manifests = [labManifest, raceManifest];
 export function available(type: WidgetType, c: Capabilities) {
   if (type === 'pointer')
     return (

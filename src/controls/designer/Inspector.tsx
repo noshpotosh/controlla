@@ -2,7 +2,9 @@
 // Right rail: edit the selected control (name, look, props from its
 // definition's `fields`), or see which games use the layout.
 import { useState } from 'react';
-import { manifests } from '../../core/config.ts';
+import { games as catalog } from '../../client/minigames/catalog.ts';
+import { controllerManifest } from '../../client/engine/input.ts';
+const manifests = catalog.map(controllerManifest);
 import { Readout, type Reading } from '../gallery/readings.tsx';
 import { ICONS } from '../kit/icons.ts';
 import { definitionFor, definitions } from '../registry.ts';

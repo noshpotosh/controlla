@@ -1,3 +1,8 @@
+import {
+  pointerManifest,
+  steeringManifest,
+  controlManifests,
+} from './fixtures/games.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -39,9 +44,6 @@ import {
 import {
   defaultCapabilities,
   gameLayout,
-  labManifest,
-  manifests,
-  raceManifest,
   resolveConfig,
 } from '../src/core/config.ts';
 import type { Capabilities, Manifest } from '../src/core/types.ts';
@@ -78,7 +80,7 @@ void test('the library: every layout is valid and every game fits its layout', (
     assert.ok(isControllerLayout(layout), layout.id);
     assert.deepEqual(validateLayout(layout), [], layout.id);
   }
-  for (const m of manifests)
+  for (const m of controlManifests)
     assert.deepEqual(checkAssignment(m, gameLayout(m)), [], m.id);
 });
 
@@ -170,7 +172,7 @@ void test('validation: at most four press inputs, counting shake', () => {
 
 void test('assignment: inputs bind to controls by name, or to motion', () => {
   // Tilt Rally: steer prefers tilt; boost needs a swipe.
-  const fits = (l: ControllerLayout, m: Manifest = raceManifest) =>
+  const fits = (l: ControllerLayout, m: Manifest = steeringManifest) =>
     messages(checkAssignment(m, l));
   assert.equal(
     fits(layoutOf([top(), bottom()])),
@@ -190,14 +192,14 @@ void test('assignment: inputs bind to controls by name, or to motion', () => {
   );
   // `bind` maps an input onto a differently named control.
   const bound = {
-    ...raceManifest,
+    ...steeringManifest,
     controller: { layout: 'x', bind: { boost: 'go' } },
   };
   assert.equal(fits(layoutOf([top(), bottom('go')]), bound), '');
 });
 
 void test('resolveConfig: motion when on and available, else the same-named touch control', () => {
-  const lab = resolveConfig(labManifest, defaultCapabilities(), 1);
+  const lab = resolveConfig(pointerManifest, defaultCapabilities(), 1);
   assert.deepEqual(
     lab.widgets.map((w) => [w.action, w.type]),
     [
@@ -206,7 +208,7 @@ void test('resolveConfig: motion when on and available, else the same-named touc
     ],
   );
   assert.deepEqual(lab.substitutions, ['aim: pointer → stick']);
-  const aimed = resolveConfig(labManifest, withMotion(), 1);
+  const aimed = resolveConfig(pointerManifest, withMotion(), 1);
   assert.equal(aimed.widgets[0].type, 'pointer');
   assert.deepEqual(
     aimed.widgets[0].rect,
@@ -221,7 +223,7 @@ void test('resolveConfig: motion when on and available, else the same-named touc
   };
   try {
     const touch = resolveConfig(
-      { ...labManifest, controller: { layout: 'aim-touch' } },
+      { ...pointerManifest, controller: { layout: 'aim-touch' } },
       withMotion(),
       1,
     );
@@ -233,7 +235,7 @@ void test('resolveConfig: motion when on and available, else the same-named touc
   assert.throws(
     () =>
       resolveConfig(
-        { ...labManifest, controller: { layout: 'nope' } },
+        { ...pointerManifest, controller: { layout: 'nope' } },
         withMotion(),
         1,
       ),
@@ -277,7 +279,7 @@ void test('templates and game defaults are valid in both orientations', () => {
       assert.deepEqual(validateLayout(layout), [], `${preset} ${o}`);
     }
   // A game with no layout: touch inputs placed, motion switched on, fallback placed.
-  const fallback = gameDefaultLayout(labManifest);
+  const fallback = gameDefaultLayout(pointerManifest);
   assert.deepEqual(fallback.motion, {
     pointer: true,
     tilt: false,
@@ -291,7 +293,7 @@ void test('templates and game defaults are valid in both orientations', () => {
     ],
   );
   assert.deepEqual(validateLayout(fallback), []);
-  assert.deepEqual(checkAssignment(labManifest, fallback), []);
+  assert.deepEqual(checkAssignment(pointerManifest, fallback), []);
 });
 
 void test('designer model: add, find space, rotate and reorient', () => {

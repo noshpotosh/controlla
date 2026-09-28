@@ -1,3 +1,4 @@
+import { APP_PROTOCOL_VERSION } from '../src/core/app-protocol.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -53,8 +54,15 @@ void test(
         ),
       );
       await once(ws, 'open');
-      ws.send(JSON.stringify({ type: 'join', ...join }));
+      ws.send(
+        JSON.stringify({
+          type: 'join',
+          protocolVersion: APP_PROTOCOL_VERSION,
+          ...join,
+        }),
+      );
       const welcome = await wait(messages, (m) => m.type === 'welcome');
+      assert.equal(welcome.protocolVersion, APP_PROTOCOL_VERSION);
       return { ws, messages, identity: welcome.identity };
     }
     async function wait(
@@ -68,6 +76,36 @@ void test(
         await new Promise((r) => setTimeout(r, 5));
       }
       throw new Error('Expected signaling response was not received');
+    }
+    // Version checks run before room creation, resume or roster mutation for every role.
+    for (const role of ['host', 'display', 'controller']) {
+      for (const protocolVersion of [undefined, APP_PROTOCOL_VERSION - 1]) {
+        const socket = new WebSocket(url, { origin: 'http://localhost:3000' });
+        clients.push(socket);
+        const rejected: Message[] = [];
+        socket.on('message', (raw) =>
+          rejected.push(
+            JSON.parse(
+              (Buffer.isBuffer(raw)
+                ? raw
+                : Array.isArray(raw)
+                  ? Buffer.concat(raw)
+                  : Buffer.from(raw)
+              ).toString(),
+            ),
+          ),
+        );
+        await once(socket, 'open');
+        const closed = once(socket, 'close');
+        socket.send(JSON.stringify({ type: 'join', role, protocolVersion }));
+        const error = await wait(rejected, (m) => m.type === 'error');
+        assert.equal(error.code, 'protocol-mismatch');
+        await closed;
+        assert.equal(
+          rejected.some((m) => m.type === 'welcome'),
+          false,
+        );
+      }
     }
     const host = await connect({ role: 'host' }),
       venue = await connect({

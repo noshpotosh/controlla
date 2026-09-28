@@ -1,5 +1,60 @@
+import {
+  APP_PROTOCOL_VERSION,
+  PROTOCOL_MISMATCH,
+  PROTOCOL_RELOAD_MESSAGE,
+} from '../core/app-protocol.ts';
 import type { Identity, Message, Role, Roster } from '../core/types.ts';
+import { MAX_MESSAGE_BYTES, messageFits } from './engine/history.ts';
 export type Channel = 'ctrl' | 'input' | 'snapshot' | 'events';
+const MAX_HISTORY_QUEUE_BYTES = 64 * 1024 * 1024;
+const HISTORY_HIGH_WATER_BYTES = 64 * 1024;
+const HISTORY_RETRY_MS = 50;
+const utf8 = new TextEncoder();
+interface HistoryPart {
+  serialized: string;
+  bytes: number;
+}
+interface HistoryQueue {
+  to: string;
+  target: string | null;
+  revision: number;
+  count: number;
+  parts: Map<number, HistoryPart>;
+}
+function historyPart(data: unknown): {
+  revision: number;
+  index: number;
+  count: number;
+  target: string | null;
+} | null {
+  if (!data || typeof data !== 'object') return null;
+  const outer = data as Message;
+  const wrapped = outer.type === 'toController';
+  const batch = wrapped ? (outer.message as Message | undefined) : outer;
+  if (
+    !batch ||
+    batch.type !== 'progressBatch' ||
+    (wrapped && typeof outer.target !== 'string') ||
+    !Number.isSafeInteger(batch.revision) ||
+    batch.revision < 0 ||
+    !Number.isInteger(batch.count) ||
+    batch.count < 1 ||
+    batch.count > 1024 ||
+    !Number.isInteger(batch.index) ||
+    batch.index < 0 ||
+    batch.index >= batch.count ||
+    typeof batch.payload !== 'string' ||
+    batch.payload.length > 8192
+  )
+    return null;
+  return {
+    revision: batch.revision,
+    index: batch.index,
+    count: batch.count,
+    target: wrapped ? outer.target : null,
+  };
+}
+
 export interface LinkStats {
   path: 'connecting' | 'P2P' | 'TURN' | 'WebSocket';
   rtt: number | null;
@@ -29,6 +84,11 @@ class Peer {
         dc.binaryType = 'arraybuffer';
         dc.onmessage = (e) => {
           try {
+            if (
+              typeof e.data === 'string' &&
+              new TextEncoder().encode(e.data).byteLength > MAX_MESSAGE_BYTES
+            )
+              throw new Error('Peer message exceeds the transport limit');
             network.deliver(
               id,
               name,
@@ -140,7 +200,12 @@ export class Network {
   iceServers: RTCIceServer[] = [];
   stopped = false;
   private retry = 0;
+  private welcomed = false;
+  private incompatible = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private historyTimer: ReturnType<typeof setTimeout> | null = null;
+  private historyBytes = 0;
+  private readonly historyQueues = new Map<string, HistoryQueue>();
   onWelcome: (identity: Identity) => void = () => {};
   onRoster: (roster: Roster) => void = () => {};
   onMessage: (
@@ -162,22 +227,47 @@ export class Network {
     },
   ) {}
   connect() {
+    if (this.incompatible) return;
+    this.clearHistory();
+    this.welcomed = false;
     this.stopped = false;
     this.onStatus('Connecting…');
-    this.ws = new WebSocket(this.endpoint);
-    this.ws.onopen = () => {
+    const socket = new WebSocket(this.endpoint);
+    this.ws = socket;
+    socket.onopen = () => {
+      if (this.ws !== socket || this.stopped) return;
       this.retry = 0;
-      this.sendServer({ type: 'join', ...this.request });
+      this.sendServer({
+        type: 'join',
+        ...this.request,
+        protocolVersion: APP_PROTOCOL_VERSION,
+      });
     };
-    this.ws.onmessage = (e) => {
+    socket.onmessage = (e) => {
+      if (this.ws !== socket || this.stopped) return;
       try {
         const msg = JSON.parse(e.data);
+        if (this.stopped) return;
         if (msg.type === 'welcome') {
+          if (msg.protocolVersion !== APP_PROTOCOL_VERSION) {
+            this.rejectProtocol();
+            return;
+          }
+          this.welcomed = true;
           this.identity = msg.identity;
           this.request.token = msg.identity.token;
           this.iceServers = msg.iceServers;
           this.onStatus('Connected');
           this.onWelcome(msg.identity);
+        } else if (msg.type === 'error') {
+          if (msg.code === PROTOCOL_MISMATCH) {
+            this.rejectProtocol();
+            return;
+          }
+          this.onWarning(msg.message);
+          if (!this.welcomed) this.close();
+        } else if (!this.welcomed) {
+          return;
         } else if (msg.type === 'roster') {
           this.roster = { players: msg.players, venues: msg.venues };
           this.reconcile();
@@ -187,12 +277,6 @@ export class Network {
         } else if (msg.type === 'relay') {
           const data = msg.binary ? new Uint8Array(msg.data).buffer : msg.data;
           this.deliver(msg.from, msg.channel, data);
-        } else if (msg.type === 'error') {
-          this.onWarning(msg.message);
-          if (!this.identity) {
-            this.stopped = true;
-            this.ws?.close();
-          }
         } else if (msg.type === 'ended') {
           this.stopped = true;
           this.onEnded(msg.reason);
@@ -202,7 +286,10 @@ export class Network {
         this.onWarning('Invalid signaling response');
       }
     };
-    this.ws.onclose = () => {
+    socket.onclose = () => {
+      if (this.ws !== socket) return;
+      this.welcomed = false;
+      this.clearHistory();
       for (const p of this.peers.values()) p.close();
       this.peers.clear();
       if (this.stopped) return;
@@ -217,12 +304,24 @@ export class Network {
         Math.min(5000, 500 * 2 ** this.retry++),
       );
     };
-    this.ws.onerror = () =>
+    socket.onerror = () => {
+      if (this.ws !== socket || this.stopped) return;
       this.onWarning(
         'Cannot reach the room service. Check the server address and your connection.',
       );
+    };
+  }
+  private rejectProtocol() {
+    this.incompatible = true;
+    this.welcomed = false;
+    this.identity = null;
+    this.roster = { players: [], venues: [] };
+    this.onWarning(PROTOCOL_RELOAD_MESSAGE);
+    this.onStatus('Reload required');
+    this.close();
   }
   private allowed(id: string) {
+    if (!this.welcomed || this.stopped) return false;
     const me = this.identity;
     if (!me) return false;
     const player = this.roster.players.find((p) => p.id === id),
@@ -262,6 +361,141 @@ export class Network {
         p.close();
         this.peers.delete(id);
       }
+    this.pruneHistory();
+  }
+  private historyConnected(to: string, target: string | null): boolean {
+    if (!this.allowed(to)) return false;
+    const recipient =
+      this.roster.players.find((p) => p.id === to) ??
+      this.roster.venues.find((v) => v.id === to);
+    if (!recipient?.connected) return false;
+    if (
+      target !== null &&
+      !this.roster.players.some(
+        (p) => p.id === target && p.connected && p.venueId === to,
+      )
+    )
+      return false;
+    return true;
+  }
+  private dropHistory(key: string): void {
+    const queue = this.historyQueues.get(key);
+    if (!queue) return;
+    for (const part of queue.parts.values()) this.historyBytes -= part.bytes;
+    this.historyQueues.delete(key);
+  }
+  private pruneHistory(): void {
+    for (const [key, queue] of this.historyQueues)
+      if (!this.historyConnected(queue.to, queue.target)) this.dropHistory(key);
+    if (this.historyBytes === 0 && this.historyTimer !== null) {
+      clearTimeout(this.historyTimer);
+      this.historyTimer = null;
+    }
+  }
+  private clearHistory(): void {
+    if (this.historyTimer !== null) clearTimeout(this.historyTimer);
+    this.historyTimer = null;
+    this.historyQueues.clear();
+    this.historyBytes = 0;
+  }
+  private scheduleHistory(): void {
+    if (
+      this.historyTimer !== null ||
+      !this.historyBytes ||
+      this.stopped ||
+      !this.welcomed
+    )
+      return;
+    this.historyTimer = setTimeout(() => {
+      this.historyTimer = null;
+      this.flushHistory();
+    }, HISTORY_RETRY_MS);
+  }
+  private queueHistory(
+    to: string,
+    data: unknown,
+    part: NonNullable<ReturnType<typeof historyPart>>,
+  ): void {
+    if (!this.historyConnected(to, part.target)) return;
+    const key = JSON.stringify([to, part.target]);
+    let queue = this.historyQueues.get(key);
+    if (queue && part.revision < queue.revision) return;
+    if (queue && part.revision > queue.revision) {
+      this.dropHistory(key);
+      queue = undefined;
+    }
+    if (queue && part.count !== queue.count) return;
+    const serialized = JSON.stringify(data);
+    const bytes = utf8.encode(serialized).byteLength;
+    const previous = queue?.parts.get(part.index);
+    if (
+      this.historyBytes - (previous?.bytes ?? 0) + bytes >
+      MAX_HISTORY_QUEUE_BYTES
+    ) {
+      this.onWarning(
+        'Session report delivery is full. Reconnect to retry the report.',
+      );
+      return;
+    }
+    if (!queue) {
+      queue = {
+        to,
+        target: part.target,
+        revision: part.revision,
+        count: part.count,
+        parts: new Map(),
+      };
+      this.historyQueues.set(key, queue);
+    }
+    // Serialized data is immutable even if the caller reuses its message object.
+    queue.parts.set(part.index, { serialized, bytes });
+    this.historyBytes += bytes - (previous?.bytes ?? 0);
+    this.scheduleHistory();
+  }
+  private flushHistory(): void {
+    if (this.stopped || !this.welcomed) {
+      this.clearHistory();
+      return;
+    }
+    this.pruneHistory();
+    for (const [key, queue] of this.historyQueues) {
+      const peer = this.peer(queue.to, this.identity!.id < queue.to);
+      for (const [index, part] of queue.parts) {
+        if (this.historyQueues.get(key) !== queue) break;
+        const dc = peer.channels.get('ctrl');
+        try {
+          if (dc?.readyState === 'open') {
+            // Reserve capacity for configuration, clock, and event traffic. An
+            // open congested channel must not spill history onto another route.
+            if (dc.bufferedAmount + part.bytes > HISTORY_HIGH_WATER_BYTES)
+              break;
+            dc.send(part.serialized);
+          } else {
+            const socket = this.ws;
+            const prefix = JSON.stringify({
+              type: 'relay',
+              to: queue.to,
+              channel: 'ctrl',
+            }).slice(0, -1);
+            const serialized = `${prefix},"data":${part.serialized},"binary":false}`;
+            const bytes = utf8.encode(serialized).byteLength;
+            if (
+              !socket ||
+              socket.readyState !== WebSocket.OPEN ||
+              socket.bufferedAmount + bytes > HISTORY_HIGH_WATER_BYTES
+            )
+              break;
+            socket.send(serialized);
+            peer.stats.path = 'WebSocket';
+          }
+        } catch {
+          break;
+        }
+        queue.parts.delete(index);
+        this.historyBytes -= part.bytes;
+      }
+    }
+    this.scheduleHistory();
   }
   peer(id: string, initiate = false) {
     let p = this.peers.get(id);
@@ -279,25 +513,44 @@ export class Network {
   }
   send(to: string, channel: Channel, data: unknown) {
     if (!this.allowed(to)) return;
+    const wireData =
+      data instanceof ArrayBuffer ? Array.from(new Uint8Array(data)) : data;
+    if (!messageFits(wireData, this.identity!.id, to, channel)) {
+      this.onWarning(
+        'A message exceeded the transport limit and was not sent.',
+      );
+      return;
+    }
+    const part = channel === 'ctrl' ? historyPart(data) : null;
+    if (part) {
+      this.queueHistory(to, data, part);
+      return;
+    }
     if (this.peer(to, this.identity!.id < to).send(channel, data)) return;
     this.sendServer(
       {
         type: 'relay',
         to,
         channel,
-        data:
-          data instanceof ArrayBuffer ? Array.from(new Uint8Array(data)) : data,
+        data: wireData,
         binary: data instanceof ArrayBuffer,
       },
       channel === 'input' || channel === 'snapshot',
     );
   }
   sendServer(data: unknown, droppable = false) {
+    const serialized = JSON.stringify(data);
+    if (new TextEncoder().encode(serialized).byteLength > MAX_MESSAGE_BYTES) {
+      this.onWarning(
+        'A message exceeded the transport limit and was not sent.',
+      );
+      return;
+    }
     if (
       this.ws?.readyState === WebSocket.OPEN &&
       this.ws.bufferedAmount < (droppable ? 65536 : 2 ** 20)
     )
-      this.ws.send(JSON.stringify(data));
+      this.ws.send(serialized);
   }
   isOpen(id: string, channel: Channel = 'input') {
     return this.peers.get(id)?.channels.get(channel)?.readyState === 'open';
@@ -318,6 +571,7 @@ export class Network {
   }
   close() {
     this.stopped = true;
+    this.clearHistory();
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     for (const p of this.peers.values()) p.close();
     this.peers.clear();

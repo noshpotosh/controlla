@@ -1,59 +1,82 @@
 # Validation and acceptance ledger
 
-The code provides a runnable prototype of the complete venue topology and two minigames. **None of the physical latency, cross-country fairness, or device compatibility acceptance criteria have been certified.** Automated tests cover protocol and lifecycle behavior; they are not substitutes for playtests.
+The current accepted slice uses **Neon Harvest as the sole production game**: 45 seconds, 1–8 players, one `standard` mode. Harness and live rooms share the public author contracts, round runner, validated snapshots and session ledger. **202 tests, typecheck, lint and production build pass (2026-09-28). The local desktop browser/HTTP gate is closed; physical-device acceptance remains separate. Physical latency, cross-country fairness and device compatibility remain uncertified.** Earlier passing results below are historical evidence, not acceptance of this replacement.
 
-## Automated checks
+## Current run — 2026-09-28
 
-- Pointer smoothing: stationary jitter attenuation, responsive sweeps, no overshoot, frame-rate independence, stale/invalid samples, and reset after suspension.
+| Check                                                                                                                  | Current result                                                                                                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Neon Harvest rules/state/renderer and reusable aim-pad regressions                                                     | Pass; includes reconstructed rules, retained square aim, snapshot rendering and reduced motion. Headless Canvas visual smoke completed.                                                                                                                                                                    |
+| Full suite count / typecheck / lint                                                                                    | 202 tests pass; typecheck and lint pass. Actual WebSocket host/remote/controllers/reload/host-loss test passes.                                                                                                                                                                                            |
+| Production build and bundle assertions                                                                                 | Pass: Neon and control assets present; former game and developer modules/styles/routes excluded; calibration/diagnostics/report assets retained.                                                                                                                                                           |
+| Development root/tools/harness HTTP and built root/harness HTTP                                                        | Verified: development root/harness 200; built root 200 and harness 404 on local port 3003.                                                                                                                                                                                                                 |
+| Host, remote display and two controllers: full round, rematch, disconnect/return, abort, diagnostics and report export | Verified in the in-app browser: solo completion (130 score, zero opponent award), host + remote with two simulated controllers, held aim/PULSE, replacement on rematch, reload/identity return, rematch totals, abort with no award, diagnostics, downloaded JSON with round IDs/statistics/awards/totals. |
+| Real phones, sensor/permission matrix, camera/TV timing, ICE/TURN and multi-household play                             | Not completed; separate device/network acceptance                                                                                                                                                                                                                                                          |
 
-- Binary frames under 60 bytes; off-screen coordinates; invalid frame rejection; u16 sequence and u32 timestamp rollover; reorder/loss accounting.
-- Minimum-RTT clock selection; slow correction; D ramp and single-venue zero target; bounded extrapolation.
-- Off-axis corner fit; degenerate/crossed corners; exact center recenter while preserving H.
-- Permission-aware per-player fallback and required-input failure.
-- Acknowledged-base deltas; missing-base rejection and resync; interpolation that preserves discrete scores; out-of-order snapshots.
-- Configuration ACK gating, stale-generation rejection, duplicate press suppression and recovery of a lost continuous press frame.
-- Timestamp-based reaction scoring and bounded cloneable results.
-- Signed resume identities, grace periods, eight reserved seats, venue disconnect/rejoin, host termination, routing isolation and enumeration limits.
-- Live WebSocket room/venue/controller connection, relay, unauthorized route rejection, venue resume and host-ended notification.
-- Two-venue runtime integration using mocked browser APIs and actual WebSocket fallback: local cursor routing, timestamped scoring, phone reload with a fresh epoch, and host termination. This does not exercise real WebRTC or sensors.
+Run `npm run game:test`, `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build`. Positive build checks must retain Neon Harvest/control assets, calibration, diagnostics and reports, while excluding former game adapters, developer modules/routes/styles and game-specific shared state. Application protocol **4** must match across signaling and every screen/phone; old clients must receive reload guidance and stop retries.
 
-Run `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build`. `npm run benchmark` measures an eight-player payload in Node only. Initial local results: clone mean 0.010 ms; MessageChannel p50 0.011 ms, p95 0.018 ms, p99 0.023 ms. Rerun on the deployment/device target; these are not browser results.
+The eight-player shared-runner stress case with maximum-length IDs completes at a peak **29,938 bytes** per envelope (47 KiB limit), with 345 hit events over the round. Review found and fixed repeated unused audio identity inflating snapshots, plus stale/out-of-order packets moving immediate cursors despite authority rejection.
+
+The meaningful regression surface for this slice is:
+
+- Absolute aim at every rectangular corner, square vector validation/rotation, independent pulse, held position on normal release/cancel/lost capture, keyboard input, and retired callbacks after reconfiguration/suspension. The control preview alone does not establish transport correctness.
+- Seeded waves, bounded nodes/effects, analytic positions, closest swept-path pickups, exact-tie rotation, spark/gold values, chain reset/multiplier, final-ten-second doubling, mine warmup/penalty/stun and edge-only pulse cooldown/radius.
+- Continuous cutoff, terminal pulse processing with action-time cooldown/stun/bonus, no rollback, final eligibility, duplicate completion, disconnected outcomes, settling abort and one-time disposal/finalization.
+- Binary size/rollover/reorder/loss behavior; off-screen pointer values; reliable generation/sequence/source-time/shape validation; configuration ACK gates; captured activation payloads and both message arrival orders.
+- Clock synchronization and delay equalization; pointer filtering/freshness; calibration fit, exact recenter and persistence; permission-aware required-input fallback.
+- Generic encoded snapshots for host/remote, held discrete fields, malformed update retention, missing-base recovery including reconnect, renderer failure isolation, immutable frames, round-scoped explicit-clock cues and successful-draw marker acknowledgments.
+- Placement awards and cross-game properties through test-only descriptors; compact sampled awards, current-roster standings, atomic bounded report hydration, Unicode sizes, congestion, duplicate/reordered batches and totals retained after old reports are evicted.
+- Signed room/resume identity, seat reservation, source/routing checks, venue reconnect, actual WebSocket fallback, immediate own-venue cursors and host-ended notification with completed reports preserved.
+
+Old pause/substitution game policies are retired rather than silently claimed as supported by the new game. Calibration, diagnostics, reports and development-only Motion Lab remain; retiring the old games does not remove their framework safety requirements.
+
+## Historical software evidence
+
+The original restored baseline passed 69 tests after locked dependency installation repaired missing local `qrcode` dependencies. The first architecture experiment passed 105 tests; the reliable-input/settling/tool-isolation follow-up passed 138. The three-game live-catalog slice recorded 185 tests plus passing typecheck, lint and production build. Its built Worker returned 200 for `/` and 404 for `/dev/game-harness`; developer modules and CSS were absent from production artifacts. See the [architecture evidence record](architecture/DECISIONS-EXPERIMENTS.md) for the progression and temporary adapters now retired.
+
+Earlier local browser work reached harness results, created a host room and exercised optional read-only room diagnostics. A complete multi-client sequence was not certified then because an automatic browser approval review blocked subsequent localhost access. Current-run browser results must be recorded independently in the table above.
+
+`npm run benchmark` measures structured cloning and MessageChannel in Node, not browser iframe performance. Historical local figures were clone mean 0.010 ms and MessageChannel p50/p95/p99 of 0.011/0.018/0.023 ms. Rerun on deployment/device targets; these numbers do not describe motion-to-photon latency.
 
 ## Spec acceptance mapping
 
-| Criteria     | Implementation                                                                           | Remaining evidence                                                  |
-| ------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| 1–7          | Create/join, code, roster, signed identity, host start, per-player configuration and ACK | Cold-start browser test with 4–8 real phones                        |
-| 8, 10–11, 17 | Pointer/button Latency Lab; tilt/swipe Tilt Rally; capability fallback and teardown      | iOS/Android sensor and permission matrix                            |
-| 9, 22        | Separate local route diagnostics, authority age percentiles and camera-result field      | 240 fps monitor/TV recordings; p95 and jitter budgets               |
-| 12–13        | Five samples, conditioned homography, persisted H, exact recenter                        | Center/side/~60° seats; yaw drift over a full session               |
-| 14–16        | Fullscreen gesture, timed lifecycle, results and completed-round history                 | Fullscreen browser and audio unlock checks                          |
-| 18, 26       | Phone/venue grace, reconnect identity, roster propagation, freeze policy, host end       | Suspend/resume on actual mobile browsers; router disconnect         |
-| 19–21, 23    | Two-tier peers and snapshot rendering across mixed venues                                | Two-city and cross-country rooms; direct and TURN routes            |
-| 24           | Common presentation timeline and timestamp-judged fairness rounds                        | Repeat randomized prompts, compare per-venue reaction distributions |
-| 25           | Canonical 16:9 viewport and calibration markers                                          | 16:9 TV + 4:3 tablet aiming comparison                              |
+| Criteria     | Current implementation scope                                                      | Remaining evidence                                                                                                                               |
+| ------------ | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1–7          | Create/join, codes/roster/resume, host start, per-player configuration and ACK    | Cold-start browser flow and 4–8 real phones                                                                                                      |
+| 8, 10–11, 17 | Neon Harvest pointer/aim-pad/pulse; reusable control library and teardown         | iOS/Android sensor/permission and input-lifetime matrix; tilt/swipe tested as controls rather than shipped games                                 |
+| 9, 22        | Local-route diagnostics, authority age percentiles and manual camera-result field | 240 fps monitor/TV trials; p95 and jitter budgets                                                                                                |
+| 12–13        | Five-point conditioned homography, saved calibration and exact recenter           | Center/side/~60° seats; yaw drift through a whole session                                                                                        |
+| 14–16        | Fullscreen gesture, timed lifecycle, settling, results and completed reports      | Browser fullscreen/audio and report-download checks                                                                                              |
+| 18, 26       | Phone/venue grace, identity return, freeze policy and host termination            | Real mobile suspend/resume and router loss                                                                                                       |
+| 19–21, 23    | Two-tier routes and shared snapshot presentation                                  | Two-city/cross-country rooms, direct and TURN paths                                                                                              |
+| 24           | Common presentation timeline and timestamp-judged actions                         | Dedicated controlled measurement/replay fixtures and per-venue comparisons; the removed Lab is not an available production acceptance instrument |
+| 25           | Logical 16:9 scene, viewport scaling and calibration markers                      | 16:9 TV and 4:3 tablet aiming comparison                                                                                                         |
 
-## Manual sequence
+## Manual sequence for the current game
 
-1. Start one host screen and 4–8 phones on trusted HTTPS. Grant motion from the explicit button. Deny it on one phone and confirm stick fallback.
-2. Calibrate center, TL, TR, BR, BL against the **game area**. Record the seat angle. Recenter; verify no corners are requested again.
-3. Run all four Latency Lab modes. Tracking exports RMS error and estimated pursuit phase lag; this includes human tracking behavior. Reaction/Fairness exports mean reaction times and counts. Strobe is designed for a camera.
-4. In Tracking, hold still, sweep quickly, then stop on a target; check for tremor, lag, and overshoot. Repeat after Recenter and after backgrounding the phone. Sensor filtering uses an adaptive 8–45 ms time constant; the local crosshair uses a 12 ms display glide. These add latency and need real-device validation. Film hand and screen together at 240 fps. Measure many trials, not one. Compute p50/p95/p99 and (p99−p50), record display model, browser/OS, power mode, TV Game Mode, and network route. Enter measured motion-to-photon in diagnostics and save the JSON report.
-5. Launch Tilt Rally without reloading phones. Pointer output must stop; gyro-independent tilt + swipe (or stick fallback) must take over.
-6. Background and reload a phone, then disconnect it for less than 60 seconds. Verify name/seat/color, configuration, and saved homography. Recenter after a reload if the phone moved while sensor integration was suspended.
-7. Add a second venue, first locally, then remotely. Join uneven phone counts. Check each venue's own cursors remain local while shared objects use snapshots. Compare 16:9 and 4:3 screens.
-8. Degrade the second venue's network. Watch D ramp, starvation, clock error, and the limiting venue. A changing common delay can introduce temporary unfairness; measure it rather than hiding it.
-9. Close the remote screen, then restore within grace. Other venues must finish normally. Close the host: all clients must report termination and preserve previously completed results for download.
+1. Start host/signaling with matching protocol 4. Connect one controller for the minimum case, then 4–8 real phones over trusted HTTPS. Explicitly enable motion on supported phones; deny it on another and verify absolute aim-pad fallback plus the separate PULSE button.
+2. Calibrate center, TL, TR, BR, BL against the game area. Record seat angle. Recenter without repeating the corner fit. On touch, aim at every edge/corner, lift, cancel a gesture, switch input focus and pulse; the retained cursor must not jump to center. Exercise keyboard arrows/Home on desktop.
+3. Complete Neon Harvest and a rematch. Observe spark/gold pickups, chain feedback, warming mines, penalties/stun, pulse cooldown and the last-ten-second bonus. Hold the pulse button: it must not retrigger. Check game score, earned placement award and cumulative totals after the delayed display reaches results.
+4. Disconnect/return a player before cutoff and during settling. Their identity, score and eligibility must persist; obsolete input must not become fresh input. Abort during preparation/play/settling and confirm no award. Repeat with a previously scoring player who sits out a round and returns: standings must retain their earlier total without revealing future results early.
+5. Background/reload a phone and restore within grace. Verify name/seat/color, fresh configuration ACK, saved homography and retired callbacks. Recenter if the phone moved while sensor integration was suspended. Aim-pad UI starts centered on a fresh mount; an old control's cleanup must not send a reset into the new configuration.
+6. Add a second venue with uneven controller counts. Check that each venue's own cursors remain immediate while shared game objects use delayed snapshots. Compare 16:9 and 4:3 viewports and reduced-motion presentation. Degrade the remote link and observe delay, starvation, clock error, limiting venue and recovery after reconnect.
+7. Close/restore the remote screen within grace. Then close the host: all clients must report termination and keep completed reports available. Save a report and inspect outcomes, `collected`/`bestChain`/`mineHits`, awards/totals, routes and disconnects. Calibration/diagnostics/report controls must remain usable after local rendering failure.
+8. Run a separate physical timing session. Film hand and display at 240 fps over many trials; record display model, browser/OS, power mode, TV Game Mode and network route. Compute p50/p95/p99 and p99−p50. Enter the camera-derived result in diagnostics and save the report. Software timestamps and game outcomes are not substitutes for that measurement.
 
-## Known prototype limits / unfinished acceptance work
+## Remaining limits
 
-- No real mobile browser, camera, TV, ICE/TURN, cross-country, or browser-iframe benchmark was run during implementation. WebMCP read-only room access is optional and has not been exercised in a supporting browser.
-- No TURN deployment or public signaling endpoint is included. The default STUN path cannot guarantee connectivity on restrictive networks.
-- Generic widget values use bounded reliable control messages; the primary pointer/tilt frame is binary and lossy. High-rate drawing needs its own binary point-batch frame before promising the same loss/jitter budget as pointing.
-- The fixed frame currently has four action slots. Current games use one. A future controller with more discrete actions must negotiate a different frame layout.
-- Drift confidence is a freshness hint, not an experimentally calibrated yaw uncertainty estimate. Physical drift/recenter frequency must still be measured.
-- Both shipped games select freeze. The game contract also provides pause-with-grace termination and a basic substitute controller. These policies need genre-specific playtesting. Crash isolation and third-party asset loading are deferred.
-- The 200 ms judgment window is conservative and may feel slow; tune from observed distributions. The <120 ms authority resolution budget is not proven and can conflict with that window. Fairness mode is a test instrument, not proof of fairness.
-- No screenshots or interactive browser QA were performed. Type checking, integration tests and a production build do not certify the phone UX.
+- No current result certifies real phone sensors, cancellation/multitouch, TV response, TURN, cross-country fairness or browser iframe performance. Desktop simulation cannot close these requirements.
+- No TURN deployment or public signaling service is introduced. Default STUN cannot guarantee restrictive-network connectivity; inspect candidate types and measure the route.
+- Generic values use bounded reliable messages while primary vector frames remain binary/lossy. The fixed frame has four press slots. High-rate drawing and simultaneous binary motion demands require an explicit future contract.
+- Pointer filtering uses adaptive smoothing and the display cursor has a short glide. Their physical latency and drift/recenter behavior still require measurement; freshness confidence is not calibrated yaw uncertainty.
+- The 200 ms judgment/settling window may feel slow. The specification's authority-resolution target is not proven and can conflict with this conservative window; tune from measured distributions.
+- The simple Neon Harvest rules/renderer are reconstructed from incomplete early references plus a later stash. Exact recovery parity is not claimed. Combat systems and old pause/substitution policy are outside the accepted product.
+- Progress/report history is in memory; host loss ends play and restart starts a new session. No persistence, host migration, third-party asset loading or process sandbox is added.
 
-These limits must remain visible until measured or completed; do not label all 26 acceptance criteria passed based on a successful local build.
+Do not mark all specification criteria passed on the strength of a build or automated suite. Record actual devices, routes, measurements, failures and remaining work here.
+
+## Controller cleanup entry checkpoint
+
+The 202-test Neon baseline was rerun before controller edits. The local browser gate closed on 2026-09-28 using the unchanged protocol-4 app: three completed rounds (solo, two-player, rematch) and one aborted round; the remote report was downloaded to the local Downloads folder and its JSON contents inspected. Both screens showed consistent results/standings. The earlier permission block did not recur under this explicitly requested browser run. Existing dev services needed restart and the signaling service needed the exact port-3002 origins configured; this changed only local process configuration. No deployment or physical sensor/latency claim follows.
+
+The next controller cleanup starts from a source checkpoint containing this completed Neon work. Generated image explorations under `output/` are unrelated and excluded from that checkpoint.

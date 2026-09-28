@@ -1,0 +1,182 @@
+/* Loaded only by development entries; production globals never scan tools. */
+@import 'tailwindcss/utilities.css' source(none);
+@import '../controls/gallery/gallery.css';
+@import '../controls/designer/designer.css';
+@reference '../../app/globals.css';
+@source './';
+@source '../controls/gallery';
+@source '../controls/designer';
+@source '../controls/preview';
+@source '../client/MotionLab.tsx';
+@source '../experiments/architecture';
+
+.motion-lab {
+  padding: 20px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+}
+.motion-lab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.motion-lab-name {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+.motion-lab-step {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+.motion-lab-step h1 {
+  font-size: 26px;
+}
+.motion-lab-countdown {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.motion-lab-tap {
+  min-height: 140px;
+}
+.motion-lab-live {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.motion-lab-bars {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.motion-lab-bar {
+  display: grid;
+  grid-template-columns: 48px 1fr 72px;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+}
+.motion-lab-bar i {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--primary);
+  transition: width 80ms linear;
+}
+.motion-lab-bar small {
+  text-align: right;
+  color: var(--muted-foreground);
+}
+/* Preview: game picker and the rotate-your-phone prompt. */
+.ctl-preview-pick {
+  min-height: 100dvh;
+  display: grid;
+  align-content: start;
+  gap: var(--ctl-space-3);
+  padding: var(--ctl-space-5) var(--ctl-space-4);
+  background: var(--ctl-bg);
+  color: var(--ctl-ink);
+  font-family: var(--ctl-font);
+}
+.ctl-preview-pick h1 {
+  margin: 0 0 var(--ctl-space-2);
+  font-size: 28px;
+  font-weight: 900;
+}
+.ctl-preview-pick a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 64px;
+  padding: 0 var(--ctl-space-4);
+  border-radius: var(--ctl-radius-md);
+  background: var(--ctl-surface);
+  box-shadow: 0 4px 0 var(--ctl-surface-lip);
+  font-weight: 800;
+}
+.ctl-preview-pick small {
+  color: var(--ctl-ink-muted);
+  font-weight: 400;
+}
+.ctl-rotate {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--ctl-space-4);
+  background: color-mix(in oklab, var(--ctl-bg) 94%, transparent);
+  color: var(--ctl-ink);
+  font-weight: 800;
+  text-align: center;
+}
+.ctl-rotate__phone {
+  width: 44px;
+  height: 76px;
+  border: 4px solid var(--ctl-accent);
+  border-radius: 10px;
+  animation: ctl-rotate-hint 1.6s ease-in-out infinite;
+}
+.ctl-rotate__phone[data-orientation='portrait'] {
+  rotate: 90deg;
+  animation-direction: reverse;
+}
+@keyframes ctl-rotate-hint {
+  50%,
+  100% {
+    rotate: 90deg;
+  }
+}
+.ctl-rotate button {
+  padding: var(--ctl-space-3) var(--ctl-space-5);
+  border: 0;
+  border-radius: var(--ctl-radius-pill);
+  background: var(--ctl-accent);
+  color: var(--ctl-accent-ink);
+  font: inherit;
+}
+/* Home page shortcuts to the controller tools. */
+.tool-links {
+  display: flex;
+  gap: 8px;
+}
+.tool-links button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tool-links button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.tool-links svg {
+  width: 14px;
+  height: 14px;
+}
+@media (max-width: 800px) {
+  .tool-links {
+    width: 100%;
+  }
+  .tool-links button {
+    flex: 1;
+    justify-content: center;
+  }
+}

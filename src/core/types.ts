@@ -1,3 +1,4 @@
+import type { ControlValue } from '../controls/value.ts';
 import type { LayoutPreset } from '../controls/layouts.ts';
 import type { MenuCorner, Rotation } from '../controls/layout/schema.ts';
 export type Role = 'host' | 'display' | 'controller';
@@ -20,6 +21,7 @@ export type WidgetType =
   | 'button'
   | 'dpad'
   | 'stick'
+  | 'aim-pad'
   | 'swipe-pad'
   | 'draw-canvas'
   | 'slider'
@@ -134,6 +136,8 @@ export interface InputFrame {
   values?: Record<string, unknown>;
 }
 export interface Press {
+  /** Immutable semantic value captured with a value-bearing activation. */
+  value?: ControlValue;
   playerId: string;
   generation: number;
   button: number;
@@ -142,43 +146,16 @@ export interface Press {
   x: number;
   y: number;
 }
-export interface GameEvent {
-  id: string;
-  time: number;
-  kind: 'hit' | 'prompt' | 'end';
-  playerId?: string;
-}
-export interface GameState {
-  gameId: string;
-  mode: string;
-  phase: 'lobby' | 'countdown' | 'running' | 'results';
-  startAt: number;
-  endAt: number;
-  target: Point;
-  targetAt: number;
-  promptId: number;
-  scores: Record<string, number>;
-  cursors: Record<string, Point>;
-  racers: Record<string, Point>;
-  results: Result[];
-  flash: boolean;
-}
-export interface Result {
-  playerId: string;
-  score: number;
-  rank: number;
-  stats: Record<string, number>;
-}
-export interface Snapshot {
+export interface Snapshot<S extends object = object> {
   id: number;
   time: number;
-  state: GameState;
+  state: S;
 }
-export interface WireSnapshot {
+export interface WireSnapshot<S extends object = object> {
   id: number;
   time: number;
   base: number | null;
-  patch: Partial<GameState>;
+  patch: Partial<S>;
 }
 // Extensible wire envelopes are validated by role and message handlers at ingress.
 // oxlint-disable-next-line typescript/no-explicit-any -- heterogeneous JSON wire envelope

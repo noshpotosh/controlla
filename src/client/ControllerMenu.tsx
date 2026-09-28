@@ -10,12 +10,12 @@ import type { Runtime } from './runtime.ts';
 export function ControllerMenu({
   runtime,
   corner,
-  onMotionLab,
+  extraAction,
   leave,
 }: {
   runtime: Runtime;
   corner: MenuCorner;
-  onMotionLab: () => void;
+  extraAction?: { label: string; run(): void };
   leave: () => void;
 }) {
   const [open, setOpen] = useState(false),
@@ -94,15 +94,17 @@ export function ControllerMenu({
                 </button>
               </>
             )}
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                onMotionLab();
-              }}
-            >
-              Motion lab
-            </button>
+            {extraAction && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  extraAction.run();
+                }}
+              >
+                {extraAction.label}
+              </button>
+            )}
           </div>
           <p className="ctl-sheet__meta">
             {v.controllerPath === 'direct-to-session'
@@ -127,6 +129,7 @@ export function statusText(runtime: Runtime) {
   if (v.status !== 'Connected') return v.status;
   if (v.phase === 'countdown') return 'Get ready…';
   if (v.phase === 'running') return 'You’re playing';
+  if (v.phase === 'settling') return 'Finishing round…';
   if (v.phase === 'results') return 'Round complete — look at your screen';
   return 'Ready — choose a game on the host screen';
 }

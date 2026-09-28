@@ -16,10 +16,13 @@ const clamp = (x: number) => Math.max(-1, Math.min(1, x));
 export function LegacyWidget({
   widget: w,
   runtime,
+  generation,
 }: {
   widget: Widget;
   runtime: Runtime;
+  generation: number;
 }) {
+  const port = runtime.portFor(w, generation);
   const [progress, setProgress] = useState(0),
     [text, setText] = useState(''),
     [angle, setAngle] = useState(0);
@@ -45,7 +48,7 @@ export function LegacyWidget({
       dial.current.angle += delta;
       setAngle(dial.current.angle);
       dial.current.last = a;
-      runtime.action(w.action, dial.current.angle);
+      port.value(dial.current.angle);
     }
     if (w.type === 'draw-canvas') {
       const c = canvas.current,
@@ -62,7 +65,7 @@ export function LegacyWidget({
         );
         ctx.fill();
       }
-      runtime.action(w.action, {
+      port.value({
         x: (p.x + 1) / 2,
         y: (p.y + 1) / 2,
         pressure: e.pressure,
@@ -98,7 +101,7 @@ export function LegacyWidget({
             onValueChange={(v) => {
               const p = Array.isArray(v) ? v[0] : v;
               setProgress(p);
-              runtime.action(w.action, p);
+              port.value(p);
             }}
           />
         </div>
@@ -110,7 +113,7 @@ export function LegacyWidget({
         className="widget"
         onSubmit={(e) => {
           e.preventDefault();
-          runtime.action(w.action, text.slice(0, 120));
+          port.value(text.slice(0, 120));
         }}
       >
         <label htmlFor={w.id}>{w.label}</label>

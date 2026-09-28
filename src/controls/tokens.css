@@ -5,8 +5,7 @@
  * Scoped to .ctl-root so the host/display UI is unaffected.
  */
 .ctl-root,
-.ctl-scope,
-.ctl-gallery {
+.ctl-scope {
   /* Player accent. ControllerSurface overrides --ctl-accent per player. */
   --ctl-accent: #d5ff70;
   --ctl-accent-ink: #141830;

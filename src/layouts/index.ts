@@ -2,9 +2,11 @@
 // Lists every layout in this folder; do not edit by hand.
 import { asControllerLayout, type ControllerLayout } from '../controls/layout/schema.ts';
 import layout_aim_and_fire from './aim-and-fire.json' with { type: 'json' };
+import layout_aim_and_pulse from './aim-and-pulse.json' with { type: 'json' };
 import layout_steer_and_boost from './steer-and-boost.json' with { type: 'json' };
 
 export const layouts: Record<string, ControllerLayout> = {
   'aim-and-fire': asControllerLayout(layout_aim_and_fire),
+  'aim-and-pulse': asControllerLayout(layout_aim_and_pulse),
   'steer-and-boost': asControllerLayout(layout_steer_and_boost),
 };

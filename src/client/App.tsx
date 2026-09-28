@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Message } from '../core/types.ts';
 import { Button } from '@/components/ui/button';
@@ -16,21 +16,18 @@ import {
   Activity,
   Download,
   RotateCcw,
-  Crosshair,
   Sparkles,
   Zap,
   Trophy,
-  LayoutGrid,
 } from 'lucide-react';
 import { Runtime, type JoinOptions } from './runtime.ts';
 import { LegacyWidget } from './Widgets.tsx';
 import { ControllerSurface } from '../controls/ControllerSurface.tsx';
 import { ControllerMenu, StatusToast } from './ControllerMenu.tsx';
-import { Gallery } from '../controls/gallery/Gallery.tsx';
-import { Designer } from '../controls/designer/Designer.tsx';
-import { Preview } from '../controls/preview/Preview.tsx';
-import { MotionLab } from './MotionLab.tsx';
 import { GameCanvas } from './GameCanvas.tsx';
+import { games, findGame } from './minigames/catalog.ts';
+import { standingsForPresentation } from './standings.ts';
+import { motionDiagnostics, type AppExtensions } from './extensions.ts';
 import type { Identity, Role } from '../core/types.ts';
 function getResume(role: Role, room: string, venue: string) {
   try {
@@ -51,7 +48,7 @@ function getResume(role: Role, room: string, venue: string) {
   }
   return undefined;
 }
-export default function App() {
+export default function App({ extensions }: { extensions?: AppExtensions }) {
   const [runtime, setRuntime] = useState<Runtime | null>(null),
     [role, setRole] = useState<Role>('host'),
     [room, setRoom] = useState(''),
@@ -59,19 +56,13 @@ export default function App() {
     [name, setName] = useState(''),
     [endpoint, setEndpoint] = useState(''),
     [error, setError] = useState(''),
-    [resume, setResume] = useState(true),
-    [tool, setTool] = useState<{
-      page: 'gallery' | 'designer' | 'preview';
-      layout: string | null;
-    } | null>(null);
+    [resume, setResume] = useState(true);
   const runtimeRef = useRef<Runtime | null>(null);
   useEffect(() => {
     queueMicrotask(() => {
       const params = new URLSearchParams(location.search);
       const r = params.get('role');
       if (r === 'display' || r === 'controller') setRole(r);
-      if (r === 'gallery' || r === 'designer' || r === 'preview')
-        setTool({ page: r, layout: params.get('layout') });
       setRoom(params.get('room') ?? '');
       setVenue(params.get('venue') ?? '');
       setEndpoint(
@@ -119,10 +110,10 @@ export default function App() {
     runtimeRef.current = null;
     setRuntime(null);
   }
-  if (tool?.page === 'gallery') return <Gallery />;
-  if (tool?.page === 'designer') return <Designer layoutId={tool.layout} />;
-  if (tool?.page === 'preview') return <Preview layoutId={tool.layout} />;
-  if (runtime) return <Connected runtime={runtime} leave={leave} />;
+  if (runtime)
+    return (
+      <Connected runtime={runtime} leave={leave} extensions={extensions} />
+    );
   return (
     <main className="shell">
       <header className="topbar">
@@ -133,21 +124,7 @@ export default function App() {
         <span className="connection">
           <i /> READY, PLAYER?
         </span>
-        {/* Full page loads: these pages read ?role= once, on mount. */}
-        <nav className="tool-links" aria-label="Controller tools">
-          <button
-            type="button"
-            onClick={() => location.assign('/?role=designer')}
-          >
-            <LayoutGrid /> Layout designer
-          </button>
-          <button
-            type="button"
-            onClick={() => location.assign('/?role=gallery')}
-          >
-            <Gamepad2 /> Controller playground
-          </button>
-        </nav>
+        {extensions?.homeNavigation}
       </header>
       <section className="entry">
         <div className="entry-copy">
@@ -319,16 +296,21 @@ export default function App() {
 function Connected({
   runtime,
   leave,
+  extensions,
 }: {
   runtime: Runtime;
   leave: () => void;
+  extensions?: AppExtensions;
 }) {
   const [, redraw] = useState(0),
-    [game, setGame] = useState('latency-lab'),
-    [mode, setMode] = useState('reaction'),
+    [game, setGame] = useState(games[0].id),
+    [mode, setMode] = useState(games[0].defaultMode),
     [hud, setHud] = useState(false),
     [copied, setCopied] = useState(false),
-    [motionLab, setMotionLab] = useState(false);
+    [panelOpen, setPanelOpen] = useState(false);
+  const panel = extensions?.controllerPanel;
+  const Panel = panel?.Component;
+  const motion = useMemo(() => motionDiagnostics(runtime.motion), [runtime]);
   const stage = useRef<HTMLDivElement>(null);
   useEffect(() => runtime.subscribe(() => redraw((x) => x + 1)), [runtime]);
   const v = runtime.view,
@@ -381,7 +363,7 @@ function Connected({
                 room: runtime.view.identity?.room,
                 role: runtime.view.identity?.role,
                 roster: runtime.view.roster,
-                phase: runtime.view.state?.phase ?? runtime.view.phase,
+                phase: runtime.view.phase,
                 status: runtime.view.status,
                 D: runtime.view.D,
               };
@@ -425,7 +407,11 @@ function Connected({
         <ControllerMenu
           runtime={runtime}
           corner={v.config?.menu ?? 'top-right'}
-          onMotionLab={() => setMotionLab(true)}
+          extraAction={
+            panel
+              ? { label: panel.label, run: () => setPanelOpen(true) }
+              : undefined
+          }
           leave={leave}
         />
       );
@@ -442,8 +428,8 @@ function Connected({
               Join another room
             </Button>
           </div>
-        ) : motionLab ? (
-          <MotionLab runtime={runtime} onClose={() => setMotionLab(false)} />
+        ) : panelOpen && Panel ? (
+          <Panel motion={motion} onClose={() => setPanelOpen(false)} />
         ) : v.adjustingAim ? (
           <div className="calibrate">
             <span className="eyebrow lime">AIM SETTINGS</span>
@@ -477,9 +463,11 @@ function Connected({
               <RotateCcw />
               Recenter
             </Button>
-            <Button variant="outline" onClick={() => setMotionLab(true)}>
-              Motion lab
-            </Button>
+            {panel && (
+              <Button variant="outline" onClick={() => setPanelOpen(true)}>
+                {panel.label}
+              </Button>
+            )}
             <Button
               className="action"
               onClick={() => runtime.finishAdjustAim()}
@@ -494,15 +482,17 @@ function Connected({
           </div>
         ) : (
           <ControllerSurface
-            key={`${v.config.configId}:${v.config.generation}`}
+            key={`${v.config.configId}:${v.config.generation}:${v.inputEpoch}`}
             widgets={v.config.widgets}
             accent={accent}
-            portFor={(w) => ({
-              value: (value) => runtime.action(w.action, value),
-              press: (down) => runtime.press(w.action, down),
-              haptic: (ms) => runtime.haptic(ms),
-            })}
-            fallback={(w) => <LegacyWidget widget={w} runtime={runtime} />}
+            portFor={(w) => runtime.portFor(w, v.config!.generation)}
+            fallback={(w) => (
+              <LegacyWidget
+                widget={w}
+                runtime={runtime}
+                generation={v.config!.generation}
+              />
+            )}
           >
             {menu}
           </ControllerSurface>
@@ -529,7 +519,13 @@ function Connected({
     }
   }
   const active = v.roster.players.filter((p) => p.connected),
-    playing = v.state?.phase === 'running' || v.state?.phase === 'countdown';
+    selected = findGame(game) ?? games[0],
+    playing = ['loading', 'countdown', 'running', 'settling'].includes(v.phase),
+    standings = standingsForPresentation(
+      v.progress,
+      v.state?.progress ?? null,
+      v.phase,
+    );
   return (
     <main className="shell">
       <header className="topbar">
@@ -591,7 +587,7 @@ function Connected({
       <div className="play-layout">
         <div>
           <div className="stage" ref={stage}>
-            <GameCanvas runtime={runtime} />
+            <GameCanvas port={runtime.screenPort} />
           </div>
           <div className="health">
             {v.roster.venues.filter((v) => v.connected).length} screen(s)
@@ -616,7 +612,9 @@ function Connected({
                     opacity: p.connected ? 1 : 0.3,
                   }}
                 />
-                <span>{p.name}</span>
+                <span>
+                  {p.name} · {standings[p.id] ?? 0} pts
+                </span>
                 <small>
                   {p.connected
                     ? p.venueId === me.id
@@ -647,47 +645,49 @@ function Connected({
       {me.role === 'host' && !v.ended && (
         <>
           <div className="game-options">
-            <Button
-              className={
-                'game-option ' + (game === 'latency-lab' ? 'active' : '')
-              }
-              disabled={playing}
-              onClick={() => setGame('latency-lab')}
-            >
-              <Crosshair />
-              <span>
-                LATENCY LAB
-                <br />
-                <small>Aim. React. Test your connection.</small>
-              </span>
-            </Button>
-            <Button
-              className={
-                'game-option ' + (game === 'tilt-rally' ? 'active' : '')
-              }
-              disabled={playing}
-              onClick={() => setGame('tilt-rally')}
-            >
-              <Gamepad2 />
-              <span>
-                TILT RALLY
-                <br />
-                <small>Steer with motion. Swipe for speed.</small>
-              </span>
-            </Button>
+            {games.map((descriptor) => (
+              <Button
+                key={descriptor.id}
+                className={
+                  'game-option ' + (game === descriptor.id ? 'active' : '')
+                }
+                disabled={playing}
+                onClick={() => {
+                  setGame(descriptor.id);
+                  setMode(descriptor.defaultMode);
+                }}
+              >
+                <Gamepad2 />
+                <span>
+                  {descriptor.name}
+                  <br />
+                  <small>
+                    {descriptor.players.min}–{descriptor.players.max} players ·{' '}
+                    {descriptor.durationMs / 1000} seconds
+                  </small>
+                </span>
+              </Button>
+            ))}
           </div>
-          {game === 'latency-lab' && (
-            <div className="mode-row" aria-label="Latency Lab mode">
-              {['reaction', 'tracking', 'strobe', 'fairness'].map((m) => (
+          {selected.instructions && (
+            <ul className="note" aria-label={`${selected.name} instructions`}>
+              {selected.instructions.map((instruction) => (
+                <li key={instruction}>{instruction}</li>
+              ))}
+            </ul>
+          )}
+          {selected.modes.length > 1 && (
+            <div className="mode-row" aria-label={`${selected.name} mode`}>
+              {selected.modes.map((choice) => (
                 <button
-                  key={m}
+                  key={choice.id}
                   type="button"
-                  className={mode === m ? 'active' : ''}
+                  className={mode === choice.id ? 'active' : ''}
                   disabled={playing}
-                  aria-pressed={mode === m}
-                  onClick={() => setMode(m)}
+                  aria-pressed={mode === choice.id}
+                  onClick={() => setMode(choice.id)}
                 >
-                  {m.charAt(0).toUpperCase() + m.slice(1)}
+                  {choice.name}
                 </button>
               ))}
             </div>
@@ -695,23 +695,30 @@ function Connected({
           <div className="actions">
             <Button
               className="action"
-              disabled={active.length < 2 || playing}
+              disabled={
+                active.length < selected.players.min ||
+                active.length > selected.players.max ||
+                playing
+              }
               onClick={() => {
                 void runtime.unlock();
-                runtime.startGame(game, game === 'tilt-rally' ? 'rally' : mode);
+                runtime.startGame(selected.id, mode);
               }}
             >
               {playing
                 ? 'Round in progress'
-                : active.length < 2
-                  ? 'Connect two phones to start'
+                : active.length < selected.players.min
+                  ? `Connect ${selected.players.min} phones to start`
                   : 'Start round'}
               <ArrowUpRight />
             </Button>
+            {playing && (
+              <Button variant="outline" onClick={() => runtime.abortGame()}>
+                Abort round
+              </Button>
+            )}
             <span className="note">
-              {game === 'latency-lab'
-                ? '30 seconds · Pointer + fire button'
-                : '30 seconds · Tilt + swipe'}
+              {selected.durationMs / 1000} seconds · {selected.name}
             </span>
           </div>
         </>

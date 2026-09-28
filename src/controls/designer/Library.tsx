@@ -3,7 +3,9 @@
 // Create, open, duplicate or delete layouts here.
 import { useState } from 'react';
 import { Copy, Pencil, Plus, Smartphone, Trash2 } from 'lucide-react';
-import { manifests } from '../../core/config.ts';
+import { games as catalog } from '../../client/minigames/catalog.ts';
+import { controllerManifest } from '../../client/engine/input.ts';
+const manifests = catalog.map(controllerManifest);
 import { COLORS } from '../../core/types.ts';
 import { layouts } from '../../layouts/index.ts';
 import { ControllerSurface } from '../ControllerSurface.tsx';

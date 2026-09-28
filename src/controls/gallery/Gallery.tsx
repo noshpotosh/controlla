@@ -48,7 +48,7 @@ export function Gallery() {
   const accent = COLORS[color];
   return (
     <main
-      className="ctl-gallery"
+      className="ctl-gallery ctl-scope"
       style={{ '--ctl-accent': accent } as CSSProperties}
     >
       <header className="ctl-gallery__head">

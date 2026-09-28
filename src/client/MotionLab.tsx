@@ -2,7 +2,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { Runtime } from './runtime.ts';
+import type {
+  ControllerPanelProps,
+  MotionDiagnosticsPort,
+} from './extensions.ts';
 import type {
   MotionTrace,
   RawMotionSample,
@@ -139,14 +142,7 @@ function buildTrace(
   };
 }
 
-export function MotionLab({
-  runtime,
-  onClose,
-}: {
-  runtime: Runtime;
-  onClose: () => void;
-}) {
-  const motion = runtime.motion;
+export function MotionLab({ motion, onClose }: ControllerPanelProps) {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [name, setName] = useState(defaultName);
   const recorded = useRef<RawMotionSample[]>([]);
@@ -155,7 +151,7 @@ export function MotionLab({
 
   useEffect(() => {
     motion.start();
-    return motion.onSample((sample) => {
+    return motion.subscribe((sample) => {
       if (recording.current) recorded.current.push(sample);
     });
   }, [motion]);
@@ -180,7 +176,7 @@ export function MotionLab({
   function captureLast() {
     const end = performance.now(),
       start = end - CAPTURE_SECONDS * 1000,
-      samples = motion.samples.toArray().filter((s) => s.t >= start);
+      samples = motion.recentSamples().filter((s) => s.t >= start);
     finish(samples, [
       {
         label: 'capture',
@@ -273,7 +269,7 @@ export function MotionLab({
     return () => clearInterval(timer);
   });
 
-  const granted = motion.capabilities.sensors.gyro.permission === 'granted';
+  const granted = motion.permission() === 'granted';
   const step =
     phase.kind === 'recording' ? RECORDING_SCRIPT[phase.step] : undefined;
 
@@ -345,7 +341,7 @@ export function MotionLab({
           </Button>
         </>
       ) : null}
-      <LiveReadout runtime={runtime} />
+      <LiveReadout motion={motion} />
     </div>
   );
 }
@@ -404,12 +400,11 @@ function summarize(samples: RawMotionSample[]): Readout | null {
 }
 
 /** Live sensor view: which channels respond to which movement. */
-function LiveReadout({ runtime }: { runtime: Runtime }) {
-  const motion = runtime.motion;
+function LiveReadout({ motion }: { motion: MotionDiagnosticsPort }) {
   const [readout, setReadout] = useState<Readout | null>(null);
   useEffect(() => {
     const recent: RawMotionSample[] = [];
-    const off = motion.onSample((s) => {
+    const off = motion.subscribe((s) => {
       recent.push(s);
       if (recent.length > 120) recent.shift();
     });

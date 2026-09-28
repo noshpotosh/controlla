@@ -1,18 +1,41 @@
-import { PartyGame } from '../games/engine.ts';
-import { defaultCapabilities, manifests, resolveConfig } from './config.ts';
+import { defaultCapabilities } from './config.ts';
+import {
+  defaultGame,
+  findGame,
+  resolveMode,
+} from '../client/minigames/catalog.ts';
+import { resolveController } from '../client/engine/input.ts';
+import { RoundRunner } from '../client/engine/round.ts';
+import {
+  SessionProgress,
+  completedResults,
+} from '../client/engine/progress.ts';
+import { historyMessages, messageFits } from '../client/engine/history.ts';
+import type {
+  GameInput,
+  Point,
+  PresentationEvent,
+  RoundSnapshot,
+  ValueSample,
+} from '../client/api/index.ts';
 import { SequenceWindow, decodeInput } from './protocol.ts';
 import { ContinuousBuffer, Equalizer, Samples } from './timing.ts';
 import { SnapshotEncoder } from './snapshots.ts';
+import { ARBITRATION_MS } from './arbitration.ts';
+import { channelOf, usesPressSlot } from '../controls/registry.ts';
+import {
+  parseActivationValue,
+  parseControlValue,
+  valueFitsEnvelope,
+} from '../controls/value.ts';
 import {
   now,
   type Capabilities,
   type ControllerConfig,
-  type GameEvent,
   type InputFrame,
   type Message,
   type Player,
   type Press,
-  type Result,
   type Roster,
   type Snapshot,
 } from './types.ts';
@@ -20,11 +43,19 @@ export interface SessionPorts {
   toPlayer: (id: string, message: Message) => void;
   toVenue: (id: string, message: Message) => void;
   snapshot: (id: string, message: Message) => void;
-  event: (id: string, event: GameEvent) => void;
+  event: (id: string, event: PresentationEvent & { roundId: string }) => void;
   warning: (message: string) => void;
 }
 export class SessionAuthority {
-  private game = new PartyGame('latency-lab');
+  private runner: RoundRunner | null = null;
+  private readonly progress = new SessionProgress();
+  private selectedGame = defaultGame.id;
+  private selectedMode = defaultGame.defaultMode;
+  private disposed = false;
+  private progressRevisionSent = -1;
+  private latestMarker: string | null = null;
+  private markers = new Map<string, PresentationEvent>();
+  private cursors: Record<string, Point> = {};
   private roster: Roster = { players: [], venues: [] };
   private capabilities = new Map<string, Capabilities>();
   private configs = new Map<string, ControllerConfig>();
@@ -32,8 +63,11 @@ export class SessionAuthority {
   private streams = new Map<string, ContinuousBuffer<InputFrame>>();
   private edgeSeen = new Map<string, number>();
   private edges = new Map<string, number[]>();
-  private pendingPresses: Press[] = [];
-  private widgetValues = new Map<string, Record<string, unknown>>();
+  private widgetValues = new Map<string, GameInput['values'][string]>();
+  private widgetSequences = new Map<
+    string,
+    Map<string, { generation: number; seq: number }>
+  >();
   private ready = new Set<string>();
   private pending: { gameId: string; mode: string; at: number } | null = null;
   private lastTick = now() - 1000 / 60;
@@ -44,8 +78,7 @@ export class SessionAuthority {
   private generation = 0;
   private lastTelemetry = 0;
   private lastPhase = 'lobby';
-  private histories: { gameId: string; results: Result[] }[] = [];
-  readonly encoder = new SnapshotEncoder();
+  readonly encoder = new SnapshotEncoder<RoundSnapshot>();
   readonly equalizer = new Equalizer();
   readonly venueDelays = new Map<string, Samples>();
   readonly playerMetrics = new Map<
@@ -67,13 +100,38 @@ export class SessionAuthority {
     this.venueDelays.get(hostId)!.add(0);
   }
   setRoster(roster: Roster) {
+    const returned = new Set<string>();
+    const time = now();
+    const clearDisconnectedInput = (id: string) => {
+      this.streams.delete(id);
+      this.widgetValues.delete(id);
+      this.widgetSequences.delete(id);
+      delete this.cursors[id];
+    };
     for (const old of this.roster.players) {
       const current = roster.players.find((p) => p.id === old.id);
-      if (old.connected && !current?.connected)
-        this.game.onPlayerDropped(old.id, now());
-      else if (!old.connected && current?.connected)
-        this.game.onPlayerReturned(old.id);
+      if (!current?.connected) {
+        clearDisconnectedInput(old.id);
+        if (old.connected) this.runner?.connection(old.id, false, time);
+      } else if (!old.connected) {
+        returned.add(old.id);
+        this.runner?.connection(old.id, true, time);
+      }
     }
+    // A removed identity returning is also a reconnect, even without an
+    // intermediate disconnected entry retained in the caller's roster.
+    for (const player of roster.players)
+      if (
+        player.connected &&
+        this.configs.has(player.id) &&
+        !this.roster.players.some(
+          (old) => old.id === player.id && old.connected,
+        )
+      ) {
+        if (!returned.has(player.id))
+          this.runner?.connection(player.id, true, time);
+        returned.add(player.id);
+      }
     this.roster = structuredClone(roster);
     for (const v of roster.venues)
       if (v.connected) {
@@ -82,17 +140,18 @@ export class SessionAuthority {
       } else this.venueDelays.delete(v.id);
     this.equalizer.update(this.venueDelays);
     for (const p of roster.players) {
-      if (!this.configs.has(p.id)) this.configurePlayer(p);
-      if (!p.connected) this.streams.delete(p.id);
+      if (returned.has(p.id)) {
+        this.generation = (this.generation + 1) % 65536;
+        this.configurePlayer(p, true);
+      } else if (!this.configs.has(p.id)) this.configurePlayer(p);
+      if (!p.connected) clearDisconnectedInput(p.id);
     }
   }
   private configurePlayer(p: Player, force = false) {
-    const manifest = manifests.find(
-      (m) => m.id === (this.pending?.gameId ?? this.game.gameId),
-    )!;
+    const descriptor = findGame(this.selectedGame)!;
     try {
-      let config = resolveConfig(
-        manifest,
+      let config = resolveController(
+        descriptor,
         this.capabilities.get(p.id) ?? defaultCapabilities(),
         this.generation,
       );
@@ -111,9 +170,9 @@ export class SessionAuthority {
         this.streams.delete(p.id);
         this.edges.delete(p.id);
         this.widgetValues.delete(p.id);
-        this.pendingPresses = this.pendingPresses.filter(
-          (x) => x.playerId !== p.id,
-        );
+        this.widgetSequences.delete(p.id);
+        this.runner?.clearInput(p.id, now());
+        delete this.cursors[p.id];
       }
       this.configs.set(p.id, config);
       this.ports.toPlayer(p.id, { type: 'config', config });
@@ -145,14 +204,12 @@ export class SessionAuthority {
         this.generation = (this.generation + 1) % 65536;
       }
       this.configurePlayer(player, newBoot);
-      this.ports.toPlayer(from, {
-        type: 'phase',
-        phase: this.game.state.phase,
-        history: this.histories,
-      });
+      this.ports.toPlayer(from, this.phaseMessage());
+      this.sendProgress(from);
     } else if (
       msg.type === 'ready' &&
-      player &&
+      player?.connected &&
+      this.configs.has(from) &&
       msg.generation === this.configs.get(from)?.generation
     )
       this.ready.add(from);
@@ -160,29 +217,63 @@ export class SessionAuthority {
       this.press({ ...msg.press, playerId: from });
     else if (
       msg.type === 'widget' &&
-      player &&
-      this.configs.get(from)?.widgets.some((w) => w.action === msg.action) &&
-      JSON.stringify(msg.value ?? null).length < 4096
+      player?.connected &&
+      this.ready.has(from)
     ) {
-      const values = this.widgetValues.get(from) ?? {};
-      values[msg.action] = structuredClone(msg.value);
-      this.widgetValues.set(from, values);
+      const config = this.configs.get(from);
+      const widget = config?.widgets.find((w) => w.action === msg.action);
+      if (
+        !config ||
+        !widget ||
+        channelOf(widget.type).channel === 'press' ||
+        msg.generation !== config.generation ||
+        !Number.isSafeInteger(msg.seq) ||
+        msg.seq < 0 ||
+        !Number.isFinite(msg.time) ||
+        msg.time > time + 100 ||
+        time - msg.time > 2000 ||
+        !valueFitsEnvelope(msg.value)
+      )
+        return;
+      const value = parseControlValue(widget.type, msg.value);
+      if (value === undefined) return;
+      const sequences =
+        this.widgetSequences.get(from) ??
+        new Map<string, { generation: number; seq: number }>();
+      const previous = sequences.get(widget.action);
+      if (previous?.generation === config.generation && msg.seq <= previous.seq)
+        return;
+      sequences.set(widget.action, {
+        generation: config.generation,
+        seq: msg.seq,
+      });
+      this.widgetSequences.set(from, sequences);
+      this.widgetValues.set(from, {
+        ...this.widgetValues.get(from),
+        [widget.action]: { value, time: msg.time },
+      });
     } else if (msg.type === 'clockStats' && player) {
       const m = this.playerMetrics.get(from);
       if (m) m.clock = msg;
-    } else if (msg.type === 'venueHello' && venue)
-      this.ports.toVenue(from, { type: 'history', history: this.histories });
-    else if (msg.type === 'snapshotAck' && venue && Number.isInteger(msg.id))
+    } else if (msg.type === 'venueHello' && venue?.connected) {
+      this.ports.toVenue(from, this.phaseMessage());
+      this.sendProgress(from);
+    } else if (msg.type === 'snapshotAck' && venue && Number.isInteger(msg.id))
       this.encoder.ack(from, msg.id);
     else if (msg.type === 'resync' && venue) this.encoder.acks.delete(from);
     else if (
       msg.type === 'presented' &&
-      venue &&
+      venue?.connected &&
+      msg.roundId === this.runner?.roundId &&
+      typeof msg.eventId === 'string' &&
       Number.isFinite(msg.at) &&
-      Math.abs(now() - msg.at) < 5000
+      Math.abs(time - msg.at) < 5000
     ) {
-      const key = `${msg.round}:${msg.promptId}`;
+      const marker = this.markers.get(msg.eventId);
+      if (!marker?.measure || msg.at < marker.time) return;
+      const key = `${msg.roundId}:${msg.eventId}`;
       const times = this.presentedTimes.get(key) ?? new Map<string, number>();
+      if (times.has(from)) return;
       times.set(from, msg.at);
       this.presentedTimes.set(key, times);
       while (this.presentedTimes.size > 30)
@@ -203,7 +294,7 @@ export class SessionAuthority {
   }
   input(playerId: string, buffer: ArrayBuffer) {
     const p = this.roster.players.find((p) => p.id === playerId && p.connected);
-    if (!p) return;
+    if (!p || !this.ready.has(playerId)) return;
     let f: InputFrame;
     try {
       f = decodeInput(buffer, now());
@@ -231,7 +322,16 @@ export class SessionAuthority {
     const prev = this.edges.get(playerId) ?? [0, 0, 0, 0];
     for (let b = 0; b < 4; b++) {
       const delta = (f.edges[b] - prev[b] + 256) % 256;
-      if (delta > 0 && delta < 128)
+      const widget = this.configs
+        .get(playerId)
+        ?.widgets.filter((w) => usesPressSlot(w.type))[b];
+      // A recovered binary edge cannot reconstruct an atomic swipe/charge value.
+      if (
+        delta > 0 &&
+        delta < 128 &&
+        widget &&
+        channelOf(widget.type).channel === 'press'
+      )
         this.press({
           playerId,
           generation: f.generation,
@@ -261,6 +361,28 @@ export class SessionAuthority {
   }
   private press(p: Press) {
     const time = now();
+    const player = this.roster.players.find(
+      (candidate) => candidate.id === p.playerId && candidate.connected,
+    );
+    const config = this.configs.get(p.playerId);
+    const widget = config?.widgets.filter((w) => usesPressSlot(w.type))[
+      p.button
+    ];
+    const state = this.runner;
+    if (
+      !player ||
+      !config ||
+      !widget ||
+      !state ||
+      !this.ready.has(p.playerId) ||
+      this.pending ||
+      !['countdown', 'running', 'settling'].includes(state.phase) ||
+      time < state.startAt ||
+      p.time < state.startAt ||
+      p.time >= state.endAt ||
+      time >= state.endAt + ARBITRATION_MS
+    )
+      return;
     if (
       p.generation !== this.configs.get(p.playerId)?.generation ||
       !Number.isInteger(p.button) ||
@@ -274,119 +396,248 @@ export class SessionAuthority {
       time - p.time > 2000
     )
       return;
-    const key = `${p.playerId}:${p.generation}:${p.button}:${p.counter}:${Math.round(p.time)}`;
+    const both = channelOf(widget.type).channel === 'both';
+    const value =
+      both && valueFitsEnvelope(p.value)
+        ? parseActivationValue(widget.type, p.value)
+        : undefined;
+    if ((both && value === undefined) || (!both && p.value !== undefined))
+      return;
+    const key = `${p.playerId}:${p.generation}:${p.button}:${p.counter}:${Math.round(p.time * 1000)}`;
     if (this.edgeSeen.has(key)) return;
-    this.edgeSeen.set(key, time);
-    if (this.pendingPresses.length < 256) this.pendingPresses.push(p);
+    if (
+      state.input(
+        {
+          playerId: p.playerId,
+          name: widget.action,
+          time: p.time,
+          aim: { x: p.x, y: p.y },
+          ...(both ? { value } : {}),
+        },
+        time,
+      )
+    )
+      this.edgeSeen.set(key, time);
   }
   start(gameId: string, mode: string) {
-    if (!manifests.some((m) => m.id === gameId))
-      throw new Error('Unknown minigame');
+    if (this.disposed) throw new Error('This session has ended.');
+    const descriptor = findGame(gameId);
+    if (!descriptor) throw new Error('Unknown minigame');
+    const selectedMode = resolveMode(descriptor, mode);
     if (
-      this.game.state.phase === 'running' ||
-      this.game.state.phase === 'countdown' ||
-      this.pending
+      this.pending ||
+      (this.runner &&
+        ['countdown', 'running', 'settling'].includes(this.runner.phase))
     )
       throw new Error('Finish the current round first.');
     const players = this.roster.players.filter((p) => p.connected);
-    if (players.length < 2)
-      throw new Error('Connect at least two phones to start.');
+    if (
+      players.length < descriptor.players.min ||
+      players.length > descriptor.players.max
+    )
+      throw new Error(
+        `${descriptor.name} needs ${descriptor.players.min}–${descriptor.players.max} connected phones.`,
+      );
+    // Validate every required binding before disturbing the previous round/configuration.
+    for (const player of players)
+      resolveController(
+        descriptor,
+        this.capabilities.get(player.id) ?? defaultCapabilities(),
+        this.generation,
+      );
+    const runner = new RoundRunner(descriptor, this.progress, selectedMode);
+    this.runner?.dispose();
+    this.selectedGame = descriptor.id;
+    this.selectedMode = selectedMode;
     this.generation = (this.generation + 1) % 65536;
     this.ready.clear();
     this.windows.clear();
     this.streams.clear();
     this.edges.clear();
     this.edgeSeen.clear();
-    this.pendingPresses = [];
     this.widgetValues.clear();
-    this.pending = { gameId, mode, at: now() };
-    for (const p of players) this.configurePlayer(p, true);
+    this.widgetSequences.clear();
+    this.markers.clear();
+    this.presentedTimes.clear();
+    this.latestMarker = null;
+    this.cursors = {};
+    this.runner = runner;
+    this.pending = { gameId, mode: selectedMode, at: now() };
+    for (const player of players) this.configurePlayer(player, true);
+    void this.runner.load();
+    this.announce();
+  }
+  abort() {
+    this.pending = null;
+    this.runner?.abort();
+    this.cursors = {};
+    this.announce();
+    this.publish(now(), true);
+  }
+  private phaseMessage(): Message {
+    return {
+      type: 'phase',
+      phase: this.pending ? 'loading' : (this.runner?.phase ?? 'lobby'),
+      gameId: this.selectedGame,
+      mode: this.selectedMode,
+      roundId: this.runner?.roundId ?? null,
+      error: this.runner?.error ?? null,
+    };
+  }
+  private sendProgress(id: string) {
+    try {
+      for (const message of historyMessages(this.progress.view()))
+        this.reply(id, message);
+    } catch (error) {
+      // The host ledger remains intact even if an unusually long session cannot hydrate.
+      this.ports.warning(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+  private announce() {
+    const message = this.phaseMessage();
+    const key = JSON.stringify(message);
+    if (key !== this.lastPhase) {
+      this.lastPhase = key;
+      for (const player of this.roster.players.filter((p) => p.connected))
+        this.ports.toPlayer(player.id, message);
+      for (const venue of this.roster.venues.filter((v) => v.connected))
+        this.ports.toVenue(venue.id, message);
+      if (message.error) this.ports.warning(message.error);
+    }
+    if (this.progress.revision !== this.progressRevisionSent) {
+      this.progressRevisionSent = this.progress.revision;
+      for (const player of this.roster.players.filter((p) => p.connected))
+        this.sendProgress(player.id);
+      for (const venue of this.roster.venues.filter((v) => v.connected))
+        this.sendProgress(venue.id);
+    }
+  }
+  private publish(time: number, force = false) {
+    if (!force && time - this.lastSnapshot < 40) return;
+    const state = this.runner?.snapshot(this.cursors);
+    if (!state) return;
+    this.lastSnapshot = time;
+    const snapshot: Snapshot<RoundSnapshot> = {
+      id: ++this.snapshotId,
+      time,
+      state,
+    };
+    this.encoder.add(snapshot);
+    for (const venue of this.roster.venues.filter((v) => v.connected)) {
+      const message = {
+        type: 'snapshot',
+        snapshot: this.encoder.forPeer(venue.id, snapshot),
+        delay: this.equalizer.current,
+        limitingVenue: this.equalizer.limitingVenue,
+      };
+      if (!messageFits(message, this.hostId, venue.id, 'snapshot')) {
+        this.runner?.abort('Game snapshot exceeds the transport limit.');
+        this.ports.warning('Game snapshot exceeds the transport limit.');
+        return;
+      }
+      this.ports.snapshot(venue.id, message);
+    }
   }
   tick(time = now()) {
-    if (time - this.lastTick < 1000 / 60) return;
+    if (this.disposed || time - this.lastTick < 1000 / 60) return;
     const dt = Math.min(50, Math.max(0, time - this.lastTick));
     this.lastTick = time;
     this.equalizer.tick(dt);
-    if (this.pending) {
+    const previousPhase = this.runner?.phase;
+    if (this.pending && this.runner) {
       const players = this.roster.players.filter((p) => p.connected);
-      if (players.length >= 2 && players.every((p) => this.ready.has(p.id))) {
-        this.game = new PartyGame(
-          this.pending.gameId,
-          manifests.find((m) => m.id === this.pending!.gameId)!.onPlayerDropped,
+      if (this.runner.phase === 'error') this.pending = null;
+      else if (time - this.pending.at >= 15000) {
+        this.runner.abort(
+          'Game or controller configuration did not become ready within 15 seconds. Reconnect and try again.',
         );
-        this.game.load();
-        if (!this.game.ready())
-          throw new Error('Minigame did not finish loading');
-        this.game.configure(players, Object.fromEntries(this.configs));
-        this.game.start(time, this.pending.mode);
         this.pending = null;
-      } else if (time - this.pending.at > 15000) {
+      } else if (
+        this.runner.loaded &&
+        players.length >= this.runner.descriptor.players.min &&
+        players.length <= this.runner.descriptor.players.max &&
+        players.every((p) => this.ready.has(p.id))
+      ) {
+        this.runner.begin(players, time);
         this.pending = null;
-        this.ports.warning(
-          'A phone did not confirm its controller configuration. Reconnect it and try again.',
-        );
       }
     }
-    const inputs: Record<string, InputFrame> = {};
-    for (const [id, stream] of this.streams) {
-      const f = stream.sample(time);
-      if (f && time - f.time < 500)
-        inputs[id] = {
-          ...f,
-          values: structuredClone(this.widgetValues.get(id) ?? {}),
-        };
+    const values: Record<string, Record<string, ValueSample>> = {};
+    for (const player of this.roster.players.filter(
+      (p) => p.connected && this.ready.has(p.id),
+    )) {
+      const frame = this.streams.get(player.id)?.sample(time);
+      const widgets = this.configs.get(player.id)?.widgets ?? [];
+      const samples = this.widgetValues.get(player.id) ?? {};
+      const active: Record<string, ValueSample> = {};
+      for (const widget of widgets) {
+        const sample = samples[widget.action];
+        if (
+          !sample ||
+          (time - sample.time >= 500 && (!frame || time - frame.time >= 500))
+        )
+          continue;
+        const copied = structuredClone(sample);
+        if (frame && time - frame.time < 500)
+          copied.observedAt = Math.max(sample.time, frame.time);
+        if (
+          widget.space === 'normalized' &&
+          ['stick', 'dpad', 'aim-pad'].includes(widget.type)
+        ) {
+          const point = copied.value as Point;
+          copied.value = { x: (point.x + 1) / 2, y: (point.y + 1) / 2 };
+        }
+        active[widget.action] = copied;
+      }
+      // Binary motion has one coordinate pair. Touch values retain their independent channels.
+      const primary =
+        widgets.find((widget) => ['pointer', 'tilt'].includes(widget.type)) ??
+        widgets.find((widget) =>
+          ['stick', 'dpad', 'aim-pad'].includes(widget.type),
+        );
+      if (frame && time - frame.time < 500 && primary) {
+        const touch = active[primary.action];
+        if (!touch || ['pointer', 'tilt'].includes(primary.type))
+          active[primary.action] = {
+            value: { x: frame.x, y: frame.y },
+            time: frame.time,
+          };
+      }
+      for (const widget of widgets) {
+        const sample = active[widget.action];
+        const point = sample?.value as Point | undefined;
+        if (
+          widget.space === 'normalized' &&
+          point &&
+          typeof point === 'object' &&
+          Number.isFinite(point.x) &&
+          Number.isFinite(point.y)
+        )
+          this.cursors[player.id] = { x: point.x, y: point.y };
+      }
+      values[player.id] = active;
     }
-    // Bounded arbitration window: collect late contenders before judging by timestamp.
-    const mature = this.pendingPresses.filter((p) => p.time <= time - 200);
-    this.pendingPresses = this.pendingPresses.filter(
-      (p) => p.time > time - 200,
-    );
+    const events =
+      this.runner?.tick(time, dt, values, this.equalizer.current) ?? [];
     for (const [key, at] of this.edgeSeen)
       if (time - at > 3000) this.edgeSeen.delete(key);
-    const events = this.game.frame(
-      structuredClone(inputs),
-      structuredClone(mature),
-      time,
-      dt,
-      this.equalizer.current,
-    );
-    if (this.game.state.phase !== this.lastPhase) {
-      this.lastPhase = this.game.state.phase;
-      if (this.lastPhase === 'results') {
-        this.histories.push({
-          gameId: this.game.gameId,
-          results: this.game.results(),
-        });
-        this.histories = this.histories.slice(-50);
+    for (const event of events) {
+      if (event.measure) {
+        this.markers.set(event.id, structuredClone(event));
+        this.latestMarker = `${this.runner!.roundId}:${event.id}`;
+        while (this.markers.size > 128)
+          this.markers.delete(this.markers.keys().next().value!);
       }
-      for (const p of this.roster.players)
-        this.ports.toPlayer(p.id, {
-          type: 'phase',
-          phase: this.lastPhase,
-          history: this.histories,
-        });
-      for (const v of this.roster.venues)
-        this.ports.toVenue(v.id, { type: 'history', history: this.histories });
-    }
-    for (const event of events)
-      for (const v of this.roster.venues.filter((v) => v.connected))
-        this.ports.event(v.id, event);
-    if (time - this.lastSnapshot >= 40) {
-      this.lastSnapshot = time;
-      const snapshot: Snapshot = {
-        id: ++this.snapshotId,
-        time,
-        state: this.game.snapshot(),
-      };
-      this.encoder.add(snapshot);
-      for (const v of this.roster.venues.filter((v) => v.connected))
-        this.ports.snapshot(v.id, {
-          type: 'snapshot',
-          snapshot: this.encoder.forPeer(v.id, snapshot),
-          delay: this.equalizer.current,
-          limitingVenue: this.equalizer.limitingVenue,
+      for (const venue of this.roster.venues.filter((v) => v.connected))
+        this.ports.event(venue.id, {
+          ...event,
+          roundId: this.runner!.roundId!,
         });
     }
+    this.announce();
+    this.publish(time, this.runner?.phase !== previousPhase);
     if (time - this.lastTelemetry > 1000) {
       this.lastTelemetry = time;
       const players = this.roster.players.map((p) => {
@@ -421,16 +672,25 @@ export class SessionAuthority {
     }
   }
   private presentationSpread() {
-    const key = `${this.game.state.startAt}:${this.game.state.promptId}`,
-      times = this.presentedTimes.get(key);
+    const times = this.latestMarker
+      ? this.presentedTimes.get(this.latestMarker)
+      : undefined;
     const venues = this.roster.venues.filter((v) => v.connected);
     if (!times || !venues.every((v) => times.has(v.id))) return null;
     const values = venues.map((v) => times.get(v.id)!);
     return Math.max(...values) - Math.min(...values);
   }
+  dispose() {
+    if (this.disposed) return;
+    this.runner?.dispose();
+    this.pending = null;
+    this.disposed = true;
+  }
   summary() {
     return {
-      completed: this.histories,
+      presentationSpreadMs: this.presentationSpread(),
+      completed: completedResults(this.progress.view()),
+      progress: this.progress.view(),
       players: [...this.playerMetrics].map(([id, m]) => ({
         id,
         delay: m.ages.summary(),

@@ -5,6 +5,7 @@ import type { Channel, ControlDefinition, OutputKind } from './types.ts';
 import { button } from './button/definition.ts';
 import { dpad } from './dpad/definition.ts';
 import { stick } from './stick/definition.ts';
+import { aimPad } from './aim-pad/definition.ts';
 import { swipePad } from './swipe-pad/definition.ts';
 import { holdMeter } from './hold-meter/definition.ts';
 
@@ -13,6 +14,7 @@ export const definitions: ControlDefinition[] = [
   button,
   dpad,
   stick,
+  aimPad,
   swipePad,
   holdMeter,
   // control:new inserts above this line

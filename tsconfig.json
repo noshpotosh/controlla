@@ -15,7 +15,8 @@
     "jsx": "react-jsx",
     "incremental": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@controlla/app-entry": ["./src/client/App.tsx"]
     },
     "allowImportingTsExtensions": true
   },
