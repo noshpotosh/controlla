@@ -18,6 +18,8 @@ export interface RoutingEffects {
   display(channel: Channel, message: Message): void;
   controller(message: Message): void;
   cursors: CursorObservations;
+  isOpen(id: string): boolean;
+  ensureHostFallback(): void;
 }
 /** Session routing policy; transport and application lifecycle remain external. */
 export class SessionRouter {
@@ -27,10 +29,13 @@ export class SessionRouter {
   private active = false;
   private terminal = false;
   private epoch = 0;
+  private readonly joinedAt: number;
   constructor(
     private readonly environment: RoutingEnvironment,
     private readonly effects: RoutingEffects,
-  ) {}
+  ) {
+    this.joinedAt = environment.localTime();
+  }
   welcome(identity: RoutingIdentity) {
     if (this.terminal) return;
     this.disconnect();
@@ -47,8 +52,22 @@ export class SessionRouter {
     this.roster = structuredClone(roster);
     this.effects.cursors.roster(this.identity?.id ?? null, roster);
   }
-  setControllerRoute(route: ControllerRoute) {
-    if (!this.terminal) this.controllerPath = route;
+  updateControllerRoute(): ControllerRoute {
+    const me = this.identity;
+    if (
+      this.active &&
+      !this.terminal &&
+      me?.role === 'controller' &&
+      me.venueId !== me.hostId &&
+      this.environment.localTime() - this.joinedAt > 8000
+    ) {
+      this.controllerPath = this.effects.isOpen(me.venueId)
+        ? 'venue'
+        : 'direct-to-session';
+      if (this.controllerPath === 'direct-to-session')
+        this.effects.ensureHostFallback();
+    }
+    return this.controllerPath;
   }
   sendFrame(data: ArrayBuffer) {
     const me = this.identity;

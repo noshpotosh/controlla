@@ -8,6 +8,8 @@ import type { Identity, Role, Roster } from '../src/shared/room.ts';
 
 function fixture(role: Role = 'host') {
   let time = 10000;
+  let open = true;
+  let fallbacks = 0;
   const queued: (() => void)[] = [];
   const sent: { to: string; channel: Channel; data: Message | ArrayBuffer }[] =
     [];
@@ -55,6 +57,10 @@ function fixture(role: Role = 'host') {
       defer: (fn) => queued.push(fn),
     },
     {
+      isOpen: () => open,
+      ensureHostFallback: () => {
+        fallbacks++;
+      },
       cursors: {
         roster: (id, roster) => cursors.setRoster(id, roster),
         configure: (id, message) => cursors.configure(id, message),
@@ -104,6 +110,10 @@ function fixture(role: Role = 'host') {
   };
   return {
     router,
+    setOpen: (value: boolean) => {
+      open = value;
+    },
+    fallbacks: () => fallbacks,
     cursors: () => cursors.cursors(time),
     identity,
     roster,
@@ -151,7 +161,9 @@ void test('host routes local/remote deliveries and upstream control without leak
 void test('controller switches both reliable and binary paths while admitting only host/venue control', () => {
   const h = fixture('controller');
   for (const route of ['venue', 'direct-to-session'] as const) {
-    h.router.setControllerRoute(route);
+    h.at(19000);
+    h.setOpen(route === 'venue');
+    h.router.updateControllerRoute();
     h.router.sendUp({ type: 'ready' });
     h.router.sendFrame(h.frame());
   }
@@ -352,3 +364,24 @@ for (const operation of ['disconnect', 'welcome', 'end', 'dispose'] as const)
     h.router.dispose();
     h.router.dispose();
   });
+
+void test('fallback waits eight seconds, recovers to venue and cannot reconnect after retirement', () => {
+  const h = fixture('controller');
+  h.setOpen(false);
+  h.at(18000);
+  assert.equal(h.router.updateControllerRoute(), 'venue');
+  assert.equal(h.fallbacks(), 0);
+  h.at(18001);
+  assert.equal(h.router.updateControllerRoute(), 'direct-to-session');
+  assert.equal(h.fallbacks(), 1);
+  h.setOpen(true);
+  assert.equal(h.router.updateControllerRoute(), 'venue');
+  h.router.disconnect();
+  h.setOpen(false);
+  h.router.updateControllerRoute();
+  assert.equal(h.fallbacks(), 1);
+  h.router.end();
+  h.router.welcome(h.identity);
+  h.router.updateControllerRoute();
+  assert.equal(h.fallbacks(), 1);
+});

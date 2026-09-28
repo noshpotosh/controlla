@@ -94,7 +94,6 @@ export class Runtime {
   private wakePending = false;
   private disconnects: { at: number; status: string }[] = [];
   private bootId = crypto.randomUUID();
-  private joinedAt = now();
   view: RuntimeView = {
     identity: null,
     roster: { players: [], venues: [] },
@@ -156,6 +155,8 @@ export class Runtime {
         defer: (callback) => queueMicrotask(callback),
       },
       {
+        isOpen: (id) => this.network.isOpen(id),
+        ensureHostFallback: () => this.network.ensureHostFallback(),
         cursors: {
           roster: (id, roster) => this.playback.cursors.setRoster(id, roster),
           configure: (id, message) =>
@@ -426,14 +427,7 @@ export class Runtime {
       !document.hidden &&
       !this.pageSuspended
     ) {
-      if (me.venueId !== me.hostId && local - this.joinedAt > 8000) {
-        this.view.controllerPath = this.network.isOpen(me.venueId)
-          ? 'venue'
-          : 'direct-to-session';
-        if (this.view.controllerPath === 'direct-to-session')
-          this.network.ensureHostFallback();
-      }
-      this.router.setControllerRoute(this.view.controllerPath);
+      this.view.controllerPath = this.router.updateControllerRoute();
       this.input.tick(this.motion.getSnapshot());
     }
 
