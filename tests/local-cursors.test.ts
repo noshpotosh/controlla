@@ -284,7 +284,7 @@ void test('runtime schedules local delivery without rebinding browser microtasks
       displayMessage(channel: string, message: Message): void;
     },
     'displayMessage',
-    (_channel, message) => {
+    (_channel: string, message: Message) => {
       delivered.push(message);
     },
   );
