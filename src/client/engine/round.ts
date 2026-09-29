@@ -1,4 +1,8 @@
-import { ARBITRATION_MS, partitionMatureActions } from './arbitration.ts';
+import {
+  ARBITRATION_MS,
+  arbitrationWindow,
+  partitionMatureActions,
+} from './arbitration.ts';
 import type {
   Action,
   GameDescriptor,
@@ -194,7 +198,11 @@ export class RoundRunner<S extends object = object> {
           ),
         );
         if (time < this.endAt) {
-          const partition = partitionMatureActions(this.actions, time);
+          const partition = partitionMatureActions(
+            this.actions,
+            time,
+            arbitrationWindow(this.descriptor.arbitrationMs),
+          );
           this.actions = partition.pending;
           this.held = Object.fromEntries(
             this.players

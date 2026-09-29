@@ -623,7 +623,12 @@ export class SessionAuthority {
         });
     }
     this.announce();
-    this.publish(time, this.runner?.phase !== previousPhase);
+    // Publish straight away when something happened, so hits show without
+    // waiting for the next 40 ms snapshot.
+    this.publish(
+      time,
+      this.runner?.phase !== previousPhase || events.length > 0,
+    );
     if (time - this.lastTelemetry > 1000) {
       this.lastTelemetry = time;
       const players = this.roster.players.map((p) => {

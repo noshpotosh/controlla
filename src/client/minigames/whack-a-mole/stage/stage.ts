@@ -6,9 +6,9 @@ import {
   clamp,
   createRandom,
   frenzyAt,
-  holeAt,
   holeBounds,
   molePose,
+  touchedHole,
   type Hole,
   type Mole,
   type MolePose,
@@ -33,6 +33,12 @@ const CAMERA = { fov: 26, elevation: (34 * Math.PI) / 180, distance: 20 };
 const MAX_WIDTH = 2560;
 /** Mole rig height when fully up, in hole radii; fully hidden sinks this far. */
 const RISE = 1.95;
+
+function easeOutBack(t: number) {
+  const c = 1.7,
+    u = Math.min(1, Math.max(0, t)) - 1;
+  return 1 + (c + 1) * u * u * u + c * u * u;
+}
 
 // One WebGL context and its compiled shaders are shared by every stage on the
 // page: the presenter builds a renderer per round, and browsers cap contexts.
@@ -127,7 +133,6 @@ interface HoleView {
 interface HammerView {
   rig: HammerRig;
   head: THREE.Vector3;
-  seenAt: number;
 }
 
 class World {
@@ -144,11 +149,12 @@ class World {
   private readonly ray = new THREE.Raycaster();
   private readonly ndc = new THREE.Vector2();
   private readonly scratch = new THREE.Vector3();
+  private readonly scratch2 = new THREE.Vector3();
+  private readonly scratch3 = new THREE.Vector3();
   private holes: HoleView[] = [];
   private hammers = new Map<string, HammerView>();
   private layoutKey = '';
   private size = 0.75;
-  private lastTime = 0;
 
   constructor() {
     const { scene, camera } = this;
@@ -438,8 +444,6 @@ class World {
 
   update(frame: StageFrame): StageLabel[] {
     const { state, time, reducedMotion } = frame;
-    const dt = Math.min(0.1, Math.max(0, (time - this.lastTime) / 1000));
-    this.lastTime = time;
     // Unproject from the steady camera; shake is applied after.
     this.camera.position.copy(this.base);
     this.camera.lookAt(0, 0, 0);
@@ -464,7 +468,7 @@ class World {
     }
 
     this.effects.begin();
-    const labels = this.hammerFrame(frame, dt);
+    const labels = this.hammerFrame(frame);
     for (const view of this.holes) this.moleFrame(view, time, reducedMotion);
     this.effectFrame(frame);
     this.effects.end();
@@ -568,11 +572,12 @@ class World {
       );
   }
 
-  private hammerFrame(frame: StageFrame, dt: number): StageLabel[] {
+  private hammerFrame(frame: StageFrame): StageLabel[] {
     const { state, players, cursors, time, reducedMotion } = frame;
     const labels: StageLabel[] = [];
     const size = this.size,
-      length = size * 2.5;
+      length = size * 2.5,
+      hover = (RISE - 0.16) * size + size * 0.25;
     for (const view of this.holes) view.target.visible = false;
     const active = new Set<string>();
     for (const player of players) {
@@ -585,56 +590,64 @@ class World {
         view = {
           rig: hammerRig(this.kit, player.color, size, length),
           head: new THREE.Vector3(),
-          seenAt: -Infinity,
         };
         this.scene.add(view.rig.root, view.rig.marker);
         this.hammers.set(player.id, view);
       }
       const { rig } = view;
       rig.root.visible = true;
-      // Over a hole, hover above whatever is in it; elsewhere, sit under the cursor.
-      const index = holeAt(aim, state.holes),
-        hole = this.holes[index];
-      const target = new THREE.Vector3();
-      let drop: number;
-      if (hole) {
-        const height = hole.pose ? hole.pose.height : 0;
-        const top = (height * RISE - 0.15) * hole.radius;
-        target.copy(hole.center);
-        target.y = Math.max(0.2 * hole.radius, top) + size * 0.3;
-        drop = size * 0.3;
-        hole.target.visible = true;
-        hole.target.material.color.set(player.color);
-      } else {
-        this.ground(aim.x, aim.y, size * 0.7, target);
-        drop = size * 0.6;
+      // Freeform: the head follows the cursor, hovering just above the tallest
+      // mole so nothing hides it. It never snaps to holes.
+      const hovering = this.ground(aim.x, aim.y, hover, new THREE.Vector3());
+      // Cursors arrive already smoothed by the renderer.
+      view.head.copy(hovering);
+      // Ring the hole this hammer would reach, using the same test as the rules.
+      const touched =
+        this.holes[
+          touchedHole(
+            aim,
+            state.holes,
+            (index) => this.holes[index]?.pose?.height ?? 0,
+          )
+        ];
+      if (touched) {
+        touched.target.visible = true;
+        touched.target.material.color.set(player.color);
       }
-      const fresh = time - view.seenAt > 500;
-      view.seenAt = time;
-      if (fresh || reducedMotion) view.head.copy(target);
-      else view.head.lerp(target, 1 - Math.exp(-dt / 0.045));
-      rig.root.position.copy(view.head);
-      // Held in the right hand: the handle runs toward the lower right.
-      rig.root.rotation.y = 0.45;
-      rig.marker.visible = !hole;
-      rig.marker.position.set(view.head.x, 0.03, view.head.z);
-      // Impact first: the mallet is down when the whack arrives, then springs back.
+      // Impact first: the mallet is down on the mole it hit (or the ground where it
+      // missed) when the whack arrives, then springs back up to the cursor.
       const slam = state.effects.findLast(
         (effect) => effect.playerId === player.id && effect.at <= time,
       );
       const since = slam ? time - slam.at : Infinity;
-      const rest = 0.26,
-        strike = -Math.asin(Math.min(0.95, drop / length));
-      let angle =
-        rest + (reducedMotion ? 0 : Math.sin(time / 300 + player.seat) * 0.04);
-      if (since < 80) angle = strike;
-      else if (since < 380) {
-        const t = (since - 80) / 300,
-          c = 1.7;
-        angle =
-          strike +
-          (rest - strike) * (1 + (c + 1) * (t - 1) ** 3 + c * (t - 1) ** 2);
+      const back =
+        since < 80 ? 0 : since < 380 ? easeOutBack((since - 80) / 300) : 1;
+      const position = this.scratch2.copy(view.head);
+      if (slam && back < 1) {
+        const hit =
+          slam.kind !== 'miss' && slam.hole >= 0
+            ? this.holes[slam.hole]
+            : undefined;
+        // The barrel (radius 0.42) rests on the squashed mole or on the grass.
+        const landing = hit
+          ? this.scratch3
+              .copy(hit.center)
+              .setY(hit.center.y + 0.35 * hit.radius + size * 0.42)
+          : this.ground(slam.x, slam.y, size * 0.42, this.scratch3);
+        position.copy(landing).lerp(view.head, back);
       }
+      rig.root.position.copy(position);
+      // Held in the right hand: the handle runs toward the lower right.
+      rig.root.rotation.y = 0.45;
+      rig.marker.visible = true;
+      rig.marker.position.set(position.x, 0.03, position.z);
+      // Flat at impact, so the head lands exactly where placed; raised at rest.
+      const rest = 0.26,
+        strike = 0;
+      let angle =
+        strike +
+        (rest - strike) * back +
+        (reducedMotion ? 0 : Math.sin(time / 300 + player.seat) * 0.04);
       const stunned = stats.stunnedUntil > time;
       if (stunned && !reducedMotion) angle += Math.sin(time / 70) * 0.18;
       rig.pivot.rotation.x = angle;
@@ -651,7 +664,7 @@ class World {
             Math.sin(a) * size * 0.8,
           );
         });
-      const spot = this.project(this.scratch.set(view.head.x, 0, view.head.z));
+      const spot = this.project(this.scratch.set(position.x, 0, position.z));
       labels.push({ playerId: player.id, x: spot.x, y: spot.y });
     }
     for (const [id, view] of this.hammers)

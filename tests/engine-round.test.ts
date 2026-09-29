@@ -477,3 +477,32 @@ void test('wire envelopes enforce bounded result statistics, integer progress an
   }
   runner.dispose();
 });
+
+void test('a game can shorten the arbitration window, bounded by the shared one', () => {
+  const fire = (runner: RoundRunner, time: number) =>
+    runner.input(
+      { playerId: 'ada', name: 'fire', time, aim: { x: 0.5, y: 0.5 } },
+      time + 10,
+    );
+  const delivered = (arbitrationMs?: number) => {
+    const f = fixture();
+    const runner = new RoundRunner(
+      { ...f.descriptor, arbitrationMs },
+      new SessionProgress(),
+    );
+    void runner.load();
+    runner.begin(players, 0);
+    runner.tick(3050, 16, {}, 0);
+    assert.equal(fire(runner, 3100), true);
+    for (let time = 3116; time <= 3400; time += 4) {
+      runner.tick(time, 4, {}, 0);
+      if (f.ticks.at(-1)!.actions.length) return time - 3100;
+    }
+    return Infinity;
+  };
+  assert.equal(delivered(), 200, 'default window');
+  assert.equal(delivered(40), 40);
+  assert.equal(delivered(0), 16, 'the first tick after arrival');
+  assert.equal(delivered(5000), 200, 'never longer than the shared window');
+  assert.equal(delivered(Number.NaN), 200);
+});

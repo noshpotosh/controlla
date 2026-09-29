@@ -11,11 +11,11 @@ import {
   clamp,
   createRandom,
   frenzyAt,
-  holeAt,
   holeCount,
   holeLayout,
-  hittable,
   moleEnd,
+  strike,
+  touchedHole,
   upTime,
   type Mole,
   type MoleKind,
@@ -302,14 +302,8 @@ export class WhackAMole implements GameInstance<WhackState> {
         input.time,
         Math.max(context.startAt, action.time - input.presentationDelay),
       );
-      const hole = holeAt(aim, state.holes);
-      const mole =
-        hole < 0
-          ? undefined
-          : state.moles.find(
-              (candidate) =>
-                candidate.hole === hole && hittable(candidate, seenAt),
-            );
+      const mole = strike(aim, state.holes, state.moles, seenAt);
+      const hole = mole ? mole.hole : touchedHole(aim, state.holes);
       this.whack(
         mole,
         action.playerId,

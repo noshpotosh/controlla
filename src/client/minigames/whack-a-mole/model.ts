@@ -14,6 +14,8 @@ export const WHACK = {
   hittableDuring: 90,
   grace: 60,
   recovery: 280,
+  /** The hammer head's hit radius at the front of the field, in logical px. */
+  hammerRadius: 42,
   stun: 1200,
   bombPenalty: 20,
   points: { normal: 10, golden: 30, bomb: 0 },
@@ -264,30 +266,74 @@ export function holeLayout(count: number, random: () => number): Hole[] {
   return curated.map(([x, y]) => makeHole(x, y));
 }
 
-/** Whether a normalized aim point lands on a hole's hit shape (ellipse plus body). */
-export function inHole(aim: Point, hole: Hole): boolean {
+/** The hammer head's radius at a screen height, in logical px. */
+export const hammerRadius = (aim: Point) =>
+  WHACK.hammerRadius * depthScale(aim.y);
+
+/**
+ * How close a hammer head at `aim` comes to a hole's mole, as a fraction: at
+ * most 1 means some part of the head overlaps it. The target is the hole
+ * opening plus the mole's body above it, which is only as tall as the mole
+ * has risen (`height`, 0–1).
+ */
+export function contact(
+  aim: Point,
+  hole: Hole,
+  height: number,
+  radius = hammerRadius(aim),
+): number {
   const dx = (aim.x - hole.x) * 1600,
     dy = (aim.y - hole.y) * 900,
     rx = hole.rx * FIELD.hitScale,
     ry = hole.ry * FIELD.hitScale * FIELD.below;
-  if ((dx / rx) ** 2 + (dy / ry) ** 2 <= 1) return true;
-  // The body: a column above the hole with a rounded top.
-  const top = hole.reach * FIELD.hitScale;
-  if (dy > 0 || Math.abs(dx) > rx * 0.85) return false;
-  if (dy >= -(top - rx * 0.85)) return true;
-  return Math.hypot(dx, dy + (top - rx * 0.85)) <= rx * 0.85;
+  // Growing the ellipse by the head's radius approximates their overlap.
+  const opening = Math.hypot(dx / (rx + radius), dy / (ry + radius));
+  if (height <= 0) return opening;
+  // The body: a column with a rounded top, rising from the hole centre.
+  const half = rx * 0.85,
+    top = hole.reach * FIELD.hitScale * clamp(height),
+    y = clamp(dy, -Math.max(0, top - half), 0);
+  return Math.min(opening, Math.hypot(dx, dy - y) / (half + radius));
 }
 
-/** The hole under the aim, or −1. Layouts never overlap, so nearest wins any tie. */
-export function holeAt(aim: Point, holes: readonly Hole[]): number {
+/**
+ * The mole a whack at `aim` lands on at `time`: any part of the hammer head
+ * touching a hittable mole counts, and the closest one wins.
+ */
+export function strike(
+  aim: Point,
+  holes: readonly Hole[],
+  moles: readonly Mole[],
+  time: number,
+): Mole | undefined {
+  let best: Mole | undefined,
+    closest = 1;
+  for (const mole of moles) {
+    const hole = holes[mole.hole];
+    if (!hole || !hittable(mole, time)) continue;
+    // A whack in the grace window after hiding still reaches the hole.
+    const score = contact(aim, hole, molePose(mole, time).height);
+    if (score <= closest) {
+      best = mole;
+      closest = score;
+    }
+  }
+  return best;
+}
+
+/** The hole a hammer head at `aim` touches, closest first, or −1. */
+export function touchedHole(
+  aim: Point,
+  holes: readonly Hole[],
+  heightOf: (index: number) => number = () => 0,
+): number {
   let found = -1,
-    distance = Infinity;
+    closest = 1;
   holes.forEach((hole, index) => {
-    if (!inHole(aim, hole)) return;
-    const d = Math.hypot((aim.x - hole.x) * 1600, (aim.y - hole.y) * 900);
-    if (d < distance) {
+    const score = contact(aim, hole, heightOf(index));
+    if (score <= closest) {
       found = index;
-      distance = d;
+      closest = score;
     }
   });
   return found;

@@ -35,6 +35,9 @@ export const whackAMole: GameDescriptor<WhackState> = {
     controller: { layout: 'aim-and-whack' },
   },
   presentation: { cursors: false },
+  // A whack is dated to the start of the swing; a short window keeps it snappy
+  // while still ordering near-simultaneous whacks on the same mole.
+  arbitrationMs: 40,
   create: () => new WhackAMole(),
   createRenderer: () => new WhackAMoleRenderer(),
   isState: isWhackState,

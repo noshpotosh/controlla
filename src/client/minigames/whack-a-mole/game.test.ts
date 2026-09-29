@@ -8,11 +8,13 @@ import {
   boundsOverlap,
   createRandom,
   groundDistance,
-  holeAt,
   holeBounds,
   holeCount,
   holeLayout,
-  inHole,
+  contact,
+  hammerRadius,
+  strike,
+  touchedHole,
   makeHole,
   molePose,
   type Mole,
@@ -176,27 +178,61 @@ void test('hole layouts are scattered, seeded, in bounds and never overlap', () 
   assert.notDeepEqual(other.snapshot().holes, a);
 });
 
-void test('hit shapes cover the hole and the mole body above it, not the gaps', () => {
-  const hole = makeHole(0.5, 0.6);
-  assert.ok(inHole({ x: 0.5, y: 0.6 }, hole));
+void test('any part of the hammer head touching the mole or its hole counts', () => {
+  const hole = makeHole(0.5, 0.6),
+    at = (dx: number, dy: number) => ({
+      x: 0.5 + dx / 1600,
+      y: 0.6 + dy / 900,
+    });
+  const radius = hammerRadius(at(0, 0));
+  assert.ok(contact(at(0, 0), hole, 1) <= 1, 'dead centre');
+  assert.ok(contact(at(0, -hole.reach * 0.9), hole, 1) <= 1, 'on the head');
+  // The head's edge reaching past the rim still lands.
+  const rim = hole.rx * 1.15;
   assert.ok(
-    inHole({ x: 0.5, y: 0.6 - (hole.reach * 0.9) / 900 }, hole),
-    'head',
+    contact(at(rim + radius * 0.9, 0), hole, 1) <= 1,
+    'edge of the head',
   );
-  assert.ok(inHole({ x: 0.5 + (hole.rx * 1.05) / 1600, y: 0.6 }, hole), 'rim');
-  assert.equal(
-    inHole({ x: 0.5 + (hole.rx * 1.4) / 1600, y: 0.6 }, hole),
-    false,
-  );
-  assert.equal(
-    inHole({ x: 0.5, y: 0.6 - (hole.reach * 1.3) / 900 }, hole),
-    false,
-  );
-  assert.equal(inHole({ x: 0.5, y: 0.6 + (hole.ry * 2) / 900 }, hole), false);
+  assert.ok(contact(at(rim + radius * 1.2, 0), hole, 1) > 1, 'clear of it');
+  // A half-risen mole is shorter: swinging where its head will be misses.
+  const high = at(0, -hole.reach * 1.1);
+  assert.ok(contact(high, hole, 1) <= 1);
+  assert.ok(contact(high, hole, 0.3) > 1);
+  assert.ok(contact(at(0, hole.ry * 3), hole, 1) > 1, 'well below the hole');
   const holes = [makeHole(0.3, 0.5), makeHole(0.7, 0.5)];
-  assert.equal(holeAt({ x: 0.3, y: 0.5 }, holes), 0);
-  assert.equal(holeAt({ x: 0.7, y: 0.5 }, holes), 1);
-  assert.equal(holeAt({ x: 0.5, y: 0.5 }, holes), -1);
+  assert.equal(touchedHole({ x: 0.3, y: 0.5 }, holes), 0);
+  assert.equal(touchedHole({ x: 0.7, y: 0.5 }, holes), 1);
+  assert.equal(touchedHole({ x: 0.5, y: 0.5 }, holes), -1);
+});
+
+void test('strike picks the closest hittable mole the head touches', () => {
+  const holes = [makeHole(0.4, 0.5), makeHole(0.5, 0.5)];
+  const up = (id: number, hole: number): Mole => ({
+    id,
+    hole,
+    kind: 'normal',
+    upAt: 0,
+    downAt: 5000,
+  });
+  const moles = [up(1, 0), up(2, 1)];
+  // Between the two holes but nearer the second: both touched, closer wins.
+  const aim = { x: 0.46, y: 0.5 };
+  assert.ok(contact(aim, holes[0], 1) <= 1 && contact(aim, holes[1], 1) <= 1);
+  assert.equal(strike(aim, holes, moles, 1000)?.id, 2);
+  // A bonked or not-yet-risen mole can't be struck.
+  assert.equal(
+    strike(
+      aim,
+      holes,
+      [up(1, 0), { ...up(2, 1), hitAt: 900, hitBy: 'p0' }],
+      1000,
+    )?.id,
+    1,
+  );
+  assert.equal(
+    strike(aim, holes, [{ ...up(3, 1), upAt: 990 }], 1000),
+    undefined,
+  );
 });
 
 void test('moles pose analytically: rise, stay, hide and bonk', () => {

@@ -5,7 +5,7 @@ import type {
   Presentation,
   ReadonlyDeep,
 } from '../../api/index.ts';
-import type { WhackState } from './model.ts';
+import { hammerRadius, type WhackState } from './model.ts';
 import type { Stage, StageLabel } from './stage-contract.ts';
 import { drawBoard2d } from './board2d.ts';
 import { PALETTE, drawHud, drawPops, label, roundRect } from './hud.ts';
@@ -20,6 +20,7 @@ import { PALETTE, drawHud, drawPops, label, roundRect } from './hud.ts';
 export class WhackAMoleRenderer implements GameRenderer<WhackState> {
   private positions = new Map<string, Point>();
   private round: string | null = null;
+  private lastTime = 0;
   private disposed = false;
   private stage: Stage | null = null;
   private failed = false;
@@ -62,6 +63,9 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
       this.round = snapshot.roundId;
       this.positions.clear();
     }
+    const dt = Math.min(0.1, Math.max(0, (time - this.lastTime) / 1000));
+    this.lastTime = time;
+    const glide = reducedMotion ? 1 : 1 - Math.exp(-dt / 0.035);
     const at = Math.min(time, snapshot.endAt);
     // Settling freezes hammers where they were at the cutoff.
     const live =
@@ -70,8 +74,20 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
         : {};
     for (const player of snapshot.players) {
       const point = live[player.id];
-      if (point && Number.isFinite(point.x) && Number.isFinite(point.y))
-        this.positions.set(player.id, { x: point.x, y: point.y });
+      if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y))
+        continue;
+      // Phone Wi-Fi delivers cursor packets in bursts; glide over them, but
+      // jump straight to a far-away point such as after Recenter.
+      const last = this.positions.get(player.id);
+      this.positions.set(
+        player.id,
+        last && Math.hypot(point.x - last.x, point.y - last.y) < 0.25
+          ? {
+              x: last.x + (point.x - last.x) * glide,
+              y: last.y + (point.y - last.y) * glide,
+            }
+          : { x: point.x, y: point.y },
+      );
     }
     const cursors = Object.fromEntries(this.positions) as ReadonlyDeep<
       Record<string, Point>
@@ -88,9 +104,10 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
         snapshot.endAt,
         reducedMotion,
       );
-      if (labels) drawLabels(ctx, labels, snapshot.players);
-      else
+      if (!labels)
         drawBoard2d(ctx, state, snapshot.players, cursors, at, reducedMotion);
+      drawReticles(ctx, state, snapshot.players, cursors);
+      if (labels) drawLabels(ctx, labels, snapshot.players);
       drawPops(ctx, state, snapshot.players, at, reducedMotion);
       drawHud(ctx, {
         players: snapshot.players,
@@ -150,6 +167,39 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
     this.stage?.dispose();
     this.stage = null;
   }
+}
+
+/** Each hammer's hit area at its cursor: any part of this ring touching a mole counts. */
+function drawReticles(
+  ctx: CanvasRenderingContext2D,
+  state: ReadonlyDeep<WhackState>,
+  players: ReadonlyDeep<Player[]>,
+  cursors: ReadonlyDeep<Record<string, Point>>,
+) {
+  ctx.save();
+  ctx.lineWidth = 3;
+  for (const player of players) {
+    const aim = cursors[player.id];
+    if (!player.connected || !aim || !state.players[player.id]) continue;
+    const x = aim.x * 1600,
+      y = aim.y * 900,
+      radius = hammerRadius(aim);
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = PALETTE.navy;
+    ctx.beginPath();
+    ctx.arc(x, y, radius + 1.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = player.color;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = player.color;
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 /** Small name tags under each hammer, so eight players can find themselves. */
