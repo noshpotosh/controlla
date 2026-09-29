@@ -220,6 +220,9 @@ export default defineConfig(({ command }) => {
   return {
     resolve: { alias: entry.alias },
     css: { postcss: { plugins: [tailwindcss()] } },
+    // Whack-a-Mole loads three lazily. Prebundle it up front so the first round
+    // doesn't trigger a dependency re-optimisation that reloads the display.
+    optimizeDeps: { include: ['three'] },
     server: {
       // vinext dev ignores --host, so bind every interface here for phones.
       host: true,

@@ -34,6 +34,8 @@ const options = ts.parseJsonConfigFileContent(
 interface ImportEdge {
   specifier: string;
   typeOnly: boolean;
+  /** A literal `import()` call, which bundlers split into a lazy chunk. */
+  dynamic?: boolean;
   resolved?: string;
 }
 
@@ -70,10 +72,11 @@ function imports(file: string, sourceText?: string): ImportEdge[] {
     true,
   );
   const result: ImportEdge[] = [];
-  const add = (specifier: string, typeOnly: boolean) => {
+  const add = (specifier: string, typeOnly: boolean, dynamic = false) => {
     result.push({
       specifier,
       typeOnly,
+      ...(dynamic && { dynamic }),
       resolved: ts.resolveModuleName(specifier, file, options, ts.sys)
         .resolvedModule?.resolvedFileName,
     });
@@ -135,13 +138,33 @@ function imports(file: string, sourceText?: string): ImportEdge[] {
         specifier && ts.isStringLiteralLike(specifier),
         `${relative(root, file)} uses an opaque dynamic import; the boundary cannot be verified`,
       );
-      add(specifier.text, false);
+      add(
+        specifier.text,
+        false,
+        node.expression.kind === ts.SyntaxKind.ImportKeyword,
+      );
     }
     ts.forEachChild(node, visit);
   };
   visit(source);
   if (sourceText === undefined) edgeCache.set(file, result);
   return result;
+}
+
+/** A game folder's `stage/` modules, loaded only through a literal `import()`. */
+function stageDirectory(file: string): string | undefined {
+  const game = gameDirectories.find((directory) => within(file, directory));
+  return game && join(game, 'stage');
+}
+function lazyStage(file: string, edge: ImportEdge): boolean {
+  const stage = stageDirectory(file);
+  return (
+    !!edge.dynamic &&
+    !!stage &&
+    !!edge.resolved &&
+    within(edge.resolved, stage) &&
+    !within(file, stage)
+  );
 }
 
 /** Traverse project modules recursively; type edges may be included separately. */
@@ -163,6 +186,8 @@ function dependencies(
     if (!isSource(file)) continue;
     for (const edge of imports(file, overrides.get(file))) {
       if (edge.typeOnly && !includeTypes) continue;
+      // A game's lazily loaded 3D stage is outside every eager graph.
+      if (lazyStage(file, edge)) continue;
       if (
         edge.resolved &&
         within(edge.resolved, root) &&
@@ -454,29 +479,103 @@ void test('shared contracts compile with ECMAScript alone, without DOM or Node a
     );
 });
 
+/** three and its example modules, the only package a game's lazy stage may load. */
+const threeSpecifier = /^three(?:\/(?:examples\/jsm|addons)\/.+)?$/;
+
+/** A game module's import is inside its boundary, returning a reason when it is not. */
+function gameEdgeProblem(
+  directory: string,
+  file: string,
+  edge: ImportEdge,
+): string | null {
+  const stage = join(directory, 'stage');
+  if (within(file, stage) && threeSpecifier.test(edge.specifier)) return null;
+  if (!edge.resolved) return `${edge.specifier} is unresolved`;
+  if (edge.resolved === api) return null;
+  if (!within(edge.resolved, directory))
+    return `${edge.specifier} is outside the author boundary`;
+  if (
+    within(edge.resolved, stage) &&
+    !within(file, stage) &&
+    !lazyStage(file, edge)
+  )
+    return `${edge.specifier} loads the 3D stage eagerly; use a literal import()`;
+  return null;
+}
+
 void test('game production modules import only their own folder or the author API', () => {
   assert.ok(gameDirectories.length >= 2, 'every shipped game has a folder');
   for (const directory of gameDirectories) {
     const files = productionFiles(directory);
     assert.ok(files.length >= 3, 'descriptor, game and renderer are present');
-    for (const file of files) {
+    for (const file of files)
       for (const edge of imports(file)) {
-        assert.ok(
-          edge.resolved &&
-            (within(edge.resolved, directory) || edge.resolved === api),
-          `${relative(root, file)} imports ${edge.specifier} outside the author boundary`,
-        );
+        const problem = gameEdgeProblem(directory, file, edge);
+        assert.equal(problem, null, `${relative(root, file)}: ${problem}`);
       }
-    }
     const runtime = dependencies(join(directory, 'index.ts'));
     assert.ok(
       [...runtime].every((file) => within(file, directory) || file === api),
+    );
+    assert.ok(
+      ![...dependencies(join(directory, 'index.ts'), true)].some((file) =>
+        within(file, join(directory, 'stage')),
+      ),
+      'the eager game graph never reaches its 3D stage',
     );
   }
   assert.equal(
     imports(api).filter((edge) => !edge.typeOnly).length,
     0,
     'the author API has no runtime imports',
+  );
+});
+
+void test('a lazy 3D stage keeps three out of the engine and the eager game', () => {
+  const game = join(minigames, 'whack-a-mole'),
+    renderer = join(game, 'renderer.ts'),
+    stage = join(game, 'stage', 'stage.ts');
+  assert.ok(existsSync(stage), 'Whack-a-Mole ships a lazy stage');
+  assert.ok(
+    imports(renderer).some((edge) => lazyStage(renderer, edge)),
+    'the renderer loads its stage with a literal import()',
+  );
+  assert.ok(
+    imports(stage).some((edge) => edge.specifier === 'three'),
+    'the stage owns the three dependency',
+  );
+  const session = join(engine, 'session.ts');
+  assert.doesNotThrow(() => assertEngineBoundary(session));
+  for (const source of [
+    "import * as THREE from 'three';",
+    "import type { Mesh } from 'three';",
+    "const load = () => import('three');",
+    "export * from './stage/models.ts';",
+    "import type { Kit } from './stage/models.ts';",
+  ]) {
+    const overrides = new Map([[renderer, source]]);
+    assert.throws(
+      () => assertEngineBoundary(session, overrides),
+      /engine/,
+      `renderer override stays rejected: ${source}`,
+    );
+  }
+  // Only stage modules may name three, and only three among packages.
+  const stray = join(game, 'model.ts');
+  assert.match(
+    gameEdgeProblem(game, stray, {
+      specifier: 'three',
+      typeOnly: false,
+    }) ?? '',
+    /unresolved|outside/,
+  );
+  assert.match(
+    gameEdgeProblem(game, stage, {
+      specifier: 'react',
+      typeOnly: false,
+      resolved: join(root, 'node_modules/react/index.js'),
+    }) ?? '',
+    /outside/,
   );
 });
 

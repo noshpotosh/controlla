@@ -154,6 +154,13 @@ void test('hole layouts are scattered, seeded, in bounds and never overlap', () 
       );
     }
   }
+  // The hand-placed fallback, used when sampling keeps failing, obeys the same rules.
+  for (const count of [8, 11]) {
+    const curated = holeLayout(count, () => 0.5);
+    for (const [i, hole] of curated.entries())
+      for (const other of curated.slice(i + 1))
+        assert.equal(boundsOverlap(hole, other, 0), false);
+  }
   assert.equal(holeCount(3), 8);
   assert.equal(holeCount(4), 11);
   // Different rounds get different layouts.

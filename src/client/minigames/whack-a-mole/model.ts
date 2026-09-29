@@ -36,12 +36,14 @@ export const FIELD = {
   /** Front-row hole half-width; holes shrink toward the back like the 3D camera. */
   holeWidth: 80,
   backScale: 0.72,
-  /** The camera looks down at an angle, so holes are squashed ellipses. */
-  squash: 0.4,
+  /** The 3D camera looks down at about 34°, so holes are squashed ellipses. */
+  squash: 0.56,
   /** A mole's body rises this many hole half-widths above the hole centre. */
   reach: 1.55,
   /** Hit shapes are a little larger than the art so phone aim feels fair. */
   hitScale: 1.15,
+  /** The hit ellipse reaches a little further below the hole than the rim. */
+  below: 1.25,
   padding: 16,
 } as const;
 
@@ -124,7 +126,7 @@ export function holeBounds(hole: Hole) {
     left: x - halfWidth,
     right: x + halfWidth,
     top: y - hole.reach * FIELD.hitScale,
-    bottom: y + hole.ry * FIELD.hitScale * 1.5,
+    bottom: y + hole.ry * FIELD.hitScale * FIELD.below,
   };
 }
 
@@ -150,7 +152,7 @@ export function boundsOverlap(
 export function groundDistance(a: Point, b: Point) {
   const scale = (depthScale(a.y) + depthScale(b.y)) / 2;
   return (
-    Math.hypot((a.x - b.x) * 1600, ((a.y - b.y) * 900) / FIELD.squash / 1.6) /
+    Math.hypot((a.x - b.x) * 1600, ((a.y - b.y) * 900) / FIELD.squash) /
     (FIELD.holeWidth * scale)
   );
 }
@@ -169,26 +171,26 @@ const inField = (hole: Hole) => {
 const CURATED: Record<number, readonly [number, number][]> = {
   8: [
     [0.2, 0.4],
-    [0.47, 0.36],
-    [0.77, 0.42],
-    [0.33, 0.58],
+    [0.47, 0.37],
+    [0.78, 0.43],
+    [0.33, 0.57],
     [0.63, 0.6],
-    [0.15, 0.76],
-    [0.48, 0.79],
-    [0.84, 0.72],
+    [0.16, 0.73],
+    [0.47, 0.76],
+    [0.83, 0.72],
   ],
   11: [
-    [0.14, 0.38],
-    [0.37, 0.35],
-    [0.6, 0.39],
-    [0.84, 0.36],
-    [0.25, 0.56],
-    [0.49, 0.56],
-    [0.73, 0.57],
-    [0.12, 0.77],
-    [0.37, 0.77],
-    [0.62, 0.79],
-    [0.87, 0.75],
+    [0.15, 0.38],
+    [0.38, 0.36],
+    [0.61, 0.4],
+    [0.84, 0.37],
+    [0.26, 0.55],
+    [0.5, 0.54],
+    [0.74, 0.56],
+    [0.14, 0.73],
+    [0.37, 0.74],
+    [0.61, 0.76],
+    [0.86, 0.73],
   ],
 };
 
@@ -267,7 +269,7 @@ export function inHole(aim: Point, hole: Hole): boolean {
   const dx = (aim.x - hole.x) * 1600,
     dy = (aim.y - hole.y) * 900,
     rx = hole.rx * FIELD.hitScale,
-    ry = hole.ry * FIELD.hitScale * 1.5;
+    ry = hole.ry * FIELD.hitScale * FIELD.below;
   if ((dx / rx) ** 2 + (dy / ry) ** 2 <= 1) return true;
   // The body: a column above the hole with a rounded top.
   const top = hole.reach * FIELD.hitScale;
