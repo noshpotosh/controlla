@@ -6,7 +6,9 @@ Implemented on `codex/controller-input-0928` in `.worktrees/controller-input-092
 
 ## Responsibilities and interfaces
 
-`src/client/runtime/controller-input/controller-input.ts` owns phone-side `ControllerInput`: configuration-bound control ports and epochs, detached validated values, per-action sequence/time capture, 30 ms trailing throttles, atomic activation payloads, reliable presses and binary press recovery, frame scheduling, motion-to-pointer/tilt/shake processing, pointer smoothing and press anchoring, sensitivity and recenter counters.
+`src/client/runtime/controller-input/controller-input.ts` owns phone-side `ControllerInput`: configuration-bound control ports and epochs, detached validated values, per-action sequence/time capture, 30 ms trailing throttles, atomic activation payloads, reliable presses and binary press recovery, frame scheduling, motion-to-pointer/tilt/shake/chop processing, pointer smoothing and press anchoring, sensitivity and recenter counters.
+
+The `chop` input (a downward hammer swing) is recognised by the pure `ChopDetector` in `src/client/controls/motion/chop.ts`, fed once per new motion sample before the pointer integrates it. A chop restores the pointer to its aim from just before the swing began (`GyroPointer.holdAt`, with 600 ms of history), holds it until the phone settles, dates the press to the swing's onset and carries the swing strength as its activation value. Layout files saved before `chop` existed load with it off.
 
 The injected environment provides local/authority clocks and asynchronous timeout scheduling with cancellation. Focused effects emit an encoded input frame, a widget/press message without transport identity, or a haptic request. Each tick receives an immutable motion snapshot. Configuration is copied on admission; status returns a detached frozen epoch, point, sensitivity and recenter count. The collaborator has no Runtime, Network, browser provider, DOM, storage or session-authority reference.
 

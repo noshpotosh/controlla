@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BrowserResources } from '../src/client/runtime/browser/browser-resources.ts';
+import { isSound, playSound } from '../src/client/runtime/browser/sounds.ts';
 import type { BrowserEnvironment } from '../src/client/runtime/browser/contracts.ts';
 
 function deferred<T>() {
@@ -137,4 +138,60 @@ void test('released wake locks can be reacquired and hidden grants are released'
   await pending;
   assert.equal(w.counts().releases, 1);
   assert.ok(!w.held.includes(true));
+});
+
+void test('sound cues synthesize built-in kinds and ignore unknown ones', () => {
+  const made: string[] = [];
+  const param = () => ({
+    value: 0,
+    setValueAtTime: () => {},
+    exponentialRampToValueAtTime: () => {},
+  });
+  const node = (kind: string) => {
+    made.push(kind);
+    return {
+      type: '',
+      buffer: null,
+      frequency: param(),
+      gain: param(),
+      Q: param(),
+      connect: () => {},
+      start: () => {},
+      stop: () => {},
+    };
+  };
+  const audio = {
+    currentTime: 0,
+    sampleRate: 8000,
+    destination: {},
+    createGain: () => node('gain'),
+    createOscillator: () => node('oscillator'),
+    createBufferSource: () => node('noise'),
+    createBiquadFilter: () => node('filter'),
+    createBuffer: (_channels: number, length: number) => ({
+      getChannelData: () => new Float32Array(length),
+    }),
+  } as unknown as AudioContext;
+  for (const kind of [
+    'hit',
+    'prompt',
+    'end',
+    'pop',
+    'bonk',
+    'gold',
+    'boom',
+    'whiff',
+  ])
+    assert.equal(isSound(kind), true, kind);
+  assert.equal(isSound('toString'), false);
+  playSound(audio, 'unknown');
+  assert.deepEqual(made, []);
+  playSound(audio, 'bonk');
+  assert.deepEqual(
+    made.filter((kind) => kind !== 'gain'),
+    ['oscillator', 'noise', 'filter'],
+  );
+  made.length = 0;
+  playSound(audio, 'hit');
+  assert.deepEqual(made, ['gain', 'oscillator']);
 });

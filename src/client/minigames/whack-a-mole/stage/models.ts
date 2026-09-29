@@ -498,7 +498,7 @@ export class PropKit {
         37,
       ),
       dot: kit.geometry(new THREE.IcosahedronGeometry(0.03, 0)),
-      block: kit.geometry(new THREE.BoxGeometry(0.3, 0.3, 0.3), 0.02, 41),
+      block: kit.geometry(new THREE.BoxGeometry(0.22, 0.22, 0.22), 0.015, 41),
     };
     this.m = {
       grass: kit.toy('#5fae43'),
@@ -573,7 +573,7 @@ export class PropKit {
       }
     } else {
       const block = mesh(g.block, pick(m.blocks));
-      block.position.y = 0.15;
+      block.position.y = 0.11;
       group.add(block);
     }
     return group;

@@ -24,7 +24,7 @@ const controls: ControllerRequirements = {
 The engine's `controllerSpec(descriptor)` adapter passes only the identity and controller requirements to the resolver. Its `ControllerSpec` has no scoring, lifecycle or snapshot policy. The shared [controls API](api.ts) owns this type, `WidgetType`, layouts, capabilities, resolved configurations, control definitions, output values and `ControlPort`; it has no runtime or UI imports. [types.ts](types.ts) contains the view props used by React controls.
 
 - **Touch inputs** (`button`, `stick`, `aim-pad`, `dpad`, `swipe-pad`, `hold-meter`) need a control of the same **kind** (vector, press, swipe, charge…) with the input's name. A D-pad can stand in for a stick, but a button can't.
-- **Motion inputs** (`pointer`, `tilt`, `shake`) are switched on per layout with checkboxes; they have no on-screen control. If the layout switches the motion on and the phone allows it, the motion input drives the game. Otherwise a touch control with the input's name stands in, so `aim` above falls back to the layout's `aim` pad. (Richer motion fallbacks are still to be designed.)
+- **Motion inputs** (`pointer`, `tilt`, `shake`, `chop`) are switched on per layout with checkboxes; they have no on-screen control. If the layout switches the motion on and the phone allows it, the motion input drives the game. Otherwise a touch control with the input's name stands in, so `aim` above falls back to the layout's `aim` pad. (Richer motion fallbacks are still to be designed.)
 - **Different names:** use `controller: { layout: 'x', bind: { pulse: 'a' } }` inside the descriptor's `controls`.
 - **No layout chosen:** the game gets a generated default from its inputs.
 

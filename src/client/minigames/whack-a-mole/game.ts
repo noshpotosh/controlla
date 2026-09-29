@@ -63,6 +63,7 @@ export class WhackAMole implements GameInstance<WhackState> {
   private nextMole = 0;
   private nextEffect = 0;
   private nextEvent = 0;
+  private lastPop = -Infinity;
 
   load(): void {
     this.loaded = true;
@@ -80,6 +81,7 @@ export class WhackAMole implements GameInstance<WhackState> {
     this.lastWhack.clear();
     this.roster = context.players.map((player) => player.id);
     this.nextMole = this.nextEffect = this.nextEvent = 0;
+    this.lastPop = -Infinity;
     const seed = (Math.floor(context.startAt) ^ 0x5bd1e995) >>> 0;
     this.state.holes = holeLayout(
       holeCount(context.players.length),
@@ -165,7 +167,11 @@ export class WhackAMole implements GameInstance<WhackState> {
       upAt: time,
       downAt: time + WHACK.rise + upTime(kind, progress, frenzy) * jitter,
     });
-    events.push(this.event('pop', time));
+    // Frenzy spawns can come every 90 ms; keep the pop cue from chattering.
+    if (time - this.lastPop >= 180) {
+      this.lastPop = time;
+      events.push(this.event('pop', time));
+    }
     // Pace spawns so about `target` moles are up at once through a mole's stay.
     const stay = WHACK.rise + upTime('normal', progress, frenzy);
     this.nextSpawnAt =
