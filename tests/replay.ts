@@ -13,6 +13,9 @@ import {
   GyroPointer,
   PointerSmoother,
 } from '../src/client/controls/motion/pointer.ts';
+import { CHOP } from '../src/client/controls/motion/chop.ts';
+import { compassHeading } from '../src/client/controls/motion/heading.ts';
+import { wrapAngle } from '../src/client/controls/motion/calibration.ts';
 import {
   isMotionTrace,
   type MotionTrace,
@@ -49,11 +52,14 @@ export interface CursorSample extends Point {
 /**
  * The tilt pointer exactly as the controller runs it: `MotionProcessor.sample` per
  * event, one pointer integration per sample (dt capped at 50 ms), then the
- * adaptive smoother. Recorded taps act as presses.
+ * adaptive smoother. Recorded taps act as presses; recorded holds lock the aim
+ * for a swing, as Whack-a-Mole's button does. Anchored, as the controller
+ * runs unless a game opts out; pass `anchor: false` for plain aim.
  */
 export async function replayTilt(
   trace: MotionTrace,
   gain?: number,
+  { anchor = true }: { anchor?: boolean } = {},
 ): Promise<CursorSample[]> {
   const { MotionProcessor } =
     await import('../src/client/controls/motion/processor.ts');
@@ -62,28 +68,165 @@ export async function replayTilt(
     pointer = new GyroPointer(),
     smoother = new PointerSmoother();
   if (gain !== undefined) pointer.gain = gain;
-  const taps = trace.segments
-    .flatMap((s) => s.taps ?? [])
-    .sort((a, b) => a - b);
+  pointer.anchoring = anchor;
+  const presses = [
+    ...trace.segments.flatMap((s) =>
+      (s.taps ?? []).map((t) => ({ t, kind: 'tap' as const })),
+    ),
+    ...trace.segments.flatMap((s) =>
+      (s.holds ?? []).flatMap(([down, up]) => [
+        { t: down, kind: 'down' as const },
+        { t: up, kind: 'up' as const },
+      ]),
+    ),
+  ].sort((a, b) => a.t - b.t);
   const out: CursorSample[] = [];
   let last = 0,
-    tap = 0;
+    press = 0;
   for (const sample of trace.samples) {
-    while (tap < taps.length && taps[tap] <= sample.t) {
-      pointer.holdForPress(taps[tap] - sample.t + sample.at);
+    while (press < presses.length && presses[press].t <= sample.t) {
+      const { t, kind } = presses[press++],
+        at = t - sample.t + sample.at;
+      if (kind === 'tap') pointer.holdForPress(at);
+      else if (kind === 'down')
+        pointer.lockAt(at - CHOP.touchLookbackMs, CHOP.swing);
+      else pointer.unlock(at);
       smoother.reset();
-      tap++;
     }
     motion.sample(sample);
     const dt = last ? Math.min(0.05, (sample.at - last) / 1000) : 0;
     last = sample.at;
     const p = smoother.sample(
-      pointer.update(motion.rate, motion.up, dt, sample.at),
+      pointer.update(
+        motion.rate,
+        motion.up,
+        dt,
+        sample.at,
+        anchor ? motion.aim : undefined,
+      ),
       sample.at,
     );
     out.push({ ...p, at: sample.at, t: sample.t });
   }
   return out;
+}
+
+/**
+ * How far the cursor strays from where the phone points: segments labelled
+ * `center…` all point at the middle of the TV, so each one's resting cursor
+ * is compared with the first's (% of width / height).
+ */
+export function returnErrors(trace: MotionTrace, cursor: CursorSample[]) {
+  const rest = (segment: TraceSegment) => {
+    // The second half, once the player has settled.
+    const from = (segment.start + segment.end) / 2,
+      path = cursor.filter((c) => c.t >= from && c.t <= segment.end);
+    return path.length
+      ? {
+          x: path.reduce((sum, c) => sum + c.x, 0) / path.length,
+          y: path.reduce((sum, c) => sum + c.y, 0) / path.length,
+        }
+      : null;
+  };
+  const centers = trace.segments.filter((s) => s.label.startsWith('center')),
+    home = centers[0] && rest(centers[0]);
+  if (!home) return [];
+  return centers.slice(1).flatMap((segment) => {
+    const at = rest(segment);
+    return at
+      ? [
+          {
+            label: segment.label,
+            dx: (at.x - home.x) * 100,
+            dy: (at.y - home.y) * 100,
+          },
+        ]
+      : [];
+  });
+}
+
+export interface CompassReport {
+  readings: number;
+  hz: number;
+  /** Median accuracy iOS reported (degrees), or null when unrated. */
+  accuracy: number | null;
+  /** Spread of the heading while pointing still (degrees, standard deviation). */
+  noise: number | null;
+  /** The compass lag that best matches the gyro's turns (ms), or null. */
+  lagMs: number | null;
+}
+
+/** What the compass in a trace is like, to tune `COMPASS` against. */
+export async function compassReport(
+  trace: MotionTrace,
+): Promise<CompassReport> {
+  const { MotionProcessor } =
+    await import('../src/client/controls/motion/processor.ts');
+  const motion = new MotionProcessor(),
+    gyro: { at: number; yaw: number }[] = [],
+    readings: { at: number; t: number; heading: number }[] = [],
+    accuracies: number[] = [];
+  for (const sample of trace.samples) {
+    motion.sample(sample);
+    const o = sample.orientation,
+      heading = o ? compassHeading(o) : null;
+    if (o && heading !== null) {
+      readings.push({ at: o.at, t: o.t, heading });
+      if (o.accuracy !== null && o.accuracy >= 0) accuracies.push(o.accuracy);
+    }
+    const yaw = motion.aim.yaw;
+    if (yaw !== null)
+      gyro.push({ at: sample.at, yaw: wrapAngle(yaw - motion.compass.offset) });
+  }
+  const span =
+    readings.length > 1 ? (readings.at(-1)!.at - readings[0].at) / 1000 : 0;
+  const DEG = 180 / Math.PI;
+  const circularSpread = (angles: number[]) => {
+    if (angles.length < 2) return null;
+    const mean = Math.atan2(
+      angles.reduce((s, a) => s + Math.sin(a), 0),
+      angles.reduce((s, a) => s + Math.cos(a), 0),
+    );
+    return (
+      Math.sqrt(
+        angles.reduce((s, a) => s + wrapAngle(a - mean) ** 2, 0) /
+          angles.length,
+      ) * DEG
+    );
+  };
+  const inside = (labels: (label: string) => boolean) => (t: number) =>
+    trace.segments.some((s) => labels(s.label) && t >= s.start && t <= s.end);
+  const still = inside((l) => l.startsWith('center') || l === 'still'),
+    turning = inside((l) => l.includes('turn'));
+  // Lag: the delay at which compass minus gyro heading varies least while turning.
+  let lagMs: number | null = null,
+    best = Infinity;
+  const turns = readings.filter((r) => turning(r.t));
+  if (turns.length > 30 && gyro.length > 30)
+    for (let lag = 0; lag <= 800; lag += 20) {
+      const residuals = turns.flatMap((r) => {
+        let g: number | null = null;
+        for (const h of gyro) if (h.at <= r.at - lag) g = h.yaw;
+        return g === null ? [] : [wrapAngle(r.heading - g)];
+      });
+      const spread = circularSpread(residuals);
+      if (spread !== null && spread < best) {
+        best = spread;
+        lagMs = lag;
+      }
+    }
+  accuracies.sort((a, b) => a - b);
+  return {
+    readings: readings.length,
+    hz: span > 0 ? (readings.length - 1) / span : 0,
+    accuracy: accuracies.length
+      ? accuracies[Math.floor(accuracies.length / 2)]
+      : null,
+    noise: circularSpread(
+      readings.filter((r) => still(r.t)).map((r) => r.heading),
+    ),
+    lagMs,
+  };
 }
 
 const rms = (values: number[]) =>
@@ -193,6 +336,23 @@ async function main(paths: string[]) {
         };
       }),
     );
+    const compass = await compassReport(trace);
+    if (compass.readings)
+      console.log(
+        `  compass: ${compass.readings} readings (${compass.hz.toFixed(0)} Hz), accuracy ${compass.accuracy ?? 'n/a'}°, still noise ${compass.noise?.toFixed(2) ?? 'n/a'}°, best lag ${compass.lagMs ?? 'n/a'} ms`,
+      );
+    else console.log('  compass: none recorded');
+    const plain = await replayTilt(trace, undefined, { anchor: false }),
+      before = returnErrors(trace, plain),
+      after = returnErrors(trace, cursor);
+    if (before.length)
+      console.table(
+        before.map((b, i) => ({
+          'back at center': b.label,
+          'plain dx/dy %': `${b.dx.toFixed(1)} / ${b.dy.toFixed(1)}`,
+          'anchored dx/dy %': `${after[i].dx.toFixed(1)} / ${after[i].dy.toFixed(1)}`,
+        })),
+      );
   }
 }
 

@@ -27,6 +27,7 @@ export function createScreen<S extends object>(descriptor: GameDescriptor<S>) {
       localCursors: ReadonlyDeep<Record<string, Point>> = {},
       delay = 0,
       reducedMotion = false,
+      localPressing: ReadonlyDeep<Record<string, boolean>> = {},
     ): readonly string[] {
       if (disposed) return [];
       let markers: readonly string[] = [];
@@ -66,6 +67,14 @@ export function createScreen<S extends object>(descriptor: GameDescriptor<S>) {
                   Number.isFinite(point.y),
               )
               .map(([id, point]) => [id, { x: point.x, y: point.y }]),
+          ),
+        );
+        const readonlyLocalPressing = freezeSnapshot(
+          Object.fromEntries(
+            Object.entries(localPressing).filter(
+              ([id, pressing]) =>
+                pressing === true && id in readonlyLocalCursors,
+            ),
           ),
         );
         if (snapshot.phase === 'countdown') {
@@ -110,6 +119,7 @@ export function createScreen<S extends object>(descriptor: GameDescriptor<S>) {
                 height,
                 delay,
                 localCursors: readonlyLocalCursors,
+                localPressing: readonlyLocalPressing,
                 reducedMotion,
               }) ?? [];
           } finally {

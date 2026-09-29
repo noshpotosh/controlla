@@ -17,7 +17,10 @@ export const MOTION = [
   'pointer',
   'tilt',
   'shake',
+  'chop',
 ] as const satisfies readonly MotionInput[];
+/** Motion inputs added after layout schema 2; saved layouts may omit them. */
+const LATER_MOTION: readonly MotionInput[] = ['chop'];
 export const isMotion = (type: WidgetType): type is MotionInput =>
   (MOTION as readonly string[]).includes(type);
 
@@ -46,6 +49,7 @@ export const NO_MOTION: Record<MotionInput, boolean> = {
   pointer: false,
   tilt: false,
   shake: false,
+  chop: false,
 };
 
 /**
@@ -123,7 +127,14 @@ export function isControllerLayout(v: unknown): v is ControllerLayout {
     return false;
   if (!MENU_CORNERS.includes(v.menu as MenuCorner)) return false;
   const motion = v.motion;
-  if (!isObject(motion) || !MOTION.every((m) => typeof motion[m] === 'boolean'))
+  if (
+    !isObject(motion) ||
+    !MOTION.every(
+      (m) =>
+        typeof motion[m] === 'boolean' ||
+        (motion[m] === undefined && LATER_MOTION.includes(m)),
+    )
+  )
     return false;
   if (!Array.isArray(v.items) || v.items.length > 24) return false;
   return v.items.every(
@@ -146,7 +157,8 @@ export function isControllerLayout(v: unknown): v is ControllerLayout {
 /** Checked cast for layout JSON imported by the layout index. */
 export function asControllerLayout(v: unknown): ControllerLayout {
   if (!isControllerLayout(v)) throw new Error('Invalid controller layout JSON');
-  return v;
+  // Older files omit motion inputs added later; they are off.
+  return { ...v, motion: { ...NO_MOTION, ...v.motion } };
 }
 
 /** Where the save endpoint may write a layout; null if unsafe. */

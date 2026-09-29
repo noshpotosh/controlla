@@ -49,6 +49,11 @@ knows it while the command runs, changes each run, and routes through the
 internet, so it is for functional development rather than LAN or latency
 acceptance. See the [fast phone workflow](docs/PHONE-DEVELOPMENT.md).
 
+To play over your own Wi-Fi instead, with no tunnel, run `npm run dev:lan`. It
+prints a self-signed `https://<LAN address>:3012` URL for the laptop and phones
+(each browser warns about the certificate once). See
+[local Wi-Fi play](docs/PHONE-DEVELOPMENT.md#local-wi-fi-play-without-a-tunnel).
+
 ## Direct LAN testing and trusted local HTTPS
 
 The frontend listens on the computer's LAN addresses as well as localhost. Phones must open that LAN address; `localhost` on a phone points to the phone itself. Plain LAN HTTP supports touch testing, but motion and wake lock need a secure context.

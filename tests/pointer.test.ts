@@ -160,3 +160,90 @@ void test('recenter returns the cursor to the middle', () => {
   pointer.recenter();
   assert.deepEqual(pointer.current, { x: 0.5, y: 0.5 });
 });
+
+void test('a hammer swing restores the aim from before it began and holds until released', () => {
+  const pointer = new GyroPointer(),
+    { at } = turn(pointer, [0, 0, -10 * DEG], 0.5),
+    aimed = pointer.current;
+  // The chop tips the phone down hard for 150 ms, diving the cursor.
+  const swing = turn(pointer, [-8, 0, 0], 0.15, FLAT, at);
+  assert.ok(swing.p.y > aimed.y + 0.2, 'the swing itself moves the cursor');
+  const held = pointer.holdAt(at - 30, swing.at + 700);
+  assert.ok(Math.abs(held.x - aimed.x) < 0.02);
+  assert.ok(Math.abs(held.y - aimed.y) < 0.02);
+  // The rebound swings back up: discarded while held, and a tap can't re-rewind.
+  const rebound = turn(pointer, [6, 0, 0], 0.1, FLAT, swing.at);
+  assert.deepEqual(rebound.p, held);
+  assert.deepEqual(pointer.holdForPress(rebound.at), held);
+  // Released once the phone settles, the cursor moves again from the held aim.
+  pointer.release(rebound.at);
+  const after = turn(pointer, [0, 0, -10 * DEG], 0.2, FLAT, rebound.at).p;
+  assert.ok(after.x > held.x);
+  assert.equal(after.y, held.y);
+});
+
+const SWING = { rate: 1.5, calmMs: 60, maxMs: 400, lookbackMs: 250 };
+
+void test('a locked aim stays put through the swing and resumes from there without a jump', () => {
+  const pointer = new GyroPointer(),
+    { at } = turn(pointer, [0, 0, -10 * DEG], 0.5),
+    locked = pointer.lockAt(at, SWING);
+  // A whack: hard down, then back up, then turning while still holding.
+  const down = turn(pointer, [-8, 0, 0], 0.15, FLAT, at),
+    up = turn(pointer, [6, 0, 0], 0.2, FLAT, down.at),
+    held = turn(pointer, [0, 0, -20 * DEG], 0.3, FLAT, up.at);
+  assert.deepEqual(held.p, locked);
+  // Letting go picks up from the locked aim: nothing done meanwhile is added.
+  assert.deepEqual(pointer.unlock(held.at), locked);
+  assert.deepEqual(
+    pointer.holdForPress(held.at),
+    locked,
+    'no rewind on unlock',
+  );
+});
+
+void test('starting to swing as the thumb lands locks the aim from before the swing', () => {
+  const pointer = new GyroPointer(),
+    { at } = turn(pointer, [0, 0, -10 * DEG], 0.5),
+    aimed = pointer.current;
+  // The swing is 150 ms under way (and has dragged the cursor) when the press lands.
+  const swing = turn(pointer, [-4, 0, 0], 0.15, FLAT, at);
+  assert.ok(swing.p.y > aimed.y + 0.1);
+  const locked = pointer.lockAt(swing.at - 100, SWING);
+  assert.ok(Math.abs(locked.x - aimed.x) < 1e-9);
+  assert.ok(Math.abs(locked.y - aimed.y) < 1e-9);
+  // Aiming slowly at the press: the ordinary rewind, no further.
+  const steady = new GyroPointer(),
+    slow = turn(steady, [0, 0, -10 * DEG], 0.5);
+  turn(steady, [0, 0, -10 * DEG], 0.1, FLAT, slow.at);
+  assert.deepEqual(steady.lockAt(slow.at, SWING), slow.p);
+});
+
+void test('after unlocking, aiming counts at once while the rebound is ignored', () => {
+  const pointer = new GyroPointer();
+  pointer.lockAt(0, SWING);
+  const start = pointer.unlock(0);
+  // The swing's rebound, still under way, is ignored...
+  const rebound = turn(pointer, [5, 0, 0], 0.1, FLAT, 0);
+  assert.deepEqual(rebound.p, start);
+  // ...but slower aiming moves the cursor straight away, with no dead time.
+  const aim = turn(pointer, [0, 0, -30 * DEG], 0.05, FLAT, rebound.at);
+  assert.ok(aim.p.x > start.x);
+  // Once over, fast turns aim normally again.
+  const calm = turn(pointer, [0, 0, 0], 0.1, FLAT, aim.at);
+  assert.ok(turn(pointer, [0, 0, -3], 0.05, FLAT, calm.at).p.x > calm.p.x);
+});
+
+void test('a game can keep the cursor inside its play field', () => {
+  const pointer = new GyroPointer();
+  pointer.setBounds({ left: 0.1, top: 0.3, right: 0.9, bottom: 0.8 });
+  const { p, at } = turn(pointer, [30 * DEG, 0, -60 * DEG], 1);
+  assert.deepEqual(p, { x: 0.9, y: 0.3 });
+  // Pushing past the field's edge re-anchors there, like the screen edge.
+  assert.ok(turn(pointer, [0, 0, 20 * DEG], 0.1, FLAT, at).p.x < 0.87);
+  pointer.recenter();
+  assert.deepEqual(pointer.current, { x: 0.5, y: 0.55 });
+  // Nonsense bounds fall back to the whole screen.
+  pointer.setBounds({ left: 0.5, top: 0, right: 0.52, bottom: 1 });
+  assert.equal(turn(pointer, [0, 0, -60 * DEG], 1).p.x, 1);
+});

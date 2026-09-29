@@ -137,6 +137,11 @@ export interface Presentation<S extends object> {
   snapshot: ReadonlyDeep<RoundSnapshot<S>>;
   /** Immediate positions for this display; presentation only, never authoritative input. */
   readonly localCursors?: ReadonlyDeep<Record<string, Point>>;
+  /**
+   * Players on this display holding a press control right now, such as a
+   * locked aim; presentation only, never authoritative input.
+   */
+  readonly localPressing?: ReadonlyDeep<Record<string, boolean>>;
   /** Display preference; renderers must not read browser globals to discover it. */
   readonly reducedMotion?: boolean;
 }
@@ -156,6 +161,12 @@ export interface GameDescriptor<S extends object = object> {
   instructions?: readonly string[];
   controls: ControllerRequirements;
   presentation: { cursors: boolean };
+  /**
+   * Optional. How long presses wait (ms) so presses from different phones reach
+   * `tick` ordered by timestamp. Default and maximum 200; shorter feels more
+   * responsive but orders fewer late arrivals.
+   */
+  arbitrationMs?: number;
   create(options?: { mode: string }): GameInstance<S>;
   createRenderer(): GameRenderer<S>;
   /** Validate game state at the snapshot boundary. */

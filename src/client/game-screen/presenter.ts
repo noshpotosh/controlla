@@ -2,12 +2,14 @@ import type { GameDescriptor, ReadonlyDeep } from '../api/index.ts';
 import type { ScreenFrame } from './port.ts';
 import { RELOAD_DISPLAY_MESSAGE } from './port.ts';
 import { createScreen } from './screen.ts';
+import { createLobby } from './lobby.ts';
 
 /** Renderer lifetime and render failures belong to this display, never authority. */
 export function createPresenter(games: readonly GameDescriptor[]) {
   let mounted: ReturnType<typeof createScreen> | null = null;
   let key: string | null = null;
   let failure: string | null = null;
+  const lobby = createLobby();
   const release = () => {
     const old = mounted;
     mounted = null;
@@ -44,6 +46,19 @@ export function createPresenter(games: readonly GameDescriptor[]) {
       reducedMotion = false,
     ): readonly string[] {
       const snapshot = frame.snapshot;
+      if (frame.status === 'waiting' && !snapshot) {
+        release();
+        lobby.render(
+          ctx,
+          frame,
+          width,
+          height,
+          frame.message ?? 'Connect your phones. Pick a game below.',
+          reducedMotion,
+        );
+        return [];
+      }
+      lobby.clear();
       if (frame.status !== 'ready' || !snapshot) {
         release();
         label(
@@ -88,6 +103,7 @@ export function createPresenter(games: readonly GameDescriptor[]) {
           frame.localCursors,
           frame.delay,
           reducedMotion,
+          frame.localPressing,
         );
       } catch (error) {
         release();

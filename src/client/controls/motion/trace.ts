@@ -19,6 +19,23 @@ export interface RawMotionSample {
   accelG: Vec3 | null;
   /** `event.rotationRate` in the order reported: [alpha, beta, gamma]. */
   rate: Vec3 | null;
+  /** The latest orientation event since the previous sample, if any. */
+  orientation?: RawOrientationSample;
+}
+
+/** One `deviceorientation` / `deviceorientationabsolute` event, as reported. */
+export interface RawOrientationSample {
+  t: number;
+  at: number;
+  /** Euler angles (degrees); `alpha` is north-referenced only when `absolute`. */
+  alpha: number | null;
+  beta: number | null;
+  gamma: number | null;
+  absolute: boolean;
+  /** iOS `webkitCompassHeading`: degrees clockwise from magnetic north. */
+  heading: number | null;
+  /** iOS `webkitCompassAccuracy` (degrees); negative means unreliable. */
+  accuracy: number | null;
 }
 
 /** A labelled stretch of a recording, e.g. "move-right" or "still". */
@@ -31,6 +48,8 @@ export interface TraceSegment {
   end: number;
   /** Screen taps during the segment (ms, same clock as `t`). */
   taps?: number[];
+  /** Presses held to lock aim for a swing: [down, up] (ms, same clock as `t`). */
+  holds?: [number, number][];
 }
 
 export interface MotionTrace {
@@ -64,6 +83,36 @@ export interface MotionEventLike {
     beta: number | null;
     gamma: number | null;
   } | null;
+}
+
+/** Structural subset of `DeviceOrientationEvent`, including WebKit's compass. */
+export interface OrientationEventLike {
+  timeStamp: number;
+  alpha?: number | null;
+  beta?: number | null;
+  gamma?: number | null;
+  absolute?: boolean;
+  webkitCompassHeading?: number | null;
+  webkitCompassAccuracy?: number | null;
+}
+
+const finite = (n: unknown): number | null =>
+  typeof n === 'number' && Number.isFinite(n) ? n : null;
+
+export function toRawOrientation(
+  e: OrientationEventLike,
+  at: number,
+): RawOrientationSample {
+  return {
+    t: e.timeStamp,
+    at,
+    alpha: finite(e.alpha),
+    beta: finite(e.beta),
+    gamma: finite(e.gamma),
+    absolute: e.absolute === true,
+    heading: finite(e.webkitCompassHeading),
+    accuracy: finite(e.webkitCompassAccuracy),
+  };
 }
 
 const xyz = (

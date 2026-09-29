@@ -51,6 +51,9 @@ const gameplayModules = [
   'src/client/minigames/neon-harvest/index.ts',
   'src/client/minigames/neon-harvest/game.ts',
   'src/client/minigames/neon-harvest/renderer.ts',
+  'src/client/minigames/whack-a-mole/index.ts',
+  'src/client/minigames/whack-a-mole/game.ts',
+  'src/client/minigames/whack-a-mole/renderer.ts',
   'src/client/controls/aim-pad/AimPad.tsx',
 ];
 

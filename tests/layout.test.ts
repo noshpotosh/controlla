@@ -239,7 +239,7 @@ void test('resolveConfig: motion when on and available, else the same-named touc
   layouts['aim-touch'] = {
     ...layouts['aim-and-fire'],
     id: 'aim-touch',
-    motion: { pointer: false, tilt: false, shake: false },
+    motion: { pointer: false, tilt: false, shake: false, chop: false },
   };
   try {
     const touch = resolveConfig(
@@ -304,6 +304,7 @@ void test('templates and game defaults are valid in both orientations', () => {
     pointer: true,
     tilt: false,
     shake: false,
+    chop: false,
   });
   assert.deepEqual(
     fallback.items.map((i) => [i.name, i.type]),
@@ -499,4 +500,21 @@ void test('aimed motion reserves room for Recenter beside the menu', () => {
     'pointer',
   );
   assert.match(messages(validateLayout(crowded)), /menu corner/);
+});
+
+void test('layouts saved before chop existed still load, with chop off', () => {
+  const older = structuredClone(emptyLayout('older', 'Older', 'portrait')) as {
+    motion: Partial<Record<string, boolean>>;
+  };
+  delete older.motion.chop;
+  assert.ok(isControllerLayout(older));
+  assert.equal(asControllerLayout(older).motion.chop, false);
+  // A present chop must still be a boolean, and older inputs stay required.
+  assert.equal(
+    isControllerLayout({ ...older, motion: { ...older.motion, chop: 'yes' } }),
+    false,
+  );
+  const { shake: _shake, ...withoutShake } = older.motion;
+  assert.equal(isControllerLayout({ ...older, motion: withoutShake }), false);
+  assert.equal(layouts['aim-and-whack'].motion.chop, true);
 });

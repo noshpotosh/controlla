@@ -75,6 +75,8 @@ function fixture(config = configuration()) {
     gravity: [0, 0, 9.81],
     up: [0, 0, 1],
     tilt: { x: 0.4, y: -0.3 },
+    aim: { yaw: null, pitch: 0, anchored: false, epoch: 0 },
+    compass: { fresh: false, heading: null, accuracy: null },
     capabilities: {
       sensors: {
         gyro: { present: true, permission: 'granted' },
@@ -361,4 +363,208 @@ void test('configuration and aim settings remain input-owned detached projection
   h.input.beginAdjustAim();
   assert.equal(h.input.getSnapshot().adjustingAim, false);
   assert.equal(h.input.configure(configuration()), false);
+});
+function swingFixture(config = configuration()) {
+  config.sensors.pointer.enabled = true;
+  config.sensors.chop = { enabled: true };
+  config.widgets = [
+    {
+      id: 'aim',
+      action: 'aim',
+      type: 'pointer',
+      label: 'Aim',
+      space: 'normalized',
+    },
+    { id: 'whack', action: 'whack', type: 'chop', label: 'Whack' },
+  ];
+  const f = fixture(config);
+  let at = 1000,
+    sequence = 1;
+  const sample = (rate: number[], gravity = [0, 0, 9.81]) => {
+    at += 16;
+    sequence++;
+    f.at(at);
+    f.input.tick({ ...f.motion, at, sequence, rate, gravity });
+  };
+  const presses = () => f.messages.filter((m) => m.type === 'press');
+  return { ...f, sample, presses, now: () => at };
+}
+
+void test('without the swing button held, motion only aims and never whacks', () => {
+  const f = swingFixture();
+  for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
+  const before = f.input.previewPoint();
+  for (const pitch of [-3, -8, -3, 0]) f.sample([pitch, 0, 0]);
+  assert.equal(f.presses().length, 0);
+  assert.notDeepEqual(f.input.previewPoint(), before, 'the swing aims');
+  assert.equal(f.input.getSnapshot().chops, 0);
+});
+
+void test('holding the swing button freezes the aim, and a swing whacks there', () => {
+  const f = swingFixture();
+  // Aim right, then hold still.
+  for (let i = 0; i < 12; i++) f.sample([0, 0, -0.4]);
+  for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
+  const aimed = f.input.previewPoint();
+  assert.ok(aimed.x > 0.55);
+  // The thumb press jolts the phone; the aim comes from just before it.
+  f.sample([0, 0, -2]);
+  f.input.holdAim(true);
+  assert.equal(f.input.getSnapshot().aimHeld, true);
+  assert.ok(Math.abs(f.input.previewPoint().x - aimed.x) < 0.01);
+  // Waving the phone around while held never moves the aim.
+  for (let i = 0; i < 4; i++) f.sample([0.6, 0.5, -0.6]);
+  assert.equal(f.presses().length, 0, 'gentle motion is not a swing');
+  const onset = f.now() + 16;
+  for (const rate of [
+    [-2, 0.5, 0],
+    [-9, 1, 0],
+  ])
+    f.sample(rate);
+  const [press] = f.presses();
+  assert.ok(press && press.type === 'press');
+  assert.ok(Math.abs(press.press.x - aimed.x) < 0.01);
+  assert.ok(Math.abs(press.press.y - aimed.y) < 0.01);
+  // Authority time runs 100 ms ahead of local time in this fixture.
+  assert.equal(press.press.time, onset + 100);
+  assert.ok(
+    Math.abs((press.press.value as number) - Math.hypot(9, 1) / 10) < 1e-9,
+  );
+  assert.deepEqual(f.vibrations, [20]);
+  assert.equal(f.input.getSnapshot().chops, 1);
+  // The rebound neither moves the aim nor whacks again.
+  for (const pitch of [6, 4, -3, 0]) f.sample([pitch, 0, 0]);
+  assert.equal(f.presses().length, 1);
+  assert.deepEqual(f.input.previewPoint(), {
+    x: press.press.x,
+    y: press.press.y,
+  });
+  // A second swing while still held whacks again at the same aim.
+  for (let i = 0; i < 20; i++) f.sample([0, 0, 0]);
+  for (const pitch of [-2, -7, 0]) f.sample([pitch, 0, 0]);
+  assert.equal(f.presses().length, 2);
+  // Released and settled: aiming works again from where it was.
+  f.input.holdAim(false);
+  for (let i = 0; i < 12; i++) f.sample([0, 0, 0]);
+  for (let i = 0; i < 6; i++) f.sample([0, 0, -0.4]);
+  assert.ok(f.input.previewPoint().x > press.press.x);
+});
+
+void test('a punch-like jolt whacks, and releasing mid-swing ignores the rebound', () => {
+  const f = swingFixture();
+  for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
+  f.input.holdAim(true);
+  const held = f.input.previewPoint();
+  f.sample([0.2, 0, 0], [0, 0, 9.81 * 1.4]);
+  f.sample([0.3, 0, 0], [0, 0, 9.81 * 2.2]);
+  assert.equal(f.presses().length, 1);
+  const [press] = f.presses();
+  assert.ok(press.type === 'press');
+  assert.deepEqual({ x: press.press.x, y: press.press.y }, held);
+  // Let go straight away while the phone is still swinging back.
+  f.input.holdAim(false);
+  const released = f.input.previewPoint();
+  f.sample([6, 0, 0]);
+  f.sample([5, 0, 0]);
+  assert.deepEqual(f.input.previewPoint(), released, 'the rebound is ignored');
+  for (let i = 0; i < 12; i++) f.sample([0, 0, 0]);
+  for (let i = 0; i < 6; i++) f.sample([0.6, 0, 0]);
+  assert.notDeepEqual(f.input.previewPoint(), held, 'settled, aiming again');
+  assert.equal(f.presses().length, 1);
+});
+
+void test('the swing button does nothing unless the host enables chop, and retiring lets go', () => {
+  const config = configuration();
+  config.sensors.pointer.enabled = true;
+  config.widgets = [
+    { id: 'whack', action: 'whack', type: 'chop', label: 'Whack' },
+  ];
+  const f = fixture(config);
+  f.input.holdAim(true);
+  assert.equal(f.input.getSnapshot().aimHeld, false);
+  for (const [i, pitch] of [-3, -8, -3].entries())
+    f.input.tick({
+      ...f.motion,
+      at: 1016 + i * 16,
+      sequence: i + 2,
+      rate: [pitch, 0, 0],
+    });
+  assert.equal(f.messages.filter((m) => m.type === 'press').length, 0);
+  const swing = swingFixture();
+  swing.input.holdAim(true);
+  swing.input.setActive(false);
+  assert.equal(swing.input.getSnapshot().aimHeld, false);
+});
+
+void test('a swing recognised just after letting go still whacks, but a later one does not', () => {
+  const f = swingFixture();
+  for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
+  f.input.holdAim(true);
+  const held = f.input.previewPoint();
+  // The thumb lifts as the swing begins; it is recognised a sample later.
+  f.sample([-2, 0, 0]);
+  f.input.holdAim(false);
+  f.sample([-8, 0, 0]);
+  assert.equal(f.presses().length, 1);
+  const [press] = f.presses();
+  assert.ok(press.type === 'press');
+  assert.deepEqual({ x: press.press.x, y: press.press.y }, held);
+  // A swing that starts after letting go only aims.
+  for (let i = 0; i < 30; i++) f.sample([0, 0, 0]);
+  for (const pitch of [-2, -8, 0]) f.sample([pitch, 0, 0]);
+  assert.equal(f.presses().length, 1);
+});
+
+void test('frames show the swing button held while the aim is locked', () => {
+  const f = swingFixture();
+  const buttons = () => {
+    for (let i = 0; i < 4; i++) f.sample([0, 0, 0]);
+    return f.frames.at(-1)!.buttons;
+  };
+  assert.equal(buttons(), 0);
+  f.input.holdAim(true);
+  // The chop is the only press control, so it owns slot 0.
+  assert.equal(buttons(), 1);
+  f.input.holdAim(false);
+  assert.equal(buttons(), 0);
+});
+
+void test('aim is anchored unless the configuration opts out, winning back a turn made while locked', () => {
+  const run = (anchor: boolean) => {
+    const config = configuration();
+    if (!anchor) config.sensors.pointer.anchor = false;
+    const f = swingFixture(config);
+    for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
+    f.input.holdAim(true);
+    // Turning right while the aim is locked.
+    for (let i = 0; i < 10; i++) f.sample([0, 0, -0.6]);
+    f.input.holdAim(false);
+    for (let i = 0; i < 10; i++) f.sample([0, 0, 0]);
+    const released = f.input.previewPoint();
+    for (let i = 0; i < 10; i++) f.sample([0, 0, -0.4]);
+    return { released, aimed: f.input.previewPoint() };
+  };
+  const plain = run(false),
+    anchored = run(true);
+  assert.deepEqual(anchored.released, plain.released, 'no jump on release');
+  assert.ok(
+    anchored.aimed.x > plain.aimed.x,
+    `anchored ${anchored.aimed.x} vs ${plain.aimed.x}`,
+  );
+});
+
+void test('the host can keep the pointer inside the play field', () => {
+  const config = configuration();
+  config.sensors.pointer.bounds = {
+    left: 0.1,
+    top: 0.3,
+    right: 0.9,
+    bottom: 0.8,
+  };
+  const f = swingFixture(config);
+  for (let i = 0; i < 60; i++) f.sample([1, 0, -2]);
+  const p = f.input.previewPoint();
+  assert.ok(Math.abs(p.x - 0.9) < 1e-6 && Math.abs(p.y - 0.3) < 1e-6);
+  f.input.recenter();
+  assert.deepEqual(f.input.previewPoint(), { x: 0.5, y: 0.55 });
 });

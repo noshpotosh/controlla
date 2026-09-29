@@ -20,6 +20,7 @@ import {
   resolveController,
 } from '../src/client/engine/input.ts';
 import { neonHarvest } from '../src/client/minigames/neon-harvest/index.ts';
+import { whackAMole } from '../src/client/minigames/whack-a-mole/index.ts';
 import { games } from '../src/client/minigames/catalog.ts';
 import type { GameDescriptor } from '../src/client/api/index.ts';
 import { SessionAuthority } from '../src/client/engine/session.ts';
@@ -74,6 +75,7 @@ void test('Neon controller projection and motion/touch resolution preserve the s
       pointer: { enabled: false, rateHz: 60 },
       tilt: { enabled: false },
       shake: { enabled: false, thresholdG: 1.8 },
+      chop: { enabled: false },
       accel: { enabled: false },
     },
     haptics: { enabled: false },
@@ -176,7 +178,7 @@ void test('denied permissions resolve independent touch fallbacks; a partial gra
 
 void test('unused layout motion toggles do not consume vector capacity', (t) => {
   const layout = emptyLayout('unused-motion-test', 'Unused motion', 'portrait');
-  layout.motion = { pointer: true, tilt: true, shake: false };
+  layout.motion = { pointer: true, tilt: true, shake: false, chop: false };
   const input = {
     ...spec({ look: motion('pointer') }),
     controller: registerLayout(t, layout),
@@ -325,6 +327,62 @@ void test('shake activations consume the existing four press slots, independentl
   );
 });
 
+void test('Whack-a-Mole swings to whack with motion and falls back to a touch button', () => {
+  const swing = resolveController(whackAMole, granted(), 3);
+  assert.deepEqual(
+    swing.widgets.map((w) => [w.action, w.type]),
+    [
+      ['aim', 'pointer'],
+      ['whack', 'chop'],
+    ],
+  );
+  assert.equal(swing.sensors.chop?.enabled, true);
+  assert.equal(swing.sensors.pointer.enabled, true);
+  // Anchored aim is the default: only an opt-out is sent.
+  assert.equal(swing.sensors.pointer.anchor, undefined);
+  // The chop tile takes the whack button's place and drops its touch props.
+  assert.deepEqual(swing.widgets[1].rect, [0, 15 / 24, 1, 9 / 24]);
+  assert.equal(swing.widgets[1].props, undefined);
+  const touch = resolveController(whackAMole, defaultCapabilities(), 4);
+  assert.deepEqual(
+    touch.widgets.map((w) => [w.action, w.type]),
+    [
+      ['aim', 'aim-pad'],
+      ['whack', 'button'],
+    ],
+  );
+  assert.equal(touch.sensors.chop?.enabled, false);
+  assert.equal(touch.sensors.pointer.anchor, undefined);
+  assert.deepEqual(touch.substitutions, [
+    'aim: pointer → aim-pad',
+    'whack: chop → button',
+  ]);
+  // Chop reads the gyro: with only an accelerometer it falls back too.
+  const accelOnly = defaultCapabilities();
+  accelOnly.sensors.accel = { present: true, permission: 'granted' };
+  assert.equal(available('chop', accelOnly), false);
+  assert.equal(available('chop', granted()), true);
+});
+
+void test('chop activations consume press slots like shake', () => {
+  const inputs = Object.fromEntries(
+    Array.from({ length: 4 }, (_, i) => [
+      `chop${i}`,
+      { prefer: 'chop' as const, required: true },
+    ]),
+  );
+  assert.equal(resolveConfig(spec(inputs), granted(), 1).widgets.length, 4);
+  assert.throws(
+    () =>
+      resolveConfig(
+        spec({ ...inputs, extra: { prefer: 'shake', required: true } }),
+        granted(),
+        2,
+      ),
+    /more than 4 press/,
+  );
+});
+
 function live(t: TestContext) {
   const sent: Message[] = [];
   const authority = new SessionAuthority('host', {
@@ -428,4 +486,29 @@ void test('live preflight rejects conflicts before loading/reconfiguration and e
   assert.equal(r.created(), 0);
   assert.deepEqual(r.sent, before);
   assert.deepEqual(r.authority.summary().progress, progress);
+});
+
+void test('a game can opt its pointer out of anchored aim', () => {
+  const inputs = neonHarvest.controls.inputs;
+  const optOut: GameDescriptor = {
+    ...neonHarvest,
+    controls: {
+      ...neonHarvest.controls,
+      inputs: { ...inputs, aim: { ...inputs.aim, anchor: false } },
+    },
+  };
+  assert.equal(
+    resolveController(optOut, granted(), 1).sensors.pointer.anchor,
+    false,
+  );
+  for (const game of [neonHarvest, whackAMole])
+    assert.equal(
+      resolveController(game, granted(), 1).sensors.pointer.anchor,
+      undefined,
+    );
+  // Without a motion pointer there is nothing to opt out of.
+  assert.equal(
+    resolveController(optOut, defaultCapabilities(), 1).sensors.pointer.anchor,
+    undefined,
+  );
 });

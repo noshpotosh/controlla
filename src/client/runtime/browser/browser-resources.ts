@@ -4,6 +4,7 @@ import type {
   BrowserEnvironment,
   BrowserResourcePort,
 } from './contracts.ts';
+import { isSound, playSound } from './sounds.ts';
 
 const browserEnvironment: BrowserEnvironment = {
   hidden: () => document.hidden,
@@ -104,22 +105,10 @@ export class BrowserResources implements BrowserResourcePort {
     }
   }
   playEvent(event: PresentationEvent) {
-    if (this.disposed || !['hit', 'prompt', 'end'].includes(event.kind)) return;
+    if (this.disposed || !isSound(event.kind)) return;
     if (!this.audio || this.audio.state !== 'running') return;
     try {
-      const oscillator = this.audio.createOscillator(),
-        gain = this.audio.createGain();
-      oscillator.frequency.value =
-        event.kind === 'hit' ? 680 : event.kind === 'prompt' ? 420 : 250;
-      gain.gain.setValueAtTime(0.04, this.audio.currentTime);
-      gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        this.audio.currentTime + 0.1,
-      );
-      oscillator.connect(gain);
-      gain.connect(this.audio.destination);
-      oscillator.start();
-      oscillator.stop(this.audio.currentTime + 0.12);
+      playSound(this.audio, event.kind);
     } catch {
       /* Closed audio context. */
     }

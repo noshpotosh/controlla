@@ -60,6 +60,8 @@ export function parseControlValue(
         ? { charge: value.charge, released: value.released }
         : undefined;
     case 'press':
+      // A chop carries its swing strength; a shake is a bare event.
+      if (type === 'chop') return between(value, 0, 1) ? value : undefined;
       return type === 'shake' && value === 1 ? 1 : undefined;
     case 'scalar':
       return between(value, 0, 1) ? value : undefined;

@@ -1,7 +1,8 @@
 import type { GameDescriptor } from '../api/index.ts';
 import { neonHarvest } from './neon-harvest/index.ts';
+import { whackAMole } from './whack-a-mole/index.ts';
 /** Bundled descriptors are the single game registration surface. */
-export const games: readonly GameDescriptor[] = [neonHarvest];
+export const games: readonly GameDescriptor[] = [neonHarvest, whackAMole];
 export const defaultGame = neonHarvest;
 export function findGame(id: string): GameDescriptor | undefined {
   return games.find((game) => game.id === id);

@@ -6,6 +6,7 @@ import {
   Check,
   Crosshair,
   Flame,
+  Hammer,
   Hand,
   Rocket,
   Shield,
@@ -31,6 +32,7 @@ export const ICONS = {
   target: Target,
   cancel: X,
   zap: Zap,
+  whack: Hammer,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

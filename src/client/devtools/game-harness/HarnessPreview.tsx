@@ -36,6 +36,8 @@ export function HarnessPreview() {
   const harness = useRef<GameHarness | null>(null);
   const running = useRef(true);
   const mouse = useRef<Point | undefined>(undefined);
+  /** The mouse button is down on the host canvas, like a held phone button. */
+  const holding = useRef(false);
   const refresh = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -114,6 +116,10 @@ export function HarnessPreview() {
             presentationTime: at,
             delay: instance.presentationDelay,
             localCursors: instance.localCursors(venue),
+            localPressing:
+              venue === 'host' && holding.current && instance.players[0]
+                ? { [instance.players[0].id]: true }
+                : {},
             status: snapshot ? 'ready' : instance.error ? 'error' : 'loading',
             message: instance.error,
           },
@@ -328,8 +334,8 @@ export function HarnessPreview() {
         <section>
           <h2>Host display</h2>
           <p>
-            Move here to aim as Ada; click to use the action. Own-venue cursors
-            update immediately.
+            Move here to aim as Ada; click to use the action, and hold the
+            button to show it held. Own-venue cursors update immediately.
           </p>
           <canvas
             ref={hostCanvas}
@@ -339,6 +345,7 @@ export function HarnessPreview() {
             onPointerMove={pointAt}
             onPointerDown={(event) => {
               pointAt(event);
+              holding.current = true;
               const instance = harness.current;
               if (!instance) return;
               const player = instance.players[0];
@@ -347,8 +354,12 @@ export function HarnessPreview() {
               );
               if (action) instance.press(player.id, action.action);
             }}
+            onPointerUp={() => {
+              holding.current = false;
+            }}
             onPointerLeave={() => {
               mouse.current = undefined;
+              holding.current = false;
             }}
           />
         </section>

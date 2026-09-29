@@ -72,10 +72,11 @@ export function validateLayout(layout: ControllerLayout): LayoutIssue[] {
   });
   const presses =
     layout.items.filter((item) => usesPressSlot(item.type)).length +
-    (layout.motion.shake ? 1 : 0);
+    (layout.motion.shake ? 1 : 0) +
+    (layout.motion.chop ? 1 : 0);
   if (presses > PRESS_SLOTS)
     issues.push({
-      message: `${presses} press inputs (shake counts); a controller carries at most ${PRESS_SLOTS}.`,
+      message: `${presses} press inputs (shake and chop count); a controller carries at most ${PRESS_SLOTS}.`,
     });
   return issues;
 }

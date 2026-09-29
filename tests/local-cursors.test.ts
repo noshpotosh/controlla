@@ -10,6 +10,10 @@ import { pointerSpec } from './fixtures/games.ts';
 import type { InputFrame } from '../src/client/engine/protocol.ts';
 import type { Message } from '../src/client/engine/messages.ts';
 import type { Roster } from '../src/shared/room.ts';
+import {
+  CURSOR_EXTRAPOLATION_MS,
+  CursorPlayback,
+} from '../src/client/runtime/playback/cursor-playback.ts';
 
 function localVenue(t: TestContext, role: 'host' | 'display') {
   let time = 10000;
@@ -298,4 +302,50 @@ void test('runtime schedules local delivery without rebinding browser microtasks
   h.runtime.close();
   queued.shift()!();
   assert.equal(delivered.length, 1);
+});
+
+void test('a local cursor carries on at its velocity between Wi-Fi bursts and reports a held button', () => {
+  const playback = new CursorPlayback();
+  const player = {
+    id: 'phone',
+    venueId: 'tv',
+    seat: 0,
+    name: 'Ada',
+    color: '#f00',
+    connected: true,
+  };
+  playback.setRoster('tv', {
+    players: [player],
+    venues: [{ id: 'tv', name: 'TV', connected: true }],
+  } as Roster);
+  playback.configure('phone', {
+    type: 'config',
+    config: { schemaVersion: 1, generation: 3 },
+  } as unknown as Message);
+  playback.control(player, { type: 'ready', generation: 3 } as Message);
+  const frame: InputFrame = {
+    generation: 3,
+    seq: 1,
+    time: 5000,
+    x: 0.5,
+    y: 0.5,
+    vx: 1,
+    vy: -0.5,
+    buttons: 0,
+    edges: [0, 0, 0, 0],
+    edgeTimes: [0, 0, 0, 0],
+    confidence: 1,
+  };
+  playback.input(player, frame, 5000, 100);
+  const at = (local: number) => playback.cursors(local)[0];
+  assert.deepEqual(at(100).point, { x: 0.5, y: 0.5 });
+  assert.deepEqual(at(120).point, { x: 0.52, y: 0.49 });
+  // A stalled phone stops rather than sailing off.
+  const stalled = at(100 + CURSOR_EXTRAPOLATION_MS + 200).point;
+  assert.ok(
+    Math.abs(stalled.x - (0.5 + CURSOR_EXTRAPOLATION_MS / 1000)) < 1e-9,
+  );
+  assert.equal(at(100).pressing, false);
+  playback.input(player, { ...frame, seq: 2, buttons: 1 }, 5016, 116);
+  assert.equal(at(116).pressing, true);
 });

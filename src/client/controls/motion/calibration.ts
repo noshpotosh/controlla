@@ -32,6 +32,9 @@ export function axisAngle(
   const s = Math.sin(angle / 2) / n;
   return [x * s, y * s, z * s, Math.cos(angle / 2)];
 }
+/** Wraps an angle (rad) into [-π, π). */
+export const wrapAngle = (angle: number) =>
+  angle - 2 * Math.PI * Math.floor((angle + Math.PI) / (2 * Math.PI));
 export function rotate(q: Quaternion, v: number[]): number[] {
   const [x, y, z, w] = q,
     [a, b, c] = v;

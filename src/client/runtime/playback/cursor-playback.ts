@@ -3,6 +3,13 @@ import type { Message } from '../../engine/messages.ts';
 import type { Player, Roster } from '../../../shared/room.ts';
 import type { Point } from '../../../core/types.ts';
 
+/**
+ * Phones send about 60 frames a second, but Wi-Fi delivers them in bursts.
+ * Between frames a cursor carries on at its last reported velocity for up to
+ * this long, instead of stalling and then jumping.
+ */
+export const CURSOR_EXTRAPOLATION_MS = 40;
+
 /** Immediate local cursor playback; only routing-admitted observations enter here. */
 export class CursorPlayback {
   private venueId: string | null = null;
@@ -10,7 +17,14 @@ export class CursorPlayback {
   private terminal = false;
   private localCursors = new Map<
     string,
-    { point: Point; at: number; color: string; name: string }
+    {
+      point: Point;
+      velocity: Point;
+      pressing: boolean;
+      at: number;
+      color: string;
+      name: string;
+    }
   >();
   // Cursor admission mirrors the local phone's config/ACK and binary ordering.
   // Remote venues observe the same trusted config as they relay it to the phone.
@@ -71,6 +85,8 @@ export class CursorPlayback {
       cursor.seq = frame.seq;
       this.localCursors.set(player.id, {
         point: { x: frame.x, y: frame.y },
+        velocity: { x: frame.vx, y: frame.vy },
+        pressing: frame.buttons !== 0,
         at: localTime,
         color: player.color,
         name: player.name,
@@ -97,13 +113,27 @@ export class CursorPlayback {
     this.cursorInputs.clear();
     this.localCursors.clear();
   }
+  /** Each fresh cursor, and whether its player is holding a press control. */
   cursors(localTime: number) {
     return Object.freeze(
       [...this.localCursors.entries()]
         .filter(([, c]) => localTime - c.at < 1000)
-        .map(([id, c]) =>
-          Object.freeze({ id, ...c, point: Object.freeze({ ...c.point }) }),
-        ),
+        .map(([id, { point, velocity, pressing, at, color, name }]) => {
+          const ahead =
+            Math.min(CURSOR_EXTRAPOLATION_MS, Math.max(0, localTime - at)) /
+            1000;
+          return Object.freeze({
+            id,
+            point: Object.freeze({
+              x: point.x + velocity.x * ahead,
+              y: point.y + velocity.y * ahead,
+            }),
+            pressing,
+            at,
+            color,
+            name,
+          });
+        }),
     );
   }
 }

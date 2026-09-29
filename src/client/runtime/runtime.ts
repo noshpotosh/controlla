@@ -546,6 +546,12 @@ export class Runtime {
   previewPoint() {
     return this.input.previewPoint();
   }
+  chopCount() {
+    return this.input.getSnapshot().chops;
+  }
+  holdAim(down: boolean) {
+    this.input.holdAim(down);
+  }
   setPoint(point: Point) {
     this.input.setPoint(point);
   }
@@ -613,11 +619,19 @@ export class Runtime {
     return this.playback.metrics();
   }
   private advanceFrame(): ReadonlyDeep<ScreenFrame> {
+    const cursors = this.cursors();
     const frame = this.playback.advanceFrame(
       this.time(),
       Object.fromEntries(
-        this.cursors().map((cursor) => [cursor.id, { ...cursor.point }]),
+        cursors.map((cursor) => [cursor.id, { ...cursor.point }]),
       ),
+      Object.fromEntries(
+        cursors.map((cursor) => [
+          cursor.id,
+          { name: cursor.name, color: cursor.color },
+        ]),
+      ),
+      Object.fromEntries(cursors.map((cursor) => [cursor.id, cursor.pressing])),
     );
     this.view.state = this.playback.sampledSnapshot;
     return frame;

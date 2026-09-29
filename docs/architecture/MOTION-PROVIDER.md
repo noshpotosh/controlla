@@ -21,6 +21,23 @@ The provider graph admits only its own modules, the declaration-only controller 
 - Runtime transports capability changes through existing host negotiation. The host resolver still owns fallbacks, required-input errors, generations and ACK admission; ordinary samples do not send capability messages. No fallback is invented when a descriptor requires motion without one.
 - The shell exposes a read-only motion status and distinguishes permission granted, waiting for samples, active samples, suspended and unavailable. Diagnostics remains observation-only.
 
+## Compass and aim anchoring
+
+Added on `feature/compass-anchor` (from `feature/whack-a-mole` `06191ef`). The pointer moves by turn speed, so any turn it does not show becomes a lasting offset between where the phone points and the cursor. Anchoring keeps a tally of those turns and wins them back.
+
+- The provider also listens for orientation events under the same lifecycle: `deviceorientationabsolute` on Android, and `deviceorientation` with `webkitCompassHeading`/`webkitCompassAccuracy` on iOS. Suspension and dispose detach them, and stale callbacks are ignored. The latest reading rides on the next motion sample as `RawMotionSample.orientation`, so recordings and replay see exactly what live processing saw. The compass is never required. It never affects status, availability, capabilities, `pointerFresh` or host negotiation.
+- The processor exposes `aim`: the heading and elevation of the phone's top edge. Elevation comes from gravity, as tilt already does. Heading is the gyro's, held to the compass by `HeadingFilter` (tuning in `COMPASS`):
+  - Each reading is compared with where the gyro had the phone when it was taken, to allow for the compass's lag.
+  - It is applied only while the phone turns slowly, the top edge is within about 53° of level and the rated accuracy is 30° or better.
+  - A brief disagreement counts as a magnetic disturbance and is ignored; if it persists for 2 s, heading is re-aligned.
+
+  The quaternion, rate, gravity, `up` and tilt outputs are unchanged. The `up` sign hysteresis now runs once per sample rather than when `up` is read.
+
+- `GyroPointer.anchoring` adds an `AimLedger` (tuning in `ANCHOR`). It tallies turns the cursor did not show: presses, swing locks, rebounds, dead-zone slip and gyro drift. It pays them back only by stretching or shrinking the player's own steps, by up to 25%. A still or locked cursor never moves by itself. Turns at the edges and Recenter re-anchor as before, and a mismatch over 45° is left to Recenter. Without a compass, sideways slip outside held aim is not counted, because it can't be told from gyro drift. Elevation is always anchored by gravity.
+- Anchoring is the default for every motion pointer: the lobby, Neon Harvest and Whack-a-Mole. It was first tried in Whack-a-Mole and the lobby only. A game can opt out with `anchor: false` on its input requirement, which resolves to `sensors.pointer.anchor: false`; no game does. With it off, replaying the recorded iPhone traces gives byte-identical cursor output.
+- The Motion Lab has a compass recording set. Its `center…` segments all point at the middle of the TV, and a hold button replays like Whack-a-Mole's. `npm run replay` reports the compass's rate, accuracy, noise and best-fit lag, and the drift at each return to center with anchoring off and on.
+- Still to check on a device: whether iOS delivers compass readings under the single motion grant, the real compass lag (default 250 ms), typical accuracy indoors, and Android.
+
 ## Compatibility and acceptance
 
 Protocol 4, the 47-byte frame, layout schema 2, resolved configuration schema 1, one binary motion vector, host authority and normal pointer/calibration algorithms are preserved. The added `GyroPointer.resumeAt` retires integration history at recovery without changing normal input processing. No dependency, deployment, data migration or extra sensor is introduced.
