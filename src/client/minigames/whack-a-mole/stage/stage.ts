@@ -636,13 +636,14 @@ class World {
         touched.target.material.color.set(player.color);
       }
       // Impact first: the mallet is down on the mole it hit (or the ground where it
-      // missed) when the whack arrives, then springs back up to the cursor.
+      // missed) when the whack arrives, then springs back up to the cursor. Kept
+      // brief: players are already aiming at the next mole.
       const slam = state.effects.findLast(
         (effect) => effect.playerId === player.id && effect.at <= time,
       );
       const since = slam ? time - slam.at : Infinity;
       const back =
-        since < 80 ? 0 : since < 380 ? easeOutBack((since - 80) / 300) : 1;
+        since < 50 ? 0 : since < 200 ? easeOutBack((since - 50) / 150) : 1;
       const position = this.scratch2.copy(view.head);
       if (slam && back < 1) {
         const hit =

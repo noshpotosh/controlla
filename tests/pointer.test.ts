@@ -182,26 +182,39 @@ void test('a hammer swing restores the aim from before it began and holds until 
   assert.equal(after.y, held.y);
 });
 
-void test('letting go settles: the aim stays put until the lift-off jolt dies down', () => {
+const SWING = { rate: 1.5, calmMs: 60, maxMs: 400 };
+
+void test('a locked aim ignores the swing but keeps the aiming done meanwhile', () => {
   const pointer = new GyroPointer(),
-    settle = { rate: 30 * DEG, calmMs: 50, minMs: 120, maxMs: 400 },
     { at } = turn(pointer, [0, 0, -10 * DEG], 0.5),
-    held = pointer.holdAt(at, Infinity);
-  pointer.settleFrom(at, settle);
-  // The thumb lifting off twists the phone at 45°/s for 200 ms: ignored.
-  const jolt = turn(pointer, [45 * DEG, 0, 45 * DEG], 0.2, FLAT, at);
-  assert.deepEqual(jolt.p, held);
-  // Calm for 50 ms ends the hold; then aiming moves the cursor again.
-  const calm = turn(pointer, [0, 0, 0], 0.06, FLAT, jolt.at);
-  const after = turn(pointer, [0, 0, -20 * DEG], 0.2, FLAT, calm.at).p;
-  assert.ok(after.x > held.x);
-  // Motion that never calms is held for at most `maxMs`.
-  const busy = new GyroPointer();
-  busy.holdAt(0, Infinity);
-  busy.settleFrom(0, settle);
-  const early = turn(busy, [0, 0, -60 * DEG], 0.35).p;
-  assert.deepEqual(early, { x: 0.5, y: 0.5 });
-  assert.ok(turn(busy, [0, 0, -60 * DEG], 0.2, FLAT, 350).p.x > 0.5);
+    locked = pointer.lockAt(at, SWING);
+  // A whack: hard down, then back up about as far. Never moves the cursor.
+  const down = turn(pointer, [-8, 0, 0], 0.15, FLAT, at),
+    up = turn(pointer, [6, 0, 0], 0.2, FLAT, down.at);
+  assert.deepEqual(up.p, locked);
+  // Turning toward the next mole while still holding: frozen for now...
+  const aim = turn(pointer, [0, 0, -20 * DEG], 0.3, FLAT, up.at);
+  assert.deepEqual(aim.p, locked);
+  // ...then letting go moves the cursor there at once.
+  const moved = pointer.unlock(aim.at);
+  assert.ok(moved.x > locked.x + 0.05, `${moved.x} vs ${locked.x}`);
+  assert.ok(Math.abs(moved.y - locked.y) < 0.01, 'the swing left no trace');
+  assert.deepEqual(pointer.holdForPress(aim.at), moved, 'no rewind on unlock');
+});
+
+void test('after unlocking, aiming counts at once while the rebound is ignored', () => {
+  const pointer = new GyroPointer();
+  pointer.lockAt(0, SWING);
+  const start = pointer.unlock(0);
+  // The swing's rebound, still under way, is ignored...
+  const rebound = turn(pointer, [5, 0, 0], 0.1, FLAT, 0);
+  assert.deepEqual(rebound.p, start);
+  // ...but slower aiming moves the cursor straight away, with no dead time.
+  const aim = turn(pointer, [0, 0, -30 * DEG], 0.05, FLAT, rebound.at);
+  assert.ok(aim.p.x > start.x);
+  // Once over, fast turns aim normally again.
+  const calm = turn(pointer, [0, 0, 0], 0.1, FLAT, aim.at);
+  assert.ok(turn(pointer, [0, 0, -3], 0.05, FLAT, calm.at).p.x > calm.p.x);
 });
 
 void test('a game can keep the cursor inside its play field', () => {

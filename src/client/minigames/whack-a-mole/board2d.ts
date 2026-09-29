@@ -294,9 +294,9 @@ function drawRumble(
  * slams flat on impact, then recoils.
  */
 export function hammerAngle(sinceSlam: number, raised = false) {
-  if (sinceSlam < 0 || sinceSlam > 330) return raised ? -1.15 : -0.7;
-  if (sinceSlam < 70) return 0.15;
-  const t = (sinceSlam - 70) / 260;
+  if (sinceSlam < 0 || sinceSlam > 200) return raised ? -1.15 : -0.7;
+  if (sinceSlam < 50) return 0.15;
+  const t = (sinceSlam - 50) / 150;
   return 0.15 - 0.85 * (1 - (1 - t) ** 2);
 }
 

@@ -26,14 +26,14 @@ export function pointerBounds(value: unknown): PointerBounds {
     : FULL_SCREEN;
 }
 
-/** How a hold ends once the motion that caused it has died down. */
-export interface Settle {
-  /** Calm means turning slower than this (rad/s, any axis)... */
+/**
+ * Telling a hammer swing from aiming: the phone turning faster than `rate`
+ * (rad/s, any axis) is the swing or its rebound.
+ */
+export interface Swing {
   rate: number;
-  /** ...for this long (ms). */
+  /** After unlocking, the rebound is over once slower for `calmMs`, or after `maxMs`. */
   calmMs: number;
-  /** The hold lasts at least `minMs` and at most `maxMs` from when settling starts. */
-  minMs: number;
   maxMs: number;
 }
 
@@ -74,10 +74,14 @@ export class GyroPointer {
   private point: Point = { x: 0.5, y: 0.5 };
   private history: { at: number; x: number; y: number }[] = [];
   private holdUntil = -Infinity;
-  /** A settling hold ends early once calm, but not before this. */
-  private settleAfter: number | null = null;
-  private settle: Settle | null = null;
-  private calmSince: number | null = null;
+  /** Aim locked for a swing, and the aiming done meanwhile, applied on unlock. */
+  private lock: { swing: Swing; pending: Point } | null = null;
+  /** Just unlocked: the swing's rebound is still ignored. */
+  private rebound: {
+    swing: Swing;
+    until: number;
+    calmSince: number | null;
+  } | null = null;
   private bounds = FULL_SCREEN;
   gain = DEFAULT_GAIN;
 
@@ -88,28 +92,23 @@ export class GyroPointer {
    * @param at sample time (ms, same clock as `holdForPress`)
    */
   update(rate: number[], up: number[], dt: number, at: number): Point {
-    if (!this.held(rate, at) && dt > 0) {
-      // Player space: turning is about world vertical regardless of grip or
-      // roll; tilting is about the phone's right edge. Roll is ignored.
-      let yaw = rate[0] * up[0] + rate[1] * up[1] + rate[2] * up[2],
-        pitch = rate[0];
-      const speed = Math.hypot(yaw, pitch),
-        pass = clamp(
-          (speed - GYRO.deadzoneStart) /
-            (GYRO.deadzoneFull - GYRO.deadzoneStart),
-        ),
-        curve = clamp(
-          (speed - GYRO.slowSpeed) / (GYRO.fastSpeed - GYRO.slowSpeed),
-        ),
-        multiplier =
-          GYRO.slowMultiplier +
-          (GYRO.fastMultiplier - GYRO.slowMultiplier) * curve;
-      yaw *= pass;
-      pitch *= pass;
-      this.point = this.inBounds({
-        x: this.point.x - yaw * this.gain * multiplier * dt,
-        y: this.point.y - pitch * this.gain * GYRO.aspect * multiplier * dt,
-      });
+    const spin = Math.hypot(rate[0], rate[1], rate[2]);
+    if (dt > 0) {
+      if (this.lock) {
+        // Aiming while locked still counts once unlocked, so where the phone
+        // points and the cursor stay in step; the swing itself never does.
+        if (spin < this.lock.swing.rate) {
+          const step = this.step(rate, up, dt);
+          this.lock.pending.x += step.x;
+          this.lock.pending.y += step.y;
+        }
+      } else if (at >= this.holdUntil && !this.inRebound(spin, at)) {
+        const step = this.step(rate, up, dt);
+        this.point = this.inBounds({
+          x: this.point.x + step.x,
+          y: this.point.y + step.y,
+        });
+      }
     }
     this.history.push({ at, ...this.point });
     while (this.history.length && at - this.history[0].at > GYRO.historyMs)
@@ -117,58 +116,109 @@ export class GyroPointer {
     return { ...this.point };
   }
 
-  /** Whether the aim is frozen for this sample; a settling hold ends once calm. */
-  private held(rate: number[], at: number) {
-    if (at >= this.holdUntil) return false;
-    if (Math.hypot(rate[0], rate[1], rate[2]) < (this.settle?.rate ?? 0))
-      this.calmSince ??= at;
-    else this.calmSince = null;
-    if (
-      this.settle &&
-      this.settleAfter !== null &&
-      at >= this.settleAfter &&
-      this.calmSince !== null &&
-      at - this.calmSince >= this.settle.calmMs
-    ) {
-      this.release(at);
+  /** How far one sample of turning moves the cursor. */
+  private step(rate: number[], up: number[], dt: number): Point {
+    // Player space: turning is about world vertical regardless of grip or
+    // roll; tilting is about the phone's right edge. Roll is ignored.
+    const yaw = rate[0] * up[0] + rate[1] * up[1] + rate[2] * up[2],
+      pitch = rate[0];
+    const speed = Math.hypot(yaw, pitch),
+      pass = clamp(
+        (speed - GYRO.deadzoneStart) / (GYRO.deadzoneFull - GYRO.deadzoneStart),
+      ),
+      curve = clamp(
+        (speed - GYRO.slowSpeed) / (GYRO.fastSpeed - GYRO.slowSpeed),
+      ),
+      scale =
+        pass *
+        this.gain *
+        (GYRO.slowMultiplier +
+          (GYRO.fastMultiplier - GYRO.slowMultiplier) * curve) *
+        dt;
+    return { x: -yaw * scale, y: -pitch * scale * GYRO.aspect };
+  }
+
+  /** Whether this sample is part of a swing's rebound, which never aims. */
+  private inRebound(spin: number, at: number) {
+    const rebound = this.rebound;
+    if (!rebound) return false;
+    if (at >= rebound.until) {
+      this.rebound = null;
       return false;
     }
-    return true;
+    if (spin >= rebound.swing.rate) {
+      rebound.calmSince = null;
+      return true;
+    }
+    rebound.calmSince ??= at;
+    if (at - rebound.calmSince >= rebound.swing.calmMs) this.rebound = null;
+    return false;
   }
 
   /** Freezes the cursor where it was just before a tap jolted the phone. */
   holdForPress(at: number): Point {
     // A gesture already restored the aim; don't rewind into its own motion.
-    if (at < this.holdUntil) return { ...this.point };
+    if (this.lock || at < this.holdUntil) return { ...this.point };
     return this.holdAt(at - GYRO.pressLookbackMs, at + GYRO.pressHoldMs);
   }
 
   /** Restores the cursor to where it was at `captureAt` and holds it until `until`. */
   holdAt(captureAt: number, until: number): Point {
-    let held = this.history[0] ?? { at: captureAt, ...this.point };
-    for (const h of this.history) if (h.at <= captureAt) held = h;
-    this.point = this.inBounds(held);
+    this.point = this.inBounds(this.pointAt(captureAt));
     this.holdUntil = until;
-    this.settleAfter = this.settle = this.calmSince = null;
+    this.lock = this.rebound = null;
     return { ...this.point };
   }
 
   /**
-   * Keeps a hold going only until the phone calms down, e.g. from a thumb
-   * lifting off or a swing's rebound, so neither drags the aim away.
+   * Locks the aim where the cursor was at `captureAt` for a hammer swing.
+   * Turning slower than `swing.rate` meanwhile, including since `captureAt`,
+   * is kept and applied on unlock; faster turning is the swing.
    */
-  settleFrom(at: number, settle: Settle) {
-    if (at >= this.holdUntil) return;
-    this.holdUntil = Math.min(this.holdUntil, at + settle.maxMs);
-    this.settleAfter = at + settle.minMs;
-    this.settle = settle;
-    this.calmSince = null;
+  lockAt(captureAt: number, swing: Swing): Point {
+    const now = this.point;
+    this.point = this.inBounds(this.pointAt(captureAt));
+    this.holdUntil = -Infinity;
+    this.rebound = null;
+    this.lock = {
+      swing,
+      pending: { x: now.x - this.point.x, y: now.y - this.point.y },
+    };
+    return { ...this.point };
   }
 
-  /** Ends a hold now. */
+  /**
+   * Lets the cursor move again at once, carried on by the aiming done while
+   * locked. The swing's rebound keeps being ignored until it dies down.
+   */
+  unlock(at: number): Point {
+    const lock = this.lock;
+    if (!lock) return { ...this.point };
+    this.lock = null;
+    this.point = this.inBounds({
+      x: this.point.x + lock.pending.x,
+      y: this.point.y + lock.pending.y,
+    });
+    // A later press never rewinds back across the unlock.
+    this.history = [{ at, ...this.point }];
+    this.rebound = {
+      swing: lock.swing,
+      until: at + lock.swing.maxMs,
+      calmSince: null,
+    };
+    return { ...this.point };
+  }
+
+  private pointAt(at: number): Point {
+    let held = this.history[0] ?? { at, ...this.point };
+    for (const h of this.history) if (h.at <= at) held = h;
+    return { x: held.x, y: held.y };
+  }
+
+  /** Ends any hold or lock now, dropping what a lock had pending. */
   release(at: number) {
     this.holdUntil = Math.min(this.holdUntil, at);
-    this.settleAfter = this.settle = this.calmSince = null;
+    this.lock = this.rebound = null;
   }
 
   /** Retire pre-suspension history while preserving the last displayed aim. */
@@ -176,7 +226,7 @@ export class GyroPointer {
     this.point = this.inBounds(point);
     this.history = [];
     this.holdUntil = -Infinity;
-    this.settleAfter = this.settle = this.calmSince = null;
+    this.lock = this.rebound = null;
   }
 
   recenter() {

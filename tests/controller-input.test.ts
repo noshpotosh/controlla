@@ -448,7 +448,7 @@ void test('holding the swing button freezes the aim, and a swing whacks there', 
   assert.ok(f.input.previewPoint().x > press.press.x);
 });
 
-void test('a punch-like jolt whacks, and releasing mid-swing waits for the phone to settle', () => {
+void test('a punch-like jolt whacks, and releasing mid-swing ignores the rebound', () => {
   const f = swingFixture();
   for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
   f.input.holdAim(true);
@@ -456,11 +456,15 @@ void test('a punch-like jolt whacks, and releasing mid-swing waits for the phone
   f.sample([0.2, 0, 0], [0, 0, 9.81 * 1.4]);
   f.sample([0.3, 0, 0], [0, 0, 9.81 * 2.2]);
   assert.equal(f.presses().length, 1);
+  const [press] = f.presses();
+  assert.ok(press.type === 'press');
+  assert.deepEqual({ x: press.press.x, y: press.press.y }, held);
   // Let go straight away while the phone is still swinging back.
   f.input.holdAim(false);
+  const released = f.input.previewPoint();
   f.sample([6, 0, 0]);
   f.sample([5, 0, 0]);
-  assert.deepEqual(f.input.previewPoint(), held, 'still settling');
+  assert.deepEqual(f.input.previewPoint(), released, 'the rebound is ignored');
   for (let i = 0; i < 12; i++) f.sample([0, 0, 0]);
   for (let i = 0; i < 6; i++) f.sample([0.6, 0, 0]);
   assert.notDeepEqual(f.input.previewPoint(), held, 'settled, aiming again');

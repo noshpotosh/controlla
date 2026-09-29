@@ -1,4 +1,4 @@
-import type { Settle } from './pointer.ts';
+import type { Swing } from './pointer.ts';
 
 /**
  * Tuning for the hammer swing; adjust from recorded traces. A swing only counts
@@ -28,15 +28,15 @@ export const CHOP = {
   // A swing already under way when the button is let go still counts if it
   // is recognised this soon after.
   releaseGraceMs: 150,
-  // Letting go keeps the aim still until the lift-off jolt or the swing's
-  // rebound has died down. Recorded taps twist an iPhone at 20–55°/s for
-  // about 250 ms.
-  release: {
-    rate: 0.5,
-    calmMs: 50,
-    minMs: 120,
+  // While the aim is locked, and while a swing's rebound lasts after letting
+  // go, turning faster than 1.5 rad/s (86°/s) is the swing and never aims;
+  // slower turning is the player aiming and always counts. Recorded aiming
+  // mostly stays under that, and whacks peak at 5–25 rad/s.
+  swing: {
+    rate: 1.5,
+    calmMs: 60,
     maxMs: 400,
-  } satisfies Settle,
+  } satisfies Swing,
   // A whack is never dated more than this before it is sent.
   maxBackdateMs: 400,
 };
