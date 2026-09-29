@@ -15,7 +15,7 @@ export const WHACK = {
   grace: 60,
   recovery: 280,
   /** The hammer head's hit radius at the front of the field, in logical px. */
-  hammerRadius: 42,
+  hammerRadius: 32,
   stun: 1200,
   bombPenalty: 20,
   points: { normal: 10, golden: 30, bomb: 0 },

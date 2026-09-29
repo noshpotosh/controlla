@@ -619,10 +619,17 @@ export class Runtime {
     return this.playback.metrics();
   }
   private advanceFrame(): ReadonlyDeep<ScreenFrame> {
+    const cursors = this.cursors();
     const frame = this.playback.advanceFrame(
       this.time(),
       Object.fromEntries(
-        this.cursors().map((cursor) => [cursor.id, { ...cursor.point }]),
+        cursors.map((cursor) => [cursor.id, { ...cursor.point }]),
+      ),
+      Object.fromEntries(
+        cursors.map((cursor) => [
+          cursor.id,
+          { name: cursor.name, color: cursor.color },
+        ]),
       ),
     );
     this.view.state = this.playback.sampledSnapshot;

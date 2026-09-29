@@ -246,6 +246,7 @@ export class DisplayPlayback {
   advanceFrame(
     authorityTime: number,
     cursors: ScreenFrame['localCursors'],
+    players: NonNullable<ScreenFrame['localPlayers']> = {},
   ): ReadonlyDeep<ScreenFrame> {
     const delay = this.delay;
     const presentationTime = authorityTime - delay;
@@ -300,6 +301,7 @@ export class DisplayPlayback {
       presentationTime,
       delay,
       localCursors,
+      localPlayers: structuredClone(players),
       status,
       message,
     });

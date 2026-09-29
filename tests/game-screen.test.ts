@@ -509,3 +509,29 @@ void test('retained runtime callbacks cannot revive playback after close or host
   assert.deepEqual(sent, before);
   assert.deepEqual(runtime.snapshotMetrics(), metrics);
 });
+
+void test('the lobby shows each phone cursor with its name before a round, and only then', () => {
+  const presenter = createPresenter(games);
+  const { ctx, labels } = context();
+  const frame = (status: ScreenFrame['status']) => ({
+    snapshot: null,
+    presentationTime: 1000,
+    delay: 0,
+    localCursors: { ada: { x: 0.3, y: 0.4 }, ghost: { x: 0.5, y: 0.5 } },
+    localPlayers: { ada: { name: 'Ada', color: '#ff6b6b' } },
+    status,
+    message: null,
+  });
+  presenter.render(ctx, frame('waiting'), 1600, 900);
+  assert.ok(labels.includes('Connect your phones. Pick a game below.'));
+  assert.ok(labels.includes('Ada'), 'a known cursor is named');
+  assert.equal(
+    labels.length,
+    3,
+    'message, hint and one cursor; unknown ids skipped',
+  );
+  labels.length = 0;
+  presenter.render(ctx, frame('loading'), 1600, 900);
+  assert.deepEqual(labels, ['Preparing round…']);
+  presenter.dispose();
+});
