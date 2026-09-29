@@ -338,6 +338,8 @@ void test('Whack-a-Mole swings to whack with motion and falls back to a touch bu
   );
   assert.equal(swing.sensors.chop?.enabled, true);
   assert.equal(swing.sensors.pointer.enabled, true);
+  // Anchored aim is the default: only an opt-out is sent.
+  assert.equal(swing.sensors.pointer.anchor, undefined);
   // The chop tile takes the whack button's place and drops its touch props.
   assert.deepEqual(swing.widgets[1].rect, [0, 15 / 24, 1, 9 / 24]);
   assert.equal(swing.widgets[1].props, undefined);
@@ -350,6 +352,7 @@ void test('Whack-a-Mole swings to whack with motion and falls back to a touch bu
     ],
   );
   assert.equal(touch.sensors.chop?.enabled, false);
+  assert.equal(touch.sensors.pointer.anchor, undefined);
   assert.deepEqual(touch.substitutions, [
     'aim: pointer → aim-pad',
     'whack: chop → button',
@@ -483,4 +486,29 @@ void test('live preflight rejects conflicts before loading/reconfiguration and e
   assert.equal(r.created(), 0);
   assert.deepEqual(r.sent, before);
   assert.deepEqual(r.authority.summary().progress, progress);
+});
+
+void test('a game can opt its pointer out of anchored aim', () => {
+  const inputs = neonHarvest.controls.inputs;
+  const optOut: GameDescriptor = {
+    ...neonHarvest,
+    controls: {
+      ...neonHarvest.controls,
+      inputs: { ...inputs, aim: { ...inputs.aim, anchor: false } },
+    },
+  };
+  assert.equal(
+    resolveController(optOut, granted(), 1).sensors.pointer.anchor,
+    false,
+  );
+  for (const game of [neonHarvest, whackAMole])
+    assert.equal(
+      resolveController(game, granted(), 1).sensors.pointer.anchor,
+      undefined,
+    );
+  // Without a motion pointer there is nothing to opt out of.
+  assert.equal(
+    resolveController(optOut, defaultCapabilities(), 1).sensors.pointer.anchor,
+    undefined,
+  );
 });

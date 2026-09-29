@@ -10,6 +10,17 @@ export type MotionStatus =
 type Frozen<T> = T extends object
   ? { readonly [K in keyof T]: Frozen<T[K]> }
   : T;
+/** Where the phone's top edge points, for anchoring aim to the real world. */
+export interface AimReference {
+  /** Heading (rad, clockwise), or null when the top edge is too steep to tell. */
+  readonly yaw: number | null;
+  /** Elevation of the top edge (rad, up positive), or null before gravity settles. */
+  readonly pitch: number | null;
+  /** Heading is held to the compass, so slow turns and gyro drift show up in it. */
+  readonly anchored: boolean;
+  /** Changes whenever the reference jumps: re-aligned, or the grip flipped. */
+  readonly epoch: number;
+}
 export interface MotionSnapshot {
   readonly status: MotionStatus;
   readonly permission: Permission;
@@ -25,4 +36,12 @@ export interface MotionSnapshot {
   readonly gravity: readonly number[];
   readonly up: readonly number[];
   readonly tilt: Readonly<{ x: number; y: number }>;
+  /** Where the top edge points, from gravity and, when available, the compass. */
+  readonly aim: AimReference;
+  /** The latest compass reading (degrees clockwise from north), for diagnostics. */
+  readonly compass: Readonly<{
+    fresh: boolean;
+    heading: number | null;
+    accuracy: number | null;
+  }>;
 }

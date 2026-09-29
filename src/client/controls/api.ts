@@ -56,6 +56,8 @@ export interface ControllerConfig {
       rateHz: number;
       /** The part of the screen (normalized) the cursor stays inside. */
       bounds?: { left: number; top: number; right: number; bottom: number };
+      /** Off only when the game opted out of anchored aim; on when absent. */
+      anchor?: false;
     };
     tilt: { enabled: boolean };
     shake: { enabled: boolean; thresholdG: number };
@@ -81,6 +83,12 @@ export interface InputRequirement {
    * stays inside, such as the play field. Defaults to the whole screen.
    */
   bounds?: { left: number; top: number; right: number; bottom: number };
+  /**
+   * For a motion pointer: the cursor stays tied to where the phone really
+   * points, winning back drift from the compass and gravity during the
+   * player's own motion. Set false to opt out and move by turn speed alone.
+   */
+  anchor?: boolean;
 }
 
 /** Semantic input requirements and their named controller layout bindings. */

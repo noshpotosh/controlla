@@ -2,7 +2,10 @@ import {
   Motion,
   type MotionEnvironment,
 } from '../../src/client/controls/motion/provider.ts';
-import type { MotionEventLike } from '../../src/client/controls/motion/trace.ts';
+import type {
+  MotionEventLike,
+  OrientationEventLike,
+} from '../../src/client/controls/motion/trace.ts';
 import { defaultCapabilities } from '../../src/client/controls/resolve.ts';
 import type { Permission } from '../../src/client/controls/api.ts';
 
@@ -15,6 +18,7 @@ export function motionFixture(
     starts = 0,
     stops = 0;
   let receive: ((event: MotionEventLike) => void) | null = null;
+  let orient: ((event: OrientationEventLike) => void) | null = null;
   const timers = new Set<{ at: number; run: () => void }>();
   const env: MotionEnvironment = {
     now: () => time,
@@ -32,6 +36,12 @@ export function motionFixture(
         receive = null;
       };
     },
+    listenOrientation: (listener) => {
+      orient = listener;
+      return () => {
+        orient = null;
+      };
+    },
     schedule: (run, delay) => {
       const timer = { at: time + delay, run };
       timers.add(timer);
@@ -45,6 +55,7 @@ export function motionFixture(
     motion,
     counts: () => ({ requests, starts, stops, timers: timers.size }),
     listener: () => receive,
+    orientationListener: () => orient,
     advance(ms: number) {
       const end = time + ms;
       while (true) {
@@ -65,6 +76,9 @@ export function motionFixture(
         rotationRate: { alpha: 0, beta: 0, gamma: 0 },
         ...overrides,
       });
+    },
+    emitOrientation(overrides: Partial<OrientationEventLike> = {}) {
+      orient?.({ timeStamp: time, alpha: 0, beta: 0, gamma: 0, ...overrides });
     },
   };
 }

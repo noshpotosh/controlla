@@ -9,15 +9,19 @@ import type {
 import type {
   MotionTrace,
   RawMotionSample,
+  RawOrientationSample,
   TraceSegment,
   Vec3,
 } from '../../controls/motion/trace.ts';
+import { compassDegrees } from '../../controls/motion/heading.ts';
 
 interface Step {
   label: string;
   prompt: string;
   seconds: number;
   taps?: boolean;
+  /** Shows a button to hold while swinging, like Whack-a-Mole's. */
+  holds?: boolean;
 }
 
 /** Guided recording: each step becomes a labelled segment in the trace. */
@@ -96,12 +100,79 @@ export const RECORDING_SCRIPT: Step[] = [
     seconds: 8,
   },
 ];
+
+/**
+ * Guided recording for anchoring aim to the compass. Segments labelled
+ * `center…` all point at the middle of the TV, so replay can measure how far
+ * the cursor has drifted from where the phone points.
+ */
+export const COMPASS_SCRIPT: Step[] = [
+  {
+    label: 'center',
+    prompt:
+      'Hold it like a remote, screen up. Point at the middle of the TV and keep still.',
+    seconds: 4,
+  },
+  {
+    label: 'turn-return',
+    prompt:
+      'Point at the right edge of the TV, then back at the middle. Do it 3 times, then hold.',
+    seconds: 8,
+  },
+  {
+    label: 'center-after-turns',
+    prompt: 'Point at the middle of the TV and keep still.',
+    seconds: 3,
+  },
+  {
+    label: 'whacks',
+    prompt:
+      'Point at the middle. Hold the button and whack 6 times, pointing back at the middle after each.',
+    seconds: 12,
+    holds: true,
+  },
+  {
+    label: 'center-after-whacks',
+    prompt: 'Point at the middle of the TV and keep still.',
+    seconds: 3,
+  },
+  {
+    label: 'pitch-sweep',
+    prompt:
+      'Keep pointing at the middle while slowly tipping up to the top of the TV and back down.',
+    seconds: 6,
+  },
+  {
+    label: 'slow-turn',
+    prompt:
+      'Very slowly turn to the right edge of the TV over 5 seconds, then hold.',
+    seconds: 7,
+  },
+  {
+    label: 'center-after-slow-turn',
+    prompt: 'Point at the middle of the TV and keep still.',
+    seconds: 3,
+  },
+  {
+    label: 'center-long',
+    prompt: 'Keep pointing at the middle of the TV. Hold still for 20 seconds.',
+    seconds: 20,
+  },
+];
+const SCRIPTS = { guided: RECORDING_SCRIPT, compass: COMPASS_SCRIPT };
+type Script = keyof typeof SCRIPTS;
 const READY_SECONDS = 2;
 const CAPTURE_SECONDS = 30;
 
 type Phase =
   | { kind: 'idle' }
-  | { kind: 'recording'; step: number; ready: boolean; until: number }
+  | {
+      kind: 'recording';
+      script: Script;
+      step: number;
+      ready: boolean;
+      until: number;
+    }
   | {
       kind: 'done';
       trace: MotionTrace;
@@ -123,6 +194,19 @@ const compact = (s: RawMotionSample): RawMotionSample => ({
   accel: roundVec(s.accel, 4),
   accelG: roundVec(s.accelG, 4),
   rate: roundVec(s.rate, 3),
+  ...(s.orientation ? { orientation: compactOrientation(s.orientation) } : {}),
+});
+const roundOrNull = (n: number | null, digits: number) =>
+  n === null ? null : round(n, digits);
+const compactOrientation = (o: RawOrientationSample): RawOrientationSample => ({
+  t: round(o.t, 2),
+  at: round(o.at, 2),
+  alpha: roundOrNull(o.alpha, 3),
+  beta: roundOrNull(o.beta, 3),
+  gamma: roundOrNull(o.gamma, 3),
+  absolute: o.absolute,
+  heading: roundOrNull(o.heading, 3),
+  accuracy: roundOrNull(o.accuracy, 1),
 });
 
 function defaultName() {
@@ -168,12 +252,13 @@ export function MotionLab({ motion, onClose }: ControllerPanelProps) {
     });
   }, [motion]);
 
-  function start() {
+  function start(script: Script) {
     recorded.current = [];
     segments.current = [];
     recording.current = true;
     setPhase({
       kind: 'recording',
+      script,
       step: 0,
       ready: true,
       until: performance.now() + READY_SECONDS * 1000,
@@ -254,7 +339,8 @@ export function MotionLab({ motion, onClose }: ControllerPanelProps) {
     const timer = setInterval(() => {
       const t = performance.now();
       if (t < phase.until) return;
-      const step = RECORDING_SCRIPT[phase.step];
+      const script = SCRIPTS[phase.script],
+        step = script[phase.step];
       if (phase.ready) {
         segments.current.push({
           label: step.label,
@@ -262,16 +348,19 @@ export function MotionLab({ motion, onClose }: ControllerPanelProps) {
           start: t,
           end: t + step.seconds * 1000,
           ...(step.taps ? { taps: [] } : {}),
+          ...(step.holds ? { holds: [] } : {}),
         });
         setPhase({
           kind: 'recording',
+          script: phase.script,
           step: phase.step,
           ready: false,
           until: t + step.seconds * 1000,
         });
-      } else if (phase.step + 1 < RECORDING_SCRIPT.length)
+      } else if (phase.step + 1 < script.length)
         setPhase({
           kind: 'recording',
+          script: phase.script,
           step: phase.step + 1,
           ready: true,
           until: t + READY_SECONDS * 1000,
@@ -282,8 +371,15 @@ export function MotionLab({ motion, onClose }: ControllerPanelProps) {
   });
 
   const granted = motion.permission() === 'granted';
-  const step =
-    phase.kind === 'recording' ? RECORDING_SCRIPT[phase.step] : undefined;
+  const script = phase.kind === 'recording' ? SCRIPTS[phase.script] : [],
+    step = phase.kind === 'recording' ? script[phase.step] : undefined;
+  /** When the hold button went down, while it is held. */
+  const holdDown = useRef<number | null>(null);
+  const endHold = (at: number) => {
+    const down = holdDown.current;
+    holdDown.current = null;
+    if (down !== null) segments.current.at(-1)?.holds?.push([down, at]);
+  };
 
   return (
     <div className="motion-lab">
@@ -311,8 +407,11 @@ export function MotionLab({ motion, onClose }: ControllerPanelProps) {
               onChange={(e) => setName(e.target.value)}
             />
           </div>
-          <Button className="action" onClick={start}>
+          <Button className="action" onClick={() => start('guided')}>
             Record guided set
+          </Button>
+          <Button variant="outline" onClick={() => start('compass')}>
+            Record compass set (about 70 s)
           </Button>
           <Button variant="outline" onClick={captureLast}>
             Save the last {CAPTURE_SECONDS} seconds
@@ -321,7 +420,7 @@ export function MotionLab({ motion, onClose }: ControllerPanelProps) {
       ) : phase.kind === 'recording' && step ? (
         <div className="motion-lab-step">
           <span className="eyebrow">
-            STEP {phase.step + 1} OF {RECORDING_SCRIPT.length}
+            STEP {phase.step + 1} OF {script.length}
           </span>
           <h1>{phase.ready ? 'Get ready…' : step.prompt}</h1>
           {phase.ready ? <p className="note">Next: {step.prompt}</p> : null}
@@ -334,6 +433,18 @@ export function MotionLab({ motion, onClose }: ControllerPanelProps) {
               }
             >
               Tap
+            </Button>
+          ) : null}
+          {step.holds && !phase.ready ? (
+            <Button
+              className="action motion-lab-tap"
+              onPointerDown={(e) => {
+                holdDown.current = e.timeStamp;
+              }}
+              onPointerUp={(e) => endHold(e.timeStamp)}
+              onPointerCancel={(e) => endHold(e.timeStamp)}
+            >
+              Hold to whack
             </Button>
           ) : null}
           <Button variant="outline" onClick={cancel}>
@@ -380,6 +491,8 @@ interface Readout {
   still: boolean;
   rate: number[];
   accel: number[];
+  /** Latest compass reading, if the phone reports one. */
+  compass: RawOrientationSample | null;
 }
 
 /** Snapshot of the recent samples: rate, stillness, per-channel peaks. */
@@ -408,6 +521,7 @@ function summarize(samples: RawMotionSample[]): Readout | null {
       ),
     rate: peaks((s) => s.rate),
     accel: peaks((s) => s.accel),
+    compass: samples.findLast((s) => s.orientation)?.orientation ?? null,
   };
 }
 
@@ -437,6 +551,9 @@ function LiveReadout({ motion }: { motion: MotionDiagnosticsPort }) {
           {readout.still ? '● still' : '○ moving'}
         </span>
       </p>
+      <p className="note">
+        Compass: <CompassReading reading={readout.compass} />
+      </p>
       <Bars
         title="Rotation (as reported)"
         names={['alpha', 'beta', 'gamma']}
@@ -452,6 +569,20 @@ function LiveReadout({ motion }: { motion: MotionDiagnosticsPort }) {
         unit="m/s²"
       />
     </div>
+  );
+}
+
+function CompassReading({ reading }: { reading: RawOrientationSample | null }) {
+  if (!reading) return <>no orientation events</>;
+  if (reading.accuracy !== null && reading.accuracy < 0)
+    return <>uncalibrated (wave the phone in a figure 8)</>;
+  const heading = compassDegrees(reading);
+  if (heading === null) return <>no heading (orientation is relative)</>;
+  return (
+    <>
+      {heading.toFixed(1)}°
+      {reading.accuracy === null ? '' : ` · ±${reading.accuracy.toFixed(0)}°`}
+    </>
   );
 }
 

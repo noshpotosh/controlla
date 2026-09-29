@@ -1,4 +1,6 @@
 import { clamp, type Point } from '../../../core/types.ts';
+import { AimLedger } from './anchor.ts';
+import type { AimReference } from './contracts.ts';
 
 /** The part of the screen a pointer stays inside, in normalized coordinates. */
 export interface PointerBounds {
@@ -75,7 +77,16 @@ export const GYRO = {
 export class GyroPointer {
   private point: Point = { x: 0.5, y: 0.5 };
   /** Recent cursor positions, and how fast the phone was turning (rad/s). */
-  private history: { at: number; x: number; y: number; spin: number }[] = [];
+  private history: {
+    at: number;
+    x: number;
+    y: number;
+    spin: number;
+    /** The ledger's shown turn then, when anchoring. */
+    shown?: Point;
+  }[] = [];
+  /** Ties the cursor to where the phone points; only when anchoring. */
+  private ledger: AimLedger | null = null;
   private holdUntil = -Infinity;
   /** Aim locked for a swing: nothing moves the cursor until unlocked. */
   private lock: Swing | null = null;
@@ -89,36 +100,85 @@ export class GyroPointer {
   gain = DEFAULT_GAIN;
 
   /**
+   * Whether turns the cursor missed are won back from where the phone really
+   * points (see `AimLedger`). Off, the cursor moves by turn speed alone.
+   */
+  get anchoring() {
+    return this.ledger !== null;
+  }
+  set anchoring(on: boolean) {
+    if (on !== this.anchoring) this.ledger = on ? new AimLedger() : null;
+  }
+
+  /** Turn (rad) the cursor still owes the phone, when anchoring. */
+  get drift(): Point | null {
+    return this.ledger?.debt ?? null;
+  }
+
+  /**
    * @param rate angular velocity in the device frame (rad/s), bias-corrected
    * @param up world-up expressed in the device frame (unit vector)
    * @param dt seconds since the previous motion sample
    * @param at sample time (ms, same clock as `holdForPress`)
+   * @param aim where the phone points, for anchoring
    */
-  update(rate: number[], up: number[], dt: number, at: number): Point {
+  update(
+    rate: number[],
+    up: number[],
+    dt: number,
+    at: number,
+    aim?: AimReference,
+  ): Point {
     const spin = Math.hypot(rate[0], rate[1], rate[2]);
-    if (
-      dt > 0 &&
-      !this.lock &&
-      at >= this.holdUntil &&
-      !this.inRebound(spin, at)
-    ) {
+    const following =
+      dt > 0 && !this.lock && at >= this.holdUntil && !this.inRebound(spin, at);
+    const ledger = this.ledger;
+    let shown: Point = { x: 0, y: 0 };
+    if (following) {
       const step = this.step(rate, up, dt);
+      if (ledger) {
+        // Win drift back only inside the player's own motion.
+        const extra = ledger.repay(step.turn);
+        step.x += extra.x * step.perTurn;
+        step.y += extra.y * step.perTurn * GYRO.aspect;
+        shown = { x: step.turn.x + extra.x, y: step.turn.y + extra.y };
+      }
       this.point = this.inBounds({
         x: this.point.x + step.x,
         y: this.point.y + step.y,
       });
     }
-    this.history.push({ at, ...this.point, spin });
+    if (ledger)
+      ledger.record(
+        aim,
+        { x: -this.yawRate(rate, up) * dt, y: -rate[0] * dt },
+        shown,
+        following,
+      );
+    this.history.push({
+      at,
+      ...this.point,
+      spin,
+      ...(ledger ? { shown: ledger.shown } : {}),
+    });
     while (this.history.length && at - this.history[0].at > GYRO.historyMs)
       this.history.shift();
     return { ...this.point };
   }
 
-  /** How far one sample of turning moves the cursor. */
-  private step(rate: number[], up: number[], dt: number): Point {
+  /** Turning about world vertical (rad/s), regardless of grip or roll. */
+  private yawRate(rate: number[], up: number[]) {
+    return rate[0] * up[0] + rate[1] * up[1] + rate[2] * up[2];
+  }
+
+  /**
+   * How far one sample of turning moves the cursor, the turn (rad) that
+   * passed the dead zone, and cursor travel per radian at this speed.
+   */
+  private step(rate: number[], up: number[], dt: number) {
     // Player space: turning is about world vertical regardless of grip or
     // roll; tilting is about the phone's right edge. Roll is ignored.
-    const yaw = rate[0] * up[0] + rate[1] * up[1] + rate[2] * up[2],
+    const yaw = this.yawRate(rate, up),
       pitch = rate[0];
     const speed = Math.hypot(yaw, pitch),
       pass = clamp(
@@ -127,13 +187,16 @@ export class GyroPointer {
       curve = clamp(
         (speed - GYRO.slowSpeed) / (GYRO.fastSpeed - GYRO.slowSpeed),
       ),
-      scale =
-        pass *
-        this.gain *
-        (GYRO.slowMultiplier +
-          (GYRO.fastMultiplier - GYRO.slowMultiplier) * curve) *
-        dt;
-    return { x: -yaw * scale, y: -pitch * scale * GYRO.aspect };
+      multiplier =
+        GYRO.slowMultiplier +
+        (GYRO.fastMultiplier - GYRO.slowMultiplier) * curve,
+      scale = pass * this.gain * multiplier * dt;
+    return {
+      x: -yaw * scale,
+      y: -pitch * scale * GYRO.aspect,
+      turn: { x: -yaw * pass * dt, y: -pitch * pass * dt },
+      perTurn: this.gain * multiplier,
+    };
   }
 
   /** Whether this sample is part of a swing's rebound, which never aims. */
@@ -162,7 +225,7 @@ export class GyroPointer {
 
   /** Restores the cursor to where it was at `captureAt` and holds it until `until`. */
   holdAt(captureAt: number, until: number): Point {
-    this.point = this.inBounds(this.pointAt(captureAt));
+    this.point = this.inBounds(this.rewindTo(this.entryAt(captureAt)));
     this.holdUntil = until;
     this.lock = this.rebound = null;
     return { ...this.point };
@@ -185,8 +248,8 @@ export class GyroPointer {
       captureAt - this.history[index - 1].at <= swing.lookbackMs
     )
       index--;
-    const from = this.history[index] ?? this.history[0] ?? this.point;
-    this.point = this.inBounds(from);
+    const from = this.history[index] ?? this.history[0];
+    this.point = this.inBounds(from ? this.rewindTo(from) : this.point);
     this.holdUntil = -Infinity;
     this.rebound = null;
     this.lock = swing;
@@ -205,10 +268,17 @@ export class GyroPointer {
     return { ...this.point };
   }
 
-  private pointAt(at: number): Point {
-    let held = this.history[0] ?? { at, ...this.point };
+  private entryAt(at: number) {
+    let held = this.history[0];
     for (const h of this.history) if (h.at <= at) held = h;
-    return { x: held.x, y: held.y };
+    return held;
+  }
+
+  /** Where the cursor was at a history entry; the ledger forgets what it showed since. */
+  private rewindTo(entry: (typeof this.history)[number] | undefined): Point {
+    if (!entry) return this.point;
+    if (entry.shown) this.ledger?.rewind(entry.shown);
+    return { x: entry.x, y: entry.y };
   }
 
   /** Ends any hold or lock now. */
@@ -221,6 +291,7 @@ export class GyroPointer {
   resumeAt(point: Point) {
     this.point = this.inBounds(point);
     this.history = [];
+    this.ledger?.reset();
     this.holdUntil = -Infinity;
     this.lock = this.rebound = null;
   }
