@@ -123,9 +123,11 @@ export class WhackAMole implements GameInstance<WhackState> {
         mole.hitAt === undefined &&
         time < Math.max(mole.upAt + WHACK.rise, mole.downAt) + WHACK.hide,
     );
+    // Difficulty comes mostly from more moles at once rather than shorter
+    // stays: even a solo player starts with two.
     const target = Math.min(
       state.holes.length - 2,
-      Math.floor(1 + 0.6 * this.roster.length + 2 * progress) +
+      Math.floor(1.4 + 0.6 * this.roster.length + 2 * progress) +
         (frenzy ? 2 : 0),
     );
     const busy = new Set(
@@ -160,20 +162,22 @@ export class WhackAMole implements GameInstance<WhackState> {
     )
       kind = 'bomb';
     const jitter = kind === 'normal' ? lerp(0.85, 1.15, this.random()) : 1;
+    // The hole rumbles first; the mole pops up after the warning.
+    const upAt = time + WHACK.warn;
     state.moles.push({
       id: ++this.nextMole,
       hole,
       kind,
-      upAt: time,
-      downAt: time + WHACK.rise + upTime(kind, progress, frenzy) * jitter,
+      upAt,
+      downAt: upAt + WHACK.rise + upTime(kind, progress, frenzy) * jitter,
     });
     // Frenzy spawns can come every 90 ms; keep the pop cue from chattering.
-    if (time - this.lastPop >= 180) {
-      this.lastPop = time;
-      events.push(this.event('pop', time));
+    if (upAt - this.lastPop >= 180) {
+      this.lastPop = upAt;
+      events.push(this.event('pop', upAt));
     }
-    // Pace spawns so about `target` moles are up at once through a mole's stay.
-    const stay = WHACK.rise + upTime('normal', progress, frenzy);
+    // Pace spawns so about `target` moles are out at once through a mole's stay.
+    const stay = WHACK.warn + WHACK.rise + upTime('normal', progress, frenzy);
     this.nextSpawnAt =
       time + Math.max(90, (stay / target) * lerp(0.7, 1.3, this.random()));
   }

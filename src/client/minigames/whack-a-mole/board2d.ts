@@ -96,6 +96,10 @@ function drawMole(
   reducedMotion: boolean,
 ) {
   const pose = molePose(mole, time);
+  if (pose.phase === 'warning') {
+    if (!reducedMotion) drawRumble(ctx, hole, mole, time);
+    return;
+  }
   if (pose.phase === 'gone' || pose.height <= 0) return;
   const x = hole.x * 1600,
     y = hole.y * 900,
@@ -251,6 +255,37 @@ function drawEffect(
     TAU,
   );
   ctx.stroke();
+  ctx.restore();
+}
+
+/** Soil hopping on a hole's rim while its mole digs up to it. */
+function drawRumble(
+  ctx: CanvasRenderingContext2D,
+  hole: ReadonlyDeep<Hole>,
+  mole: ReadonlyDeep<Mole>,
+  time: number,
+) {
+  const x = hole.x * 1600,
+    y = hole.y * 900;
+  ctx.save();
+  ctx.fillStyle = PALETTE.woodDark;
+  for (let i = 0; i < 6; i++) {
+    const cycle = 200,
+      offset = time + i * (cycle / 6) + mole.id * 53,
+      t = (offset % cycle) / cycle,
+      // Golden-angle steps scatter each hop around the rim.
+      angle = (Math.floor(offset / cycle) * 7 + i) * 2.39996,
+      reach = 0.9 + 0.2 * t;
+    ctx.beginPath();
+    ctx.arc(
+      x + Math.cos(angle) * hole.rx * reach,
+      y + Math.sin(angle) * hole.ry * reach - 56 * t * (1 - t),
+      4 * (1 - t * 0.5),
+      0,
+      TAU,
+    );
+    ctx.fill();
+  }
   ctx.restore();
 }
 

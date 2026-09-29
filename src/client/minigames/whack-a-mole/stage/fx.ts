@@ -364,6 +364,24 @@ export class Effects {
       });
   }
 
+  /** Soil crumbs hopping on a hole's rim as its mole digs up to it. */
+  rumble(center: THREE.Vector3, radius: number, time: number, id: number) {
+    for (let i = 0; i < 6; i++) {
+      const cycle = 200,
+        offset = time + i * (cycle / 6) + id * 53,
+        t = (offset % cycle) / cycle,
+        seed = Math.floor(offset / cycle) * 7 + i + id * 31,
+        angle = hash(seed) * Math.PI * 2,
+        reach = radius * (0.85 + 0.25 * t);
+      this.point.set(
+        center.x + Math.cos(angle) * reach,
+        center.y + (0.12 + 1.4 * t * (1 - t)) * radius * 0.35,
+        center.z + Math.sin(angle) * reach * 0.8,
+      );
+      this.dirt.add(this.point, 0.9 * this.size * (1 - t * 0.5), seed);
+    }
+  }
+
   /** Twinkling stars circling a golden mole. */
   sparkle(center: THREE.Vector3, time: number, id: number, scale: number) {
     for (let i = 0; i < 4; i++) {

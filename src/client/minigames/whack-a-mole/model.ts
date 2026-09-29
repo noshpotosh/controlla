@@ -5,6 +5,11 @@ export const WHACK = {
   duration: 60_000,
   frenzy: 10_000,
   firstSpawn: 500,
+  /**
+   * A hole rumbles this long before its mole pops up, so players can start
+   * aiming: pointing a phone, locking and swinging takes about a second.
+   */
+  warn: 250,
   rise: 160,
   hide: 180,
   bonk: 650,
@@ -19,7 +24,9 @@ export const WHACK = {
   stun: 1200,
   bombPenalty: 20,
   points: { normal: 10, golden: 30, bomb: 0 },
-  upTime: { normalStart: 1100, normalEnd: 700, golden: 620, bomb: 1600 },
+  upTime: { normalStart: 1300, normalEnd: 900, golden: 750, bomb: 1600 },
+  /** Frenzy speeds normal moles up by this factor; mostly it adds more moles. */
+  frenzyPace: 0.9,
   goldenChance: 0.08,
   bombChance: 0.12,
   bombsAfter: 5000,
@@ -357,7 +364,7 @@ export function upTime(kind: MoleKind, progress: number, frenzy: boolean) {
   if (kind === 'bomb') return WHACK.upTime.bomb;
   return (
     lerp(WHACK.upTime.normalStart, WHACK.upTime.normalEnd, clamp(progress)) *
-    (frenzy ? 0.85 : 1)
+    (frenzy ? WHACK.frenzyPace : 1)
   );
 }
 
@@ -376,14 +383,22 @@ export const moleEnd = (mole: Mole) =>
 export interface MolePose {
   /** 0 hidden, 1 fully up. */
   height: number;
-  phase: 'rising' | 'up' | 'hiding' | 'bonked' | 'gone';
+  /** `warning`: still underground, its hole rumbling just before it pops up. */
+  phase: 'warning' | 'rising' | 'up' | 'hiding' | 'bonked' | 'gone';
   /** Seconds into the current phase. */
   elapsed: number;
 }
 
 /** Analytic pose, so every display renders the same mole at its own presentation time. */
 export function molePose(mole: Mole, time: number): MolePose {
-  if (time < mole.upAt) return { height: 0, phase: 'gone', elapsed: 0 };
+  if (time < mole.upAt)
+    return time >= mole.upAt - WHACK.warn
+      ? {
+          height: 0,
+          phase: 'warning',
+          elapsed: (time - mole.upAt + WHACK.warn) / 1000,
+        }
+      : { height: 0, phase: 'gone', elapsed: 0 };
   if (mole.hitAt !== undefined && time >= mole.hitAt) {
     const elapsed = time - mole.hitAt;
     if (elapsed >= WHACK.bonk) return { height: 0, phase: 'gone', elapsed: 0 };

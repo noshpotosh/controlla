@@ -17,6 +17,7 @@ import {
   touchedHole,
   makeHole,
   molePose,
+  hittable,
   type Mole,
   type WhackState,
 } from './model.ts';
@@ -235,7 +236,7 @@ void test('strike picks the closest hittable mole the head touches', () => {
   );
 });
 
-void test('moles pose analytically: rise, stay, hide and bonk', () => {
+void test('moles pose analytically: warn, rise, stay, hide and bonk', () => {
   const item: Mole = {
     id: 1,
     hole: 0,
@@ -243,7 +244,13 @@ void test('moles pose analytically: rise, stay, hide and bonk', () => {
     upAt: 1000,
     downAt: 2000,
   };
-  assert.equal(molePose(item, 999).phase, 'gone');
+  assert.equal(molePose(item, 1000 - WHACK.warn - 1).phase, 'gone');
+  assert.deepEqual(molePose(item, 1000 - WHACK.warn / 2), {
+    height: 0,
+    phase: 'warning',
+    elapsed: WHACK.warn / 2000,
+  });
+  assert.equal(hittable(item, 999), false, 'a rumbling hole has no target yet');
   assert.equal(molePose(item, 1050).phase, 'rising');
   assert.deepEqual(molePose(item, 1500), {
     height: 1,
@@ -521,4 +528,16 @@ void test('state validation rejects malformed snapshots', () => {
     false,
   );
   assert.equal(isWhackState(null), false);
+});
+
+void test('a hole rumbles before its mole pops, and the pop cue lands on the pop', () => {
+  const { tick, state } = fixture(1, false);
+  const events = tick(START + WHACK.firstSpawn);
+  const [first] = state.moles;
+  assert.equal(first.upAt, START + WHACK.firstSpawn + WHACK.warn);
+  assert.equal(molePose(first, START + WHACK.firstSpawn).phase, 'warning');
+  assert.deepEqual(
+    events.filter((event) => event.kind === 'pop').map((event) => event.time),
+    [first.upAt],
+  );
 });

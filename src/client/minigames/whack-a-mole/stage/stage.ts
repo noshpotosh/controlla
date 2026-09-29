@@ -120,6 +120,8 @@ export function createStage(): Stage | null {
 
 interface HoleView {
   hole: ReadonlyDeep<Hole>;
+  /** The hole's mound, rim and mole, which shake while the mole digs up. */
+  group: THREE.Group;
   center: THREE.Vector3;
   radius: number;
   rig: MoleRig;
@@ -368,6 +370,7 @@ class World {
       this.board.add(group);
       this.holes.push({
         hole,
+        group,
         center,
         radius,
         rig,
@@ -490,8 +493,21 @@ class World {
   private moleFrame(view: HoleView, time: number, reducedMotion: boolean) {
     const { rig, mole, pose } = view;
     view.warn.visible = false;
-    rig.root.visible = !!mole && !!pose;
+    view.group.rotation.set(0, 0, 0);
+    rig.root.visible = !!mole && !!pose && pose.phase !== 'warning';
     if (!mole || !pose) return;
+    // About to pop: the hole shakes harder and harder and spits soil.
+    if (pose.phase === 'warning') {
+      if (reducedMotion) return;
+      const build = 0.4 + 0.6 * clamp((pose.elapsed * 1000) / WHACK.warn);
+      view.group.rotation.set(
+        Math.cos(time / 27 + mole.id) * 0.04 * build,
+        0,
+        Math.sin(time / 22 + mole.id) * 0.06 * build,
+      );
+      this.effects.rumble(view.center, view.radius, time, mole.id);
+      return;
+    }
     const bonked = pose.phase === 'bonked';
     const soot = bonked && mole.kind === 'bomb';
     this.moles.dress(rig, this.moles.looks[soot ? 'soot' : mole.kind]);
