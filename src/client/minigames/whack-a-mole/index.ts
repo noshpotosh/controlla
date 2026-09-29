@@ -1,6 +1,6 @@
 import type { GameDescriptor } from '../../api/index.ts';
 import { WhackAMole, isWhackState } from './game.ts';
-import { WHACK, type WhackState } from './model.ts';
+import { AIM_BOUNDS, WHACK, type WhackState } from './model.ts';
 import { WhackAMoleRenderer } from './renderer.ts';
 
 export const whackAMole: GameDescriptor<WhackState> = {
@@ -24,6 +24,7 @@ export const whackAMole: GameDescriptor<WhackState> = {
         prefer: 'pointer',
         fallback: 'aim-pad',
         label: 'Aim',
+        bounds: AIM_BOUNDS,
       },
       whack: {
         required: true,

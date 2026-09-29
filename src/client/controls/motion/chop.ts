@@ -1,3 +1,5 @@
+import type { Settle } from './pointer.ts';
+
 /**
  * Tuning for the hammer swing; adjust from recorded traces. A swing only counts
  * while the player holds the on-screen button, which also freezes their aim, so
@@ -15,16 +17,28 @@ export const CHOP = {
   // Strength reaches 1 at this spin or jolt.
   fullRate: 10,
   fullJolt: 2.5,
-  // No second whack until this long has passed and the phone has calmed.
+  // No second whack until this long has passed, and then only once the phone
+  // has calmed or swung back the other way and turned around again, so
+  // repeated whacks count without the follow-through counting too.
   refractoryMs: 250,
-  // Aim comes from just before the thumb pressed the button and jolted the phone.
-  touchLookbackMs: 50,
-  // Releasing mid-swing keeps the aim still until the phone has been calm for
-  // `settleMs` (at least `minHoldMs` after the whack, at most `maxHoldMs`).
-  settleRate: 1,
-  settleMs: 60,
-  minHoldMs: 120,
-  maxHoldMs: 700,
+  // Aim comes from where the big screen showed the cursor when the thumb
+  // pressed: about 50 ms back clears the press's own jolt, and about 50 more
+  // covers the cursor's trip to the screen.
+  touchLookbackMs: 100,
+  // A swing already under way when the button is let go still counts if it
+  // is recognised this soon after.
+  releaseGraceMs: 150,
+  // Letting go keeps the aim still until the lift-off jolt or the swing's
+  // rebound has died down. Recorded taps twist an iPhone at 20–55°/s for
+  // about 250 ms.
+  release: {
+    rate: 0.5,
+    calmMs: 50,
+    minMs: 120,
+    maxMs: 400,
+  } satisfies Settle,
+  // A whack is never dated more than this before it is sent.
+  maxBackdateMs: 400,
 };
 
 export interface ChopEvent {
@@ -46,13 +60,16 @@ export class ChopDetector {
   private onsetAt: number | null = null;
   private firedAt = -Infinity;
   private armed = true;
-  private calmSince: number | null = null;
+  /** Spin axis of the last whack (unit), or null when it was a jolt. */
+  private firedAxis: number[] | null = null;
+  private swungBack = false;
 
   reset() {
     this.onsetAt = null;
     this.firedAt = -Infinity;
     this.armed = true;
-    this.calmSince = null;
+    this.firedAxis = null;
+    this.swungBack = false;
   }
 
   /**
@@ -70,11 +87,20 @@ export class ChopDetector {
         ? Math.abs(Math.hypot(gravity[0], gravity[1], gravity[2]) - G) / G
         : 0;
     const moving = spin >= CHOP.onsetRate || jolt >= CHOP.onsetJolt;
-    if (spin < CHOP.settleRate && jolt < CHOP.onsetJolt) this.calmSince ??= at;
-    else this.calmSince = null;
     if (!this.armed) {
+      // Spin along the last whack's direction: negative on the way back up.
+      const along = this.firedAxis
+        ? rate[0] * this.firedAxis[0] +
+          rate[1] * this.firedAxis[1] +
+          rate[2] * this.firedAxis[2]
+        : 0;
+      if (along <= -CHOP.onsetRate) this.swungBack = true;
       // The follow-through and rebound never count as another whack.
-      if (at - this.firedAt < CHOP.refractoryMs || moving) return null;
+      if (
+        at - this.firedAt < CHOP.refractoryMs ||
+        (moving && !(this.swungBack && along >= 0))
+      )
+        return null;
       this.armed = true;
     }
     if (!moving) {
@@ -85,7 +111,9 @@ export class ChopDetector {
     if (spin < CHOP.fireRate && jolt < CHOP.fireJolt) return null;
     this.armed = false;
     this.firedAt = at;
-    this.calmSince = null;
+    this.firedAxis =
+      spin >= CHOP.onsetRate ? rate.map((component) => component / spin) : null;
+    this.swungBack = false;
     const onsetAt = Math.max(this.onsetAt, at - CHOP.maxWindupMs);
     this.onsetAt = null;
     return {
@@ -96,16 +124,5 @@ export class ChopDetector {
         Math.max(spin / CHOP.fullRate, jolt / CHOP.fullJolt),
       ),
     };
-  }
-
-  /** Whether the phone has settled after the last whack. */
-  settled(at: number) {
-    const since = at - this.firedAt;
-    return (
-      since >= CHOP.maxHoldMs ||
-      (since >= CHOP.minHoldMs &&
-        this.calmSince !== null &&
-        at - this.calmSince >= CHOP.settleMs)
-    );
   }
 }

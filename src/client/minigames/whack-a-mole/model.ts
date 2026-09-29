@@ -49,6 +49,17 @@ export const FIELD = {
   padding: 16,
 } as const;
 
+/**
+ * Where a phone pointer's hammer can go: the field, plus room above the back
+ * row to reach risen moles. Overshooting stops here instead of in the scoreboard.
+ */
+export const AIM_BOUNDS = {
+  left: FIELD.left,
+  top: FIELD.top - 0.08,
+  right: FIELD.right,
+  bottom: FIELD.bottom + 0.05,
+} as const;
+
 export type MoleKind = 'normal' | 'golden' | 'bomb';
 
 export interface Hole extends Point {

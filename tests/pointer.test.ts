@@ -181,3 +181,39 @@ void test('a hammer swing restores the aim from before it began and holds until 
   assert.ok(after.x > held.x);
   assert.equal(after.y, held.y);
 });
+
+void test('letting go settles: the aim stays put until the lift-off jolt dies down', () => {
+  const pointer = new GyroPointer(),
+    settle = { rate: 30 * DEG, calmMs: 50, minMs: 120, maxMs: 400 },
+    { at } = turn(pointer, [0, 0, -10 * DEG], 0.5),
+    held = pointer.holdAt(at, Infinity);
+  pointer.settleFrom(at, settle);
+  // The thumb lifting off twists the phone at 45°/s for 200 ms: ignored.
+  const jolt = turn(pointer, [45 * DEG, 0, 45 * DEG], 0.2, FLAT, at);
+  assert.deepEqual(jolt.p, held);
+  // Calm for 50 ms ends the hold; then aiming moves the cursor again.
+  const calm = turn(pointer, [0, 0, 0], 0.06, FLAT, jolt.at);
+  const after = turn(pointer, [0, 0, -20 * DEG], 0.2, FLAT, calm.at).p;
+  assert.ok(after.x > held.x);
+  // Motion that never calms is held for at most `maxMs`.
+  const busy = new GyroPointer();
+  busy.holdAt(0, Infinity);
+  busy.settleFrom(0, settle);
+  const early = turn(busy, [0, 0, -60 * DEG], 0.35).p;
+  assert.deepEqual(early, { x: 0.5, y: 0.5 });
+  assert.ok(turn(busy, [0, 0, -60 * DEG], 0.2, FLAT, 350).p.x > 0.5);
+});
+
+void test('a game can keep the cursor inside its play field', () => {
+  const pointer = new GyroPointer();
+  pointer.setBounds({ left: 0.1, top: 0.3, right: 0.9, bottom: 0.8 });
+  const { p, at } = turn(pointer, [30 * DEG, 0, -60 * DEG], 1);
+  assert.deepEqual(p, { x: 0.9, y: 0.3 });
+  // Pushing past the field's edge re-anchors there, like the screen edge.
+  assert.ok(turn(pointer, [0, 0, 20 * DEG], 0.1, FLAT, at).p.x < 0.87);
+  pointer.recenter();
+  assert.deepEqual(pointer.current, { x: 0.5, y: 0.55 });
+  // Nonsense bounds fall back to the whole screen.
+  pointer.setBounds({ left: 0.5, top: 0, right: 0.52, bottom: 1 });
+  assert.equal(turn(pointer, [0, 0, -60 * DEG], 1).p.x, 1);
+});

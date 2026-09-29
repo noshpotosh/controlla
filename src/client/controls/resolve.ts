@@ -95,6 +95,9 @@ export function resolveConfig(
       `${spec.name}: only one binary motion vector is supported; conflicting actions: ${motionWidgets.map((widget) => `${widget.action} (${widget.type})`).join(', ')}.`,
     );
   const types = widgets.map((w) => w.type);
+  const bounds = motionWidgets.find((widget) => widget.type === 'pointer')
+    ? spec.inputs[motionWidgets[0].action]?.bounds
+    : undefined;
   if (types.filter(usesPressSlot).length > PRESS_SLOTS)
     throw new Error(
       `${spec.name} needs more than ${PRESS_SLOTS} press controls.`,
@@ -106,7 +109,11 @@ export function resolveConfig(
     orientation: layout.orientation,
     menu: layout.menu,
     sensors: {
-      pointer: { enabled: types.includes('pointer'), rateHz: 60 },
+      pointer: {
+        enabled: types.includes('pointer'),
+        rateHz: 60,
+        ...(bounds ? { bounds: { ...bounds } } : {}),
+      },
       tilt: { enabled: types.includes('tilt') },
       shake: {
         enabled: types.includes('shake'),

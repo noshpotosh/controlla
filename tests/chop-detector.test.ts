@@ -93,20 +93,19 @@ void test('a second swing after the phone calms fires again', () => {
   assert.equal(events.length, 2);
 });
 
-void test('settled reports when the phone is calm again, or after the cap', () => {
-  const { detector, events } = run([...rest(100), -2, -8, -3]);
-  const fired = events[0].at;
-  assert.equal(detector.settled(fired + 10), false);
-  detector.sample([0, 0, 0], REST, fired + 20);
-  detector.sample([0, 0, 0], REST, fired + 90);
-  assert.equal(detector.settled(fired + 90), false, 'before the minimum hold');
-  detector.sample([0, 0, 0], REST, fired + CHOP.minHoldMs + 10);
-  assert.equal(detector.settled(fired + CHOP.minHoldMs + 10), true);
-  const moving = run([...rest(100), -2, -8, 5, 5, 5, 5]).detector;
-  const at = 1000 + 7 * STEP + 5 * STEP;
-  assert.equal(moving.settled(at), false);
-  assert.equal(moving.settled(1000 + 7 * STEP + CHOP.maxHoldMs), true);
-  assert.equal(new ChopDetector().settled(0), true, 'nothing to settle from');
+void test('repeated whacks count: swinging back up re-arms without calming down', () => {
+  // Down (fire), back up past the refractory period, then down again.
+  const down = [-2, -8, -6, -2],
+    up = [2, 4, 5, 5, 4, 3, 2, 2, 2, 2, 2, 2];
+  const { events } = run([...rest(100), ...down, ...up, ...down, ...up]);
+  assert.equal(events.length, 2);
+  assert.ok(events[1].at - events[0].at >= CHOP.refractoryMs);
+  // A jolt has no direction to swing back along, so it still waits for calm.
+  const punch = run(
+    [...rest(100), 0.3, 0.3, ...Array(30).fill(1.5), 0.3, 0.3],
+    [...rest(100), 1.2, 0, ...Array(30).fill(0), 1.2, 0],
+  );
+  assert.equal(punch.events.length, 1);
 });
 
 void test('a long wind-up is dated to shortly before the swing is recognised', () => {

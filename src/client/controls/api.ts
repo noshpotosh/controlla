@@ -51,7 +51,12 @@ export interface ControllerConfig {
   /** Corner reserved for the menu button. */
   menu: MenuCorner;
   sensors: {
-    pointer: { enabled: boolean; rateHz: number };
+    pointer: {
+      enabled: boolean;
+      rateHz: number;
+      /** The part of the screen (normalized) the cursor stays inside. */
+      bounds?: { left: number; top: number; right: number; bottom: number };
+    };
     tilt: { enabled: boolean };
     shake: { enabled: boolean; thresholdG: number };
     /** A downward hammer swing; absent in configurations from older hosts. */
@@ -71,6 +76,11 @@ export interface InputRequirement {
   slot?: string;
   variant?: string;
   props?: Record<string, unknown>;
+  /**
+   * For a motion pointer: the part of the screen (normalized) the cursor
+   * stays inside, such as the play field. Defaults to the whole screen.
+   */
+  bounds?: { left: number; top: number; right: number; bottom: number };
 }
 
 /** Semantic input requirements and their named controller layout bindings. */

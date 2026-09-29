@@ -362,8 +362,7 @@ void test('configuration and aim settings remain input-owned detached projection
   assert.equal(h.input.getSnapshot().adjustingAim, false);
   assert.equal(h.input.configure(configuration()), false);
 });
-function swingFixture() {
-  const config = configuration();
+function swingFixture(config = configuration()) {
   config.sensors.pointer.enabled = true;
   config.sensors.chop = { enabled: true };
   config.widgets = [
@@ -489,4 +488,53 @@ void test('the swing button does nothing unless the host enables chop, and retir
   swing.input.holdAim(true);
   swing.input.setActive(false);
   assert.equal(swing.input.getSnapshot().aimHeld, false);
+});
+
+void test('a swing recognised just after letting go still whacks, but a later one does not', () => {
+  const f = swingFixture();
+  for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
+  f.input.holdAim(true);
+  const held = f.input.previewPoint();
+  // The thumb lifts as the swing begins; it is recognised a sample later.
+  f.sample([-2, 0, 0]);
+  f.input.holdAim(false);
+  f.sample([-8, 0, 0]);
+  assert.equal(f.presses().length, 1);
+  const [press] = f.presses();
+  assert.ok(press.type === 'press');
+  assert.deepEqual({ x: press.press.x, y: press.press.y }, held);
+  // A swing that starts after letting go only aims.
+  for (let i = 0; i < 30; i++) f.sample([0, 0, 0]);
+  for (const pitch of [-2, -8, 0]) f.sample([pitch, 0, 0]);
+  assert.equal(f.presses().length, 1);
+});
+
+void test('frames show the swing button held while the aim is locked', () => {
+  const f = swingFixture();
+  const buttons = () => {
+    for (let i = 0; i < 4; i++) f.sample([0, 0, 0]);
+    return f.frames.at(-1)!.buttons;
+  };
+  assert.equal(buttons(), 0);
+  f.input.holdAim(true);
+  // The chop is the only press control, so it owns slot 0.
+  assert.equal(buttons(), 1);
+  f.input.holdAim(false);
+  assert.equal(buttons(), 0);
+});
+
+void test('the host can keep the pointer inside the play field', () => {
+  const config = configuration();
+  config.sensors.pointer.bounds = {
+    left: 0.1,
+    top: 0.3,
+    right: 0.9,
+    bottom: 0.8,
+  };
+  const f = swingFixture(config);
+  for (let i = 0; i < 60; i++) f.sample([1, 0, -2]);
+  const p = f.input.previewPoint();
+  assert.ok(Math.abs(p.x - 0.9) < 1e-6 && Math.abs(p.y - 0.3) < 1e-6);
+  f.input.recenter();
+  assert.deepEqual(f.input.previewPoint(), { x: 0.5, y: 0.55 });
 });

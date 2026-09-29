@@ -18,6 +18,7 @@ import {
 import {
   clampGain,
   GyroPointer,
+  pointerBounds,
   PointerSmoother,
 } from '../../controls/motion/pointer.ts';
 import { CHOP, ChopDetector } from '../../controls/motion/chop.ts';
@@ -51,8 +52,8 @@ export class ControllerInput {
   private lastChopSample = -1;
   /** The swing button is held: aim is frozen and swings whack. */
   private aimHeld = false;
-  /** Released mid-swing: aim stays frozen until the phone settles. */
-  private holdingChop = false;
+  /** When the swing button was last let go, while the aim settles. */
+  private releasedAt: number | null = null;
   private chops = 0;
   private pointerPoint: Point = { x: 0.5, y: 0.5 };
   private recenters = 0;
@@ -108,6 +109,13 @@ export class ControllerInput {
       this.config?.generation !== config.generation ||
       this.config?.configId !== config.configId;
     this.config = structuredClone(config);
+    // The game may keep the cursor inside its play field.
+    const bounds = pointerBounds(config.sensors.pointer.bounds);
+    this.gyroPointer.setBounds(bounds);
+    this.pointerPoint = {
+      x: Math.min(bounds.right, Math.max(bounds.left, this.pointerPoint.x)),
+      y: Math.min(bounds.bottom, Math.max(bounds.top, this.pointerPoint.y)),
+    };
     if (changed) {
       this.letGoOfAim();
       this.clearWidgetInput(true);
@@ -157,9 +165,10 @@ export class ControllerInput {
     if (!this.terminal) this.gyroPointer.gain = clampGain(gain);
   }
   /**
-   * The swing button. Holding it freezes the aim where it was just before the
-   * thumb touched down; while held, a sharp swing whacks. Releasing lets the aim
-   * move again once the phone has settled from any swing.
+   * The swing button. Holding it freezes the aim where the big screen showed
+   * the cursor as the thumb touched down; while held, a sharp swing whacks.
+   * Releasing lets the aim move again once the lift-off jolt or any swing's
+   * rebound has died down.
    */
   holdAim(down: boolean) {
     const config = this.config;
@@ -167,13 +176,13 @@ export class ControllerInput {
     const local = this.environment.localTime();
     if (down && !this.aimHeld) {
       this.aimHeld = true;
-      this.holdingChop = false;
+      this.releasedAt = null;
       this.chopDetector.reset();
       this.freezeAim(local - CHOP.touchLookbackMs);
     } else if (!down && this.aimHeld) {
       this.aimHeld = false;
-      if (this.chopDetector.settled(local)) this.gyroPointer.release(local);
-      else this.holdingChop = true;
+      this.releasedAt = local;
+      this.gyroPointer.settleFrom(local, CHOP.release);
     }
   }
   private freezeAim(captureAt: number) {
@@ -185,8 +194,9 @@ export class ControllerInput {
     this.pointerSmoother.reset();
   }
   private letGoOfAim() {
-    if (!this.aimHeld && !this.holdingChop) return;
-    this.aimHeld = this.holdingChop = false;
+    if (!this.aimHeld && this.releasedAt === null) return;
+    this.aimHeld = false;
+    this.releasedAt = null;
     this.gyroPointer.release(this.environment.localTime());
   }
   recenter() {
@@ -211,7 +221,7 @@ export class ControllerInput {
       this.gyroPointer.resumeAt(this.pointerPoint);
       this.pointerSmoother.reset();
       this.chopDetector.reset();
-      this.holdingChop = false;
+      this.releasedAt = null;
       if (this.aimHeld) this.freezeAim(local);
     }
     if (
@@ -227,7 +237,8 @@ export class ControllerInput {
       if (shake) this.action(shake.action, 1, config.generation);
     }
     this.lastShakeSample = motion.sequence;
-    // Swings only whack while the button holds the aim still.
+    // Swings only whack while the button holds the aim still, or when one
+    // already under way is recognised just after the button is let go.
     if (
       config.sensors.chop?.enabled &&
       motion.sequence !== this.lastChopSample
@@ -241,20 +252,21 @@ export class ControllerInput {
             sampleAt,
           )
         : null;
-      const widget = config.widgets.find((w) => w.type === 'chop');
-      if (this.aimHeld && chop && widget) {
+      const widget = config.widgets.find((w) => w.type === 'chop'),
+        releasedAt = this.releasedAt;
+      if (
+        chop &&
+        widget &&
+        (this.aimHeld ||
+          (releasedAt !== null &&
+            sampleAt - releasedAt <= CHOP.releaseGraceMs &&
+            chop.onsetAt <= releasedAt))
+      ) {
         this.chops++;
         this.haptic(20);
         this.action(widget.action, chop.strength, config.generation, {
           at: chop.onsetAt,
         });
-      } else if (
-        this.holdingChop &&
-        !this.aimHeld &&
-        this.chopDetector.settled(sampleAt)
-      ) {
-        this.gyroPointer.release(sampleAt);
-        this.holdingChop = false;
       }
     }
     if (config.sensors.pointer.enabled && motion.pointerFresh) {
@@ -309,7 +321,7 @@ export class ControllerInput {
         ...point,
         vx: this.velocity.x,
         vy: this.velocity.y,
-        buttons: this.buttonState,
+        buttons: this.buttonState | this.aimHeldMask(),
         edges: this.edges,
         edgeTimes: this.edgeTimes,
         confidence: config.sensors.pointer.enabled
@@ -323,6 +335,14 @@ export class ControllerInput {
   }
   previewPoint() {
     return { ...this.latestPoint };
+  }
+  /** Frames show the swing's press slot held while the aim is locked. */
+  private aimHeldMask() {
+    if (!this.aimHeld || !this.config) return 0;
+    const slot = this.config.widgets
+      .filter((widget) => usesPressSlot(widget.type))
+      .findIndex((widget) => widget.type === 'chop');
+    return slot >= 0 && slot < PRESS_SLOTS ? 1 << slot : 0;
   }
   setPoint(point: Point) {
     if (!this.terminal) this.latestPoint = { ...point };
@@ -496,7 +516,7 @@ export class ControllerInput {
       this.edgeTimes[button] =
         this.environment.authorityTime() -
         (capture
-          ? Math.min(CHOP.maxHoldMs, Math.max(0, local - capture.at))
+          ? Math.min(CHOP.maxBackdateMs, Math.max(0, local - capture.at))
           : 0);
       this.effects.reliable({
         type: 'press',
