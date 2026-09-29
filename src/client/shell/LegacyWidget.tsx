@@ -157,7 +157,7 @@ export function LegacyWidget({
             : 'Shake your phone'}
         <small>
           {w.type === 'pointer'
-            ? 'Push past an edge or tap Recenter to re-center'
+            ? 'Point at the middle and tap Recenter to re-center'
             : `${Math.round(sensorHz)} motion samples / sec`}
         </small>
       </div>

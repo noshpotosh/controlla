@@ -120,12 +120,33 @@ void test('the same turn moves further as a quick flick than as a slow sweep', (
   assert.ok(fast > slow * 2, `flick ${fast} vs sweep ${slow}`);
 });
 
-void test('pushing past an edge re-anchors: turning back moves away at once', () => {
+void test('turning past an edge is remembered: turning back returns to the same center', () => {
+  // 30 degrees right runs about 11 degrees past the edge.
   const pointer = new GyroPointer(),
-    { at } = turn(pointer, [0, 0, -60 * DEG], 1);
+    { at } = turn(pointer, [0, 0, -30 * DEG], 1);
   assert.equal(pointer.current.x, 1);
-  const back = turn(pointer, [0, 0, 20 * DEG], 0.1, FLAT, at).p;
-  assert.ok(back.x < 0.97);
+  // Turning back first undoes the overshoot, leaving the cursor at the edge...
+  const partway = turn(pointer, [0, 0, 30 * DEG], 0.2, FLAT, at);
+  assert.equal(partway.p.x, 1);
+  // ...so turning back the whole way lands on the center again.
+  const back = turn(pointer, [0, 0, 30 * DEG], 0.8, FLAT, partway.at).p;
+  assert.ok(Math.abs(back.x - 0.5) < 1e-9, `${back.x}`);
+  assert.equal(back.y, 0.5);
+});
+
+void test('pushing far past an edge re-anchors beyond the remembered turn', () => {
+  const pointer = new GyroPointer(),
+    { at } = turn(pointer, [0, 0, -60 * DEG], 2);
+  // Only 30 degrees of the overshoot are kept.
+  const edge = turn(pointer, [0, 0, 60 * DEG], 0.45, FLAT, at);
+  assert.equal(edge.p.x, 1);
+  const away = turn(pointer, [0, 0, 60 * DEG], 0.15, FLAT, edge.at).p;
+  assert.ok(away.x < 0.97);
+  // Recenter forgets the overshoot too.
+  pointer.recenter();
+  turn(pointer, [0, 0, -60 * DEG], 1);
+  pointer.recenter();
+  assert.ok(turn(pointer, [0, 0, 20 * DEG], 0.2).p.x < 0.5);
 });
 
 void test('a press aims where the cursor was before the tap and ignores its jolt', () => {
@@ -239,8 +260,8 @@ void test('a game can keep the cursor inside its play field', () => {
   pointer.setBounds({ left: 0.1, top: 0.3, right: 0.9, bottom: 0.8 });
   const { p, at } = turn(pointer, [30 * DEG, 0, -60 * DEG], 1);
   assert.deepEqual(p, { x: 0.9, y: 0.3 });
-  // Pushing past the field's edge re-anchors there, like the screen edge.
-  assert.ok(turn(pointer, [0, 0, 20 * DEG], 0.1, FLAT, at).p.x < 0.87);
+  // Turning past the field's edge is remembered, like the screen edge.
+  assert.equal(turn(pointer, [0, 0, 20 * DEG], 0.1, FLAT, at).p.x, 0.9);
   pointer.recenter();
   assert.deepEqual(pointer.current, { x: 0.5, y: 0.55 });
   // Nonsense bounds fall back to the whole screen.

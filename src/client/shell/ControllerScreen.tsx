@@ -83,7 +83,7 @@ export function ControllerScreen({
             Hold your phone flat like a remote, screen facing up. Swivel its top
             edge left or right to move sideways; tip the top edge up or down to
             move vertically. Slow turns are precise; quick flicks go further.
-            Push past an edge to re-center.
+            Tap Recenter while pointing at the middle of the screen.
           </p>
           <div className="sensitivity">
             <span id="sensitivity">Sensitivity</span>

@@ -65,22 +65,29 @@ export const GYRO = {
   pressHoldMs: 120,
   // Long enough to rewind past a hammer swing to where the player was aiming.
   historyMs: 600,
+  // Turning past an edge is remembered up to this far (rad); turning further re-anchors.
+  edgeMemory: 30 * DEG,
   // The canonical play area is 16:9; equal turn angles cover equal pixels on both axes.
   aspect: 16 / 9,
 };
 
 /**
  * Relative ("air mouse") pointing: the cursor moves by how fast the phone
- * turns, not where it is aimed, and stops at the screen edges. Pushing past an
- * edge re-anchors it, so orientation drift never accumulates into an offset.
+ * turns, not where it is aimed, and stops at the screen edges. Turning past an
+ * edge is remembered, so the cursor leaves the edge only once the phone turns
+ * back to it and the player's center holds. Pushing much further re-anchors,
+ * so orientation drift never accumulates into a large offset.
  */
 export class GyroPointer {
   private point: Point = { x: 0.5, y: 0.5 };
+  /** Turn (rad) past the edges not yet turned back; positive past right or bottom. */
+  private over: Point = { x: 0, y: 0 };
   /** Recent cursor positions, and how fast the phone was turning (rad/s). */
   private history: {
     at: number;
     x: number;
     y: number;
+    over: Point;
     spin: number;
     /** The ledger's shown turn then, when anchoring. */
     shown?: Point;
@@ -143,10 +150,20 @@ export class GyroPointer {
         step.y += extra.y * step.perTurn * GYRO.aspect;
         shown = { x: step.turn.x + extra.x, y: step.turn.y + extra.y };
       }
-      this.point = this.inBounds({
-        x: this.point.x + step.x,
-        y: this.point.y + step.y,
-      });
+      const { left, top, right, bottom } = this.bounds,
+        x = travel(this.point.x, this.over.x, step.x, step.perTurn, left, right),
+        y = travel(
+          this.point.y,
+          this.over.y,
+          step.y,
+          step.perTurn * GYRO.aspect,
+          top,
+          bottom,
+        );
+      this.point = { x: x.at, y: y.at };
+      this.over = { x: x.over, y: y.over };
+      // Turn forgotten past an edge was never shown; anchoring may win it back.
+      shown = { x: shown.x - x.dropped, y: shown.y - y.dropped };
     }
     if (ledger)
       ledger.record(
@@ -158,6 +175,7 @@ export class GyroPointer {
     this.history.push({
       at,
       ...this.point,
+      over: { ...this.over },
       spin,
       ...(ledger ? { shown: ledger.shown } : {}),
     });
@@ -278,6 +296,7 @@ export class GyroPointer {
   private rewindTo(entry: (typeof this.history)[number] | undefined): Point {
     if (!entry) return this.point;
     if (entry.shown) this.ledger?.rewind(entry.shown);
+    this.over = { ...entry.over };
     return { x: entry.x, y: entry.y };
   }
 
@@ -290,6 +309,7 @@ export class GyroPointer {
   /** Retire pre-suspension history while preserving the last displayed aim. */
   resumeAt(point: Point) {
     this.point = this.inBounds(point);
+    this.over = { x: 0, y: 0 };
     this.history = [];
     this.ledger?.reset();
     this.holdUntil = -Infinity;
@@ -303,11 +323,12 @@ export class GyroPointer {
 
   /**
    * Keeps the cursor inside part of the screen, such as a game's play field,
-   * so overshooting never wanders off it and pushing past its edge re-anchors.
+   * so overshooting never wanders off it; its edges behave like the screen's.
    */
   setBounds(bounds: PointerBounds) {
     this.bounds = pointerBounds(bounds);
     this.point = this.inBounds(this.point);
+    this.over = { x: 0, y: 0 };
   }
 
   private inBounds(point: Point): Point {
@@ -321,6 +342,26 @@ export class GyroPointer {
   get current(): Point {
     return { ...this.point };
   }
+}
+
+/**
+ * Moves one axis by `move` (screen units) between `low` and `high`, first
+ * turning back through `over`, the turn (rad) already pushed past an edge.
+ * `perTurn` is screen travel per radian at this speed.
+ */
+function travel(
+  at: number,
+  over: number,
+  move: number,
+  perTurn: number,
+  low: number,
+  high: number,
+) {
+  const wanted = at + over * perTurn + move,
+    to = clamp(wanted, low, high),
+    past = (wanted - to) / perTurn,
+    kept = clamp(past, -GYRO.edgeMemory, GYRO.edgeMemory);
+  return { at: to, over: kept, dropped: past - kept };
 }
 
 /** Time-based filtering in normalized screen coordinates. */
