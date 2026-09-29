@@ -9,7 +9,9 @@ npm ci
 npm run dev:phone
 ```
 
-The command starts the frontend, room service, and a Cloudflare Quick Tunnel.
+The command first stops stale phone-development processes owned by this
+repository and removes the regenerable `.vinext`, `.next`, and `dist` build
+directories. It then starts the frontend, room service, and a Cloudflare Quick Tunnel.
 Wait for **Phone development is ready**, then open the printed
 `https://…trycloudflare.com` URL on both the laptop and phone. Create the room
 from that URL so **Copy phone link** retains the public HTTPS origin. On the
@@ -36,8 +38,9 @@ running unattended.
 
 ## Ports and troubleshooting
 
-The workflow uses frontend port `3012` and signaling port `8912` by default. If
-either is occupied, stop the conflicting process or choose alternatives:
+The workflow uses frontend port `3012` and signaling port `8912` by default.
+Prior `dev:phone` processes from this repository are stopped automatically. If
+either port is occupied by an unrelated process, stop it or choose alternatives:
 
 ```sh
 PHONE_DEV_PORT=3013 PHONE_SIGNAL_PORT=8913 npm run dev:phone
@@ -50,5 +53,5 @@ PHONE_DEV_PORT=3013 PHONE_SIGNAL_PORT=8913 npm run dev:phone
 - If motion remains unavailable, open the controller menu, tap **Enable motion**,
   and inspect the browser's site permissions. The page must remain on the printed
   HTTPS origin.
-- If the frontend reports that another Vinext server is running, stop that
-  repository's other `npm run dev` process before starting this workflow.
+- Starting a new run ends rooms from an earlier local run and replaces its
+  temporary URL. Always use the newest printed URL.

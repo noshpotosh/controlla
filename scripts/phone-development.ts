@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { readdir, readFile, readlink, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -7,7 +8,16 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const frontendPort = port('PHONE_DEV_PORT', 3012);
 const signalPort = port('PHONE_SIGNAL_PORT', 8912);
 const children: { label: string; process: ChildProcess }[] = [];
+const generatedDirectories = ['.vinext', '.next', 'dist'] as const;
+const stackMarker = 'CONTROLLA_PHONE_DEV_ROOT';
 let stopping = false;
+
+export interface ProcessDetails {
+  pid: number;
+  cwd: string;
+  command: string;
+  environment: Readonly<Record<string, string>>;
+}
 
 function port(name: string, fallback: number): number {
   const value = Number(process.env[name] ?? fallback);
@@ -19,6 +29,140 @@ function port(name: string, fallback: number): number {
 export function tunnelUrlFrom(output: string): string | null {
   return (
     output.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com\b/i)?.[0] ?? null
+  );
+}
+
+export function isStalePhoneProcess(
+  details: ProcessDetails,
+  repositoryRoot: string,
+  currentPid: number,
+  ports = { frontend: 3012, signal: 8912 },
+): boolean {
+  if (details.pid === currentPid || details.cwd !== repositoryRoot)
+    return false;
+  if (details.environment[stackMarker] === repositoryRoot) return true;
+
+  const command = details.command.replaceAll('\\', '/');
+  if (command.includes('scripts/phone-development.ts')) return true;
+  if (/\bvinext(?:\.cmd)?\s+dev\b/.test(command)) return true;
+  if (
+    /\bwrangler(?:\.cmd)?\s+tunnel\s+quick-start\b/.test(command) &&
+    command.includes(`127.0.0.1:${ports.frontend}`)
+  )
+    return true;
+  return (
+    command.includes('server/index.ts') &&
+    details.environment.SIGNAL_PORT === String(ports.signal) &&
+    (details.environment.ALLOWED_ORIGINS ?? '').includes('trycloudflare.com')
+  );
+}
+
+function environmentFrom(contents: string): Record<string, string> {
+  return Object.fromEntries(
+    contents
+      .split('\0')
+      .filter(Boolean)
+      .map((entry) => {
+        const separator = entry.indexOf('=');
+        return separator < 0
+          ? [entry, '']
+          : [entry.slice(0, separator), entry.slice(separator + 1)];
+      }),
+  );
+}
+
+async function linuxProcesses(): Promise<ProcessDetails[]> {
+  if (process.platform !== 'linux') return [];
+  const entries = await readdir('/proc', { withFileTypes: true });
+  const processes = await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory() && /^\d+$/.test(entry.name))
+      .map(async (entry): Promise<ProcessDetails | null> => {
+        const pid = Number(entry.name);
+        try {
+          const base = `/proc/${pid}`;
+          const [cwd, command, environment] = await Promise.all([
+            readlink(`${base}/cwd`),
+            readFile(`${base}/cmdline`, 'utf8'),
+            readFile(`${base}/environ`, 'utf8'),
+          ]);
+          return {
+            pid,
+            cwd,
+            command: command.replaceAll('\0', ' ').trim(),
+            environment: environmentFrom(environment),
+          };
+        } catch {
+          return null;
+        }
+      }),
+  );
+  return processes.filter(
+    (details): details is ProcessDetails => details !== null,
+  );
+}
+
+async function linuxAncestorPids(pid: number): Promise<Set<number>> {
+  const ancestors = new Set<number>([pid]);
+  if (process.platform !== 'linux') return ancestors;
+  let current = pid;
+  while (current > 1) {
+    try {
+      const status = await readFile(`/proc/${current}/status`, 'utf8');
+      const parent = Number(status.match(/^PPid:\s+(\d+)$/m)?.[1]);
+      if (!parent || ancestors.has(parent)) break;
+      ancestors.add(parent);
+      current = parent;
+    } catch {
+      break;
+    }
+  }
+  return ancestors;
+}
+
+function processExists(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function signalProcess(pid: number, signal: NodeJS.Signals): void {
+  try {
+    process.kill(pid, signal);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error;
+  }
+}
+
+async function cleanPreviousRun(): Promise<void> {
+  console.log('\nCleaning previous phone development state…');
+  const currentProcessTree = await linuxAncestorPids(process.pid);
+  const stale = (await linuxProcesses()).filter(
+    (details) =>
+      !currentProcessTree.has(details.pid) &&
+      isStalePhoneProcess(details, root, process.pid, {
+        frontend: frontendPort,
+        signal: signalPort,
+      }),
+  );
+  for (const details of stale) signalProcess(details.pid, 'SIGTERM');
+
+  const deadline = Date.now() + 5_000;
+  while (stale.some(({ pid }) => processExists(pid)) && Date.now() < deadline)
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+  for (const { pid } of stale)
+    if (processExists(pid)) signalProcess(pid, 'SIGKILL');
+
+  await Promise.all(
+    generatedDirectories.map((directory) =>
+      rm(resolve(root, directory), { recursive: true, force: true }),
+    ),
+  );
+  console.log(
+    `Removed ${generatedDirectories.join(', ')}${stale.length ? ` and stopped ${stale.length} stale process${stale.length === 1 ? '' : 'es'}` : ''}.`,
   );
 }
 
@@ -54,7 +198,7 @@ function start(
 ): ChildProcess {
   const child = spawn(command, args, {
     cwd: root,
-    env,
+    env: { ...env, [stackMarker]: root },
     stdio: capture ? ['inherit', 'pipe', 'pipe'] : 'inherit',
   });
   children.push({ label, process: child });
@@ -122,6 +266,7 @@ function fail(error: Error): void {
 }
 
 async function main(): Promise<void> {
+  await cleanPreviousRun();
   await requireFreePort(frontendPort, 'Frontend');
   await requireFreePort(signalPort, 'Signal');
 
