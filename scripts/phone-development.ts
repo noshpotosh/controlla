@@ -65,9 +65,19 @@ function start(
   return child;
 }
 
-async function waitForHttp(url: string, label: string): Promise<void> {
+async function waitForHttp(
+  url: string,
+  label: string,
+  child?: ChildProcess,
+  hint = '',
+): Promise<void> {
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
+    // A process that quits during startup will never answer; say so at once.
+    if (child && (child.exitCode !== null || child.signalCode !== null))
+      throw new Error(
+        `${label} exited before it was ready (${child.signalCode ?? child.exitCode}).${hint}`,
+      );
     try {
       const response = await fetch(url);
       if (response.ok) return;
@@ -132,7 +142,13 @@ async function main(): Promise<void> {
     ['dev', '--port', String(frontendPort), '--force'],
     { ...process.env, SIGNAL_PORT: String(signalPort) },
   );
-  await waitForHttp(`http://127.0.0.1:${frontendPort}/`, 'Frontend');
+  // vinext allows one dev server per folder, so a running `npm run dev` blocks this one.
+  await waitForHttp(
+    `http://127.0.0.1:${frontendPort}/`,
+    'Frontend',
+    frontend,
+    ' If another dev server is running in this folder (such as `npm run dev`), stop it and try again.',
+  );
 
   console.log('\nCreating a temporary trusted HTTPS phone URL…');
   const tunnel = start(
@@ -160,7 +176,11 @@ async function main(): Promise<void> {
       ].join(','),
     },
   );
-  await waitForHttp(`http://127.0.0.1:${signalPort}/health`, 'Room service');
+  await waitForHttp(
+    `http://127.0.0.1:${signalPort}/health`,
+    'Room service',
+    signal,
+  );
 
   console.log(`\nPhone development is ready.\n\n  ${tunnelUrl}\n`);
   console.log('Open that same HTTPS URL on the laptop and phone.');
