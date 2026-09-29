@@ -28,14 +28,17 @@ export const CHOP = {
   // A swing already under way when the button is let go still counts if it
   // is recognised this soon after.
   releaseGraceMs: 150,
-  // While the aim is locked, and while a swing's rebound lasts after letting
-  // go, turning faster than 1.5 rad/s (86°/s) is the swing and never aims;
-  // slower turning is the player aiming and always counts. Recorded aiming
-  // mostly stays under that, and whacks peak at 5–25 rad/s.
+  // Turning faster than 1.5 rad/s (86°/s) is a swing, not aiming: recorded
+  // aiming mostly stays under that, and whacks peak at 5–25 rad/s. A swing
+  // already under way as the thumb lands locks the aim from before it began
+  // (up to 250 ms back). After letting go, the swing's rebound keeps being
+  // ignored until the phone has turned slower for 60 ms (at most 400 ms),
+  // while slower aiming moves the cursor straight away.
   swing: {
     rate: 1.5,
     calmMs: 60,
     maxMs: 400,
+    lookbackMs: 250,
   } satisfies Swing,
   // A whack is never dated more than this before it is sent.
   maxBackdateMs: 400,

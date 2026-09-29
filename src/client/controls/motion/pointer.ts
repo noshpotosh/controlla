@@ -35,6 +35,8 @@ export interface Swing {
   /** After unlocking, the rebound is over once slower for `calmMs`, or after `maxMs`. */
   calmMs: number;
   maxMs: number;
+  /** Locking mid-swing rewinds to before it began, at most this far back (ms). */
+  lookbackMs: number;
 }
 
 // Screen widths per radian of turn at a curve multiplier of 1. Playtests found
@@ -72,10 +74,11 @@ export const GYRO = {
  */
 export class GyroPointer {
   private point: Point = { x: 0.5, y: 0.5 };
-  private history: { at: number; x: number; y: number }[] = [];
+  /** Recent cursor positions, and how fast the phone was turning (rad/s). */
+  private history: { at: number; x: number; y: number; spin: number }[] = [];
   private holdUntil = -Infinity;
-  /** Aim locked for a swing, and the aiming done meanwhile, applied on unlock. */
-  private lock: { swing: Swing; pending: Point } | null = null;
+  /** Aim locked for a swing: nothing moves the cursor until unlocked. */
+  private lock: Swing | null = null;
   /** Just unlocked: the swing's rebound is still ignored. */
   private rebound: {
     swing: Swing;
@@ -93,24 +96,19 @@ export class GyroPointer {
    */
   update(rate: number[], up: number[], dt: number, at: number): Point {
     const spin = Math.hypot(rate[0], rate[1], rate[2]);
-    if (dt > 0) {
-      if (this.lock) {
-        // Aiming while locked still counts once unlocked, so where the phone
-        // points and the cursor stay in step; the swing itself never does.
-        if (spin < this.lock.swing.rate) {
-          const step = this.step(rate, up, dt);
-          this.lock.pending.x += step.x;
-          this.lock.pending.y += step.y;
-        }
-      } else if (at >= this.holdUntil && !this.inRebound(spin, at)) {
-        const step = this.step(rate, up, dt);
-        this.point = this.inBounds({
-          x: this.point.x + step.x,
-          y: this.point.y + step.y,
-        });
-      }
+    if (
+      dt > 0 &&
+      !this.lock &&
+      at >= this.holdUntil &&
+      !this.inRebound(spin, at)
+    ) {
+      const step = this.step(rate, up, dt);
+      this.point = this.inBounds({
+        x: this.point.x + step.x,
+        y: this.point.y + step.y,
+      });
     }
-    this.history.push({ at, ...this.point });
+    this.history.push({ at, ...this.point, spin });
     while (this.history.length && at - this.history[0].at > GYRO.historyMs)
       this.history.shift();
     return { ...this.point };
@@ -171,41 +169,39 @@ export class GyroPointer {
   }
 
   /**
-   * Locks the aim where the cursor was at `captureAt` for a hammer swing.
-   * Turning slower than `swing.rate` meanwhile, including since `captureAt`,
-   * is kept and applied on unlock; faster turning is the swing.
+   * Locks the aim where the cursor was at `captureAt` for a hammer swing, or
+   * from before the swing began if one was already under way then (turning
+   * faster than `swing.rate`), so starting to swing as the thumb lands never
+   * drags the aim. Nothing moves the cursor until `unlock`.
    */
   lockAt(captureAt: number, swing: Swing): Point {
-    const now = this.point;
-    this.point = this.inBounds(this.pointAt(captureAt));
+    let index = -1;
+    this.history.forEach((h, i) => {
+      if (h.at <= captureAt) index = i;
+    });
+    while (
+      index > 0 &&
+      this.history[index].spin >= swing.rate &&
+      captureAt - this.history[index - 1].at <= swing.lookbackMs
+    )
+      index--;
+    const from = this.history[index] ?? this.history[0] ?? this.point;
+    this.point = this.inBounds(from);
     this.holdUntil = -Infinity;
     this.rebound = null;
-    this.lock = {
-      swing,
-      pending: { x: now.x - this.point.x, y: now.y - this.point.y },
-    };
+    this.lock = swing;
     return { ...this.point };
   }
 
   /**
-   * Lets the cursor move again at once, carried on by the aiming done while
-   * locked. The swing's rebound keeps being ignored until it dies down.
+   * Lets the cursor move again at once from the locked aim. The swing's
+   * rebound keeps being ignored until it dies down; slower aiming counts.
    */
   unlock(at: number): Point {
-    const lock = this.lock;
-    if (!lock) return { ...this.point };
+    const swing = this.lock;
+    if (!swing) return { ...this.point };
     this.lock = null;
-    this.point = this.inBounds({
-      x: this.point.x + lock.pending.x,
-      y: this.point.y + lock.pending.y,
-    });
-    // A later press never rewinds back across the unlock.
-    this.history = [{ at, ...this.point }];
-    this.rebound = {
-      swing: lock.swing,
-      until: at + lock.swing.maxMs,
-      calmSince: null,
-    };
+    this.rebound = { swing, until: at + swing.maxMs, calmSince: null };
     return { ...this.point };
   }
 
@@ -215,7 +211,7 @@ export class GyroPointer {
     return { x: held.x, y: held.y };
   }
 
-  /** Ends any hold or lock now, dropping what a lock had pending. */
+  /** Ends any hold or lock now. */
   release(at: number) {
     this.holdUntil = Math.min(this.holdUntil, at);
     this.lock = this.rebound = null;

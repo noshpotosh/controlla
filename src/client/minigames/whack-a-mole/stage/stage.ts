@@ -34,12 +34,6 @@ const MAX_WIDTH = 2560;
 /** Mole rig height when fully up, in hole radii; fully hidden sinks this far. */
 const RISE = 1.95;
 
-function easeOutBack(t: number) {
-  const c = 1.7,
-    u = Math.min(1, Math.max(0, t)) - 1;
-  return 1 + (c + 1) * u * u * u + c * u * u;
-}
-
 // One WebGL context and its compiled shaders are shared by every stage on the
 // page: the presenter builds a renderer per round, and browsers cap contexts.
 interface Shared {
@@ -642,8 +636,9 @@ class World {
         (effect) => effect.playerId === player.id && effect.at <= time,
       );
       const since = slam ? time - slam.at : Infinity;
+      // Eased without overshoot, so the mallet never swings past the cursor.
       const back =
-        since < 50 ? 0 : since < 200 ? easeOutBack((since - 50) / 150) : 1;
+        since < 50 ? 0 : since < 200 ? 1 - (1 - (since - 50) / 150) ** 3 : 1;
       const position = this.scratch2.copy(view.head);
       if (slam && back < 1) {
         const hit =
@@ -671,15 +666,24 @@ class World {
         ? target
         : view.raise + (target - view.raise) * (1 - Math.exp(-step / 0.05));
       // Flat at impact, so the head lands exactly where placed; raised at rest.
-      const rest = 0.26 + 0.5 * view.raise,
+      const cocked = 0.5 * view.raise * back,
+        rest = 0.26,
         strike = 0;
       let angle =
         strike +
         (rest - strike) * back +
+        cocked +
         (reducedMotion ? 0 : Math.sin(time / 300 + player.seat) * 0.04);
       const stunned = stats.stunnedUntil > time;
       if (stunned && !reducedMotion) angle += Math.sin(time / 70) * 0.18;
       rig.pivot.rotation.x = angle;
+      // Cocking tilts the handle about the head, which stays on the aim point:
+      // pressing the button must not look like it moved the aim.
+      const lift = Math.sin(angle) - Math.sin(angle - cocked),
+        recede = Math.cos(angle - cocked) - Math.cos(angle);
+      rig.root.position.x -= Math.sin(rig.root.rotation.y) * length * recede;
+      rig.root.position.y -= length * lift;
+      rig.root.position.z -= Math.cos(rig.root.rotation.y) * length * recede;
       const squash =
         since < 100 && !reducedMotion ? 1 - (1 - since / 100) * 0.2 : 1;
       rig.head.scale.set(1 / squash, squash, 1 / squash);

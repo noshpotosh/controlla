@@ -96,7 +96,7 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
     const cursors = Object.fromEntries(this.positions) as ReadonlyDeep<
       Record<string, Point>
     >;
-    // A locked aim shows as a raised hammer and a solid ring.
+    // A locked aim shows as a solid ring, and a cocked mallet in 3D.
     const pressing = running ? localPressing : {};
     ctx.save();
     try {
@@ -112,15 +112,7 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
         reducedMotion,
       );
       if (!labels)
-        drawBoard2d(
-          ctx,
-          state,
-          snapshot.players,
-          cursors,
-          pressing,
-          at,
-          reducedMotion,
-        );
+        drawBoard2d(ctx, state, snapshot.players, cursors, at, reducedMotion);
       drawReticles(ctx, state, snapshot.players, cursors, pressing);
       if (labels) drawLabels(ctx, labels, snapshot.players);
       drawPops(ctx, state, snapshot.players, at, reducedMotion);

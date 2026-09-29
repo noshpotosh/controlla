@@ -182,24 +182,41 @@ void test('a hammer swing restores the aim from before it began and holds until 
   assert.equal(after.y, held.y);
 });
 
-const SWING = { rate: 1.5, calmMs: 60, maxMs: 400 };
+const SWING = { rate: 1.5, calmMs: 60, maxMs: 400, lookbackMs: 250 };
 
-void test('a locked aim ignores the swing but keeps the aiming done meanwhile', () => {
+void test('a locked aim stays put through the swing and resumes from there without a jump', () => {
   const pointer = new GyroPointer(),
     { at } = turn(pointer, [0, 0, -10 * DEG], 0.5),
     locked = pointer.lockAt(at, SWING);
-  // A whack: hard down, then back up about as far. Never moves the cursor.
+  // A whack: hard down, then back up, then turning while still holding.
   const down = turn(pointer, [-8, 0, 0], 0.15, FLAT, at),
-    up = turn(pointer, [6, 0, 0], 0.2, FLAT, down.at);
-  assert.deepEqual(up.p, locked);
-  // Turning toward the next mole while still holding: frozen for now...
-  const aim = turn(pointer, [0, 0, -20 * DEG], 0.3, FLAT, up.at);
-  assert.deepEqual(aim.p, locked);
-  // ...then letting go moves the cursor there at once.
-  const moved = pointer.unlock(aim.at);
-  assert.ok(moved.x > locked.x + 0.05, `${moved.x} vs ${locked.x}`);
-  assert.ok(Math.abs(moved.y - locked.y) < 0.01, 'the swing left no trace');
-  assert.deepEqual(pointer.holdForPress(aim.at), moved, 'no rewind on unlock');
+    up = turn(pointer, [6, 0, 0], 0.2, FLAT, down.at),
+    held = turn(pointer, [0, 0, -20 * DEG], 0.3, FLAT, up.at);
+  assert.deepEqual(held.p, locked);
+  // Letting go picks up from the locked aim: nothing done meanwhile is added.
+  assert.deepEqual(pointer.unlock(held.at), locked);
+  assert.deepEqual(
+    pointer.holdForPress(held.at),
+    locked,
+    'no rewind on unlock',
+  );
+});
+
+void test('starting to swing as the thumb lands locks the aim from before the swing', () => {
+  const pointer = new GyroPointer(),
+    { at } = turn(pointer, [0, 0, -10 * DEG], 0.5),
+    aimed = pointer.current;
+  // The swing is 150 ms under way (and has dragged the cursor) when the press lands.
+  const swing = turn(pointer, [-4, 0, 0], 0.15, FLAT, at);
+  assert.ok(swing.p.y > aimed.y + 0.1);
+  const locked = pointer.lockAt(swing.at - 100, SWING);
+  assert.ok(Math.abs(locked.x - aimed.x) < 1e-9);
+  assert.ok(Math.abs(locked.y - aimed.y) < 1e-9);
+  // Aiming slowly at the press: the ordinary rewind, no further.
+  const steady = new GyroPointer(),
+    slow = turn(steady, [0, 0, -10 * DEG], 0.5);
+  turn(steady, [0, 0, -10 * DEG], 0.1, FLAT, slow.at);
+  assert.deepEqual(steady.lockAt(slow.at, SWING), slow.p);
 });
 
 void test('after unlocking, aiming counts at once while the rebound is ignored', () => {

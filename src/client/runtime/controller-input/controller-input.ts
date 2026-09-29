@@ -168,8 +168,8 @@ export class ControllerInput {
   /**
    * The swing button. Holding it locks the aim where the big screen showed
    * the cursor as the thumb touched down; while held, a sharp swing whacks.
-   * Releasing moves the cursor on at once by any aiming done meanwhile, while
-   * the swing and its rebound never move it.
+   * Releasing lets aiming move the cursor on from there at once, while the
+   * swing's rebound never does.
    */
   holdAim(down: boolean) {
     const config = this.config;
