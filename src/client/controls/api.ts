@@ -56,8 +56,8 @@ export interface ControllerConfig {
       rateHz: number;
       /** The part of the screen (normalized) the cursor stays inside. */
       bounds?: { left: number; top: number; right: number; bottom: number };
-      /** Win back drift from where the phone really points (compass and gravity). */
-      anchor?: boolean;
+      /** Off only when the game opted out of anchored aim; on when absent. */
+      anchor?: false;
     };
     tilt: { enabled: boolean };
     shake: { enabled: boolean; thresholdG: number };
@@ -84,9 +84,9 @@ export interface InputRequirement {
    */
   bounds?: { left: number; top: number; right: number; bottom: number };
   /**
-   * For a motion pointer: keep the cursor tied to where the phone really
+   * For a motion pointer: the cursor stays tied to where the phone really
    * points, winning back drift from the compass and gravity during the
-   * player's own motion. Opt-in while it is tuned; meant to become the default.
+   * player's own motion. Set false to opt out and move by turn speed alone.
    */
   anchor?: boolean;
 }

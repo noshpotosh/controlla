@@ -114,7 +114,7 @@ export function resolveConfig(
         enabled: types.includes('pointer'),
         rateHz: 60,
         ...(bounds ? { bounds: { ...bounds } } : {}),
-        ...(pointer?.anchor ? { anchor: true } : {}),
+        ...(pointer?.anchor === false ? { anchor: false as const } : {}),
       },
       tilt: { enabled: types.includes('tilt') },
       shake: {

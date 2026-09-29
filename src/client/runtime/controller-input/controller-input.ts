@@ -113,7 +113,7 @@ export class ControllerInput {
     // The game may keep the cursor inside its play field.
     const bounds = pointerBounds(config.sensors.pointer.bounds);
     this.gyroPointer.setBounds(bounds);
-    this.gyroPointer.anchoring = config.sensors.pointer.anchor === true;
+    this.gyroPointer.anchoring = config.sensors.pointer.anchor !== false;
     this.pointerPoint = {
       x: Math.min(bounds.right, Math.max(bounds.left, this.pointerPoint.x)),
       y: Math.min(bounds.bottom, Math.max(bounds.top, this.pointerPoint.y)),

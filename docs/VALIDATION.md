@@ -1,5 +1,22 @@
 # Validation and acceptance ledger
 
+## Anchored aim by default — 2026-09-29
+
+On `feature/compass-anchor` after `0e11284`. After on-device play in
+Whack-a-Mole and the lobby, anchored aim is the default for every motion
+pointer (lobby, Neon Harvest, Whack-a-Mole). A game can opt out with
+`anchor: false`; no game does. The lobby-only host override was removed.
+
+- Every pointer runs through the phone's `ControllerInput`. The game harness,
+  designer preview and gallery only simulate motion, so nothing else needed
+  changing. Neon Harvest's cursor is a steering target with an ordinary button
+  and raised no special case.
+- `npm test`: 374 of 375 pass. The one failure is the same pre-existing
+  untracked `src/layouts/` check as below. Typecheck, lint and build pass.
+  Replaying with `anchor: false` still gives byte-identical cursor output to
+  `06191ef`. `npm run replay` now defaults to anchored, as the controller runs.
+- Not run: Neon Harvest with anchored aim has not been played on a phone.
+
 ## Compass aim anchoring — 2026-09-29
 
 Topic branch `feature/compass-anchor` from `feature/whack-a-mole` `06191ef`

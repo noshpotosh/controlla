@@ -141,10 +141,6 @@ export class SessionAuthority {
         this.capabilities.get(p.id) ?? defaultCapabilities(),
         this.generation,
       );
-      // Before the first round, the lobby cursor tries anchored aim. Games
-      // opt into it while it is tuned; rounds use their own configuration.
-      if (!this.runner && config.sensors.pointer.enabled)
-        config.sensors.pointer.anchor = true;
       const existing = this.configs.get(p.id);
       const changed =
         existing &&

@@ -529,10 +529,10 @@ void test('frames show the swing button held while the aim is locked', () => {
   assert.equal(buttons(), 0);
 });
 
-void test('only a configuration that opts in anchors aim, winning back a turn made while locked', () => {
+void test('aim is anchored unless the configuration opts out, winning back a turn made while locked', () => {
   const run = (anchor: boolean) => {
     const config = configuration();
-    if (anchor) config.sensors.pointer.anchor = true;
+    if (!anchor) config.sensors.pointer.anchor = false;
     const f = swingFixture(config);
     for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
     f.input.holdAim(true);

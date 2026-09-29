@@ -25,9 +25,6 @@ export const whackAMole: GameDescriptor<WhackState> = {
         fallback: 'aim-pad',
         label: 'Aim',
         bounds: AIM_BOUNDS,
-        // Every whack locks the aim while the phone swings; anchoring wins
-        // back whatever the swing leaves the phone turned by.
-        anchor: true,
       },
       whack: {
         required: true,

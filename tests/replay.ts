@@ -53,13 +53,13 @@ export interface CursorSample extends Point {
  * The tilt pointer exactly as the controller runs it: `MotionProcessor.sample` per
  * event, one pointer integration per sample (dt capped at 50 ms), then the
  * adaptive smoother. Recorded taps act as presses; recorded holds lock the aim
- * for a swing, as Whack-a-Mole's button does. `anchor` ties the cursor to where
- * the phone points, as games that opt in get.
+ * for a swing, as Whack-a-Mole's button does. Anchored, as the controller
+ * runs unless a game opts out; pass `anchor: false` for plain aim.
  */
 export async function replayTilt(
   trace: MotionTrace,
   gain?: number,
-  { anchor = false }: { anchor?: boolean } = {},
+  { anchor = true }: { anchor?: boolean } = {},
 ): Promise<CursorSample[]> {
   const { MotionProcessor } =
     await import('../src/client/controls/motion/processor.ts');
@@ -342,14 +342,14 @@ async function main(paths: string[]) {
         `  compass: ${compass.readings} readings (${compass.hz.toFixed(0)} Hz), accuracy ${compass.accuracy ?? 'n/a'}°, still noise ${compass.noise?.toFixed(2) ?? 'n/a'}°, best lag ${compass.lagMs ?? 'n/a'} ms`,
       );
     else console.log('  compass: none recorded');
-    const anchored = await replayTilt(trace, undefined, { anchor: true }),
-      before = returnErrors(trace, cursor),
-      after = returnErrors(trace, anchored);
+    const plain = await replayTilt(trace, undefined, { anchor: false }),
+      before = returnErrors(trace, plain),
+      after = returnErrors(trace, cursor);
     if (before.length)
       console.table(
         before.map((b, i) => ({
           'back at center': b.label,
-          'drift dx/dy %': `${b.dx.toFixed(1)} / ${b.dy.toFixed(1)}`,
+          'plain dx/dy %': `${b.dx.toFixed(1)} / ${b.dy.toFixed(1)}`,
           'anchored dx/dy %': `${after[i].dx.toFixed(1)} / ${after[i].dy.toFixed(1)}`,
         })),
       );
