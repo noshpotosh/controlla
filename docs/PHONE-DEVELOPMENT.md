@@ -20,6 +20,27 @@ No Cloudflare account, DNS configuration, local CA, phone profile, or router
 port-forwarding is required. The first run uses the repository's pinned
 Wrangler dependency and may take longer while its tunnel binary is prepared.
 
+## Local Wi-Fi play without a tunnel
+
+To play on phones over your own network, with nothing routed through the
+internet, run:
+
+```sh
+npm run dev:lan
+```
+
+It serves the frontend over HTTPS with a self-signed certificate on the
+computer's LAN address, starts a room service that accepts that exact origin,
+and prints a URL such as `https://10.0.0.90:3012`. Open it on the laptop, create
+the room there, and join from phones on the same Wi-Fi. Each browser warns about
+the certificate once; on iPhone tap **Show Details → visit this website**, then
+**Enable motion** as usual. `npm run dev:lan` and `npm run dev:phone` use the same
+ports and cannot run at the same time as each other or as `npm run dev`.
+
+A bypassed certificate warning is fine for gameplay testing but is not evidence
+for trusted-HTTPS acceptance; use the [local iPhone acceptance runbook](acceptance/LOCAL-IPHONE.md)
+for that.
+
 ## What this workflow is for
 
 The tunnel is an everyday functional-development convenience. Its URL is random

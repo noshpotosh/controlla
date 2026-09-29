@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "vinext dev",
     "dev:phone": "tsx scripts/phone-development.ts",
+    "dev:lan": "tsx scripts/phone-development.ts --lan",
     "build": "vinext build && node --import tsx scripts/assert-production-bundle.ts",
     "lint": "oxlint",
     "format": "oxfmt",
