@@ -1,11 +1,15 @@
 import type { Capabilities, Permission } from '../api.ts';
 import type { MotionSnapshot, MotionStatus } from './contracts.ts';
+import { compassDegrees } from './heading.ts';
 import { MotionProcessor } from './processor.ts';
 import {
   RingBuffer,
+  toRawOrientation,
   toRawSample,
   type MotionEventLike,
+  type OrientationEventLike,
   type RawMotionSample,
+  type RawOrientationSample,
 } from './trace.ts';
 
 export const INITIAL_SAMPLE_MS = 1800;
@@ -18,6 +22,10 @@ export interface MotionEnvironment {
   requestPermission(): Promise<Permission>;
   capabilities(): Capabilities;
   listen(listener: (event: MotionEventLike) => void): () => void;
+  /** Orientation events, which carry the compass; absent where unsupported. */
+  listenOrientation?(
+    listener: (event: OrientationEventLike) => void,
+  ): () => void;
   schedule(callback: () => void, delay: number): () => void;
 }
 function browserEnvironment(): MotionEnvironment {
@@ -51,6 +59,20 @@ function browserEnvironment(): MotionEnvironment {
       window.addEventListener('devicemotion', receive);
       return () => window.removeEventListener('devicemotion', receive);
     },
+    listenOrientation: (listener) => {
+      if (typeof DeviceOrientationEvent === 'undefined') return () => {};
+      // Android reports a north-referenced orientation as its own event; iOS
+      // adds its compass heading to the ordinary one. Both share the motion
+      // permission.
+      const type =
+        'ondeviceorientationabsolute' in window
+          ? 'deviceorientationabsolute'
+          : 'deviceorientation';
+      const receive = (event: Event) =>
+        listener(event as unknown as OrientationEventLike);
+      window.addEventListener(type, receive);
+      return () => window.removeEventListener(type, receive);
+    },
     schedule: (callback, delay) => {
       const timer = setTimeout(callback, delay);
       return () => clearTimeout(timer);
@@ -75,6 +97,12 @@ export class Motion {
   private disposed = false;
   private pending: Promise<void> | null = null;
   private unlisten: (() => void) | null = null;
+  private unlistenOrientation: (() => void) | null = null;
+  /** The latest orientation event, attached to the next motion sample. */
+  private orientation: RawOrientationSample | null = null;
+  private compassAt: number | null = null;
+  private compassHeading: number | null = null;
+  private compassAccuracy: number | null = null;
   private cancelTimer: (() => void) | null = null;
   private lifetime = 0;
   private startedAt = 0;
@@ -143,6 +171,15 @@ export class Motion {
       gravity: [...this.processor.gravity],
       up: this.processor.up,
       tilt: this.processor.tilt,
+      aim: this.processor.aim,
+      compass: {
+        fresh:
+          !!this.unlisten &&
+          this.compassAt !== null &&
+          time - this.compassAt < FRESH_SAMPLE_MS,
+        heading: this.compassHeading,
+        accuracy: this.compassAccuracy,
+      },
     });
   }
   get rateHz() {
@@ -206,6 +243,12 @@ export class Motion {
       if (lifetime !== this.lifetime || this.disposed || this.suspended) return;
       this.sample(event);
     });
+    this.unlistenOrientation =
+      this.env.listenOrientation?.((event) => {
+        if (lifetime !== this.lifetime || this.disposed || this.suspended)
+          return;
+        this.orient(event);
+      }) ?? null;
     this.schedule();
     this.notify();
   }
@@ -233,6 +276,10 @@ export class Motion {
     ++this.lifetime;
     this.unlisten?.();
     this.unlisten = null;
+    this.unlistenOrientation?.();
+    this.unlistenOrientation = null;
+    this.orientation = null;
+    this.compassAt = this.compassHeading = this.compassAccuracy = null;
     this.cancelTimer?.();
     this.cancelTimer = null;
     this.accelAt = this.gyroAt = null;
@@ -273,6 +320,10 @@ export class Motion {
   private sample(event: MotionEventLike) {
     const time = this.env.now();
     const sample = toRawSample(event, time);
+    if (this.orientation) {
+      sample.orientation = this.orientation;
+      this.orientation = null;
+    }
     if (
       this.accelAt === null ||
       this.gyroAt === null ||
@@ -297,6 +348,17 @@ export class Motion {
       } catch {
         /* Observers cannot interrupt input. */
       }
+    }
+  }
+  private orient(event: OrientationEventLike) {
+    const time = this.env.now(),
+      orientation = toRawOrientation(event, time);
+    this.orientation = orientation;
+    const heading = compassDegrees(orientation);
+    if (heading !== null) {
+      this.compassAt = time;
+      this.compassHeading = heading;
+      this.compassAccuracy = orientation.accuracy;
     }
   }
   onSample(listener: (sample: RawMotionSample) => void) {

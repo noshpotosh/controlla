@@ -338,6 +338,8 @@ void test('Whack-a-Mole swings to whack with motion and falls back to a touch bu
   );
   assert.equal(swing.sensors.chop?.enabled, true);
   assert.equal(swing.sensors.pointer.enabled, true);
+  // Whack-a-Mole opts in to anchoring aim; the flag only rides with a pointer.
+  assert.equal(swing.sensors.pointer.anchor, true);
   // The chop tile takes the whack button's place and drops its touch props.
   assert.deepEqual(swing.widgets[1].rect, [0, 15 / 24, 1, 9 / 24]);
   assert.equal(swing.widgets[1].props, undefined);
@@ -350,6 +352,7 @@ void test('Whack-a-Mole swings to whack with motion and falls back to a touch bu
     ],
   );
   assert.equal(touch.sensors.chop?.enabled, false);
+  assert.equal(touch.sensors.pointer.anchor, undefined);
   assert.deepEqual(touch.substitutions, [
     'aim: pointer → aim-pad',
     'whack: chop → button',
@@ -483,4 +486,40 @@ void test('live preflight rejects conflicts before loading/reconfiguration and e
   assert.equal(r.created(), 0);
   assert.deepEqual(r.sent, before);
   assert.deepEqual(r.authority.summary().progress, progress);
+});
+
+void test('the lobby cursor tries anchored aim; each round then uses its own game’s setting', (t) => {
+  const sent: Message[] = [];
+  const authority = new SessionAuthority('host', {
+    toPlayer: (_id, message) => sent.push(message),
+    toVenue() {},
+    snapshot() {},
+    event() {},
+    warning() {},
+  });
+  t.after(() => authority.dispose());
+  authority.setRoster({
+    players: [
+      {
+        id: 'a',
+        name: 'Ada',
+        seat: 0,
+        color: '#fff',
+        connected: true,
+        venueId: 'host',
+      },
+    ],
+    venues: [{ id: 'host', name: 'Host', connected: true }],
+  });
+  authority.control('a', { type: 'capabilities', capabilities: granted() });
+  const latest = () =>
+    (sent.filter((m) => m.type === 'config').at(-1)!.config as ControllerConfig)
+      .sensors.pointer;
+  assert.equal(latest().enabled, true);
+  assert.equal(latest().anchor, true, 'lobby');
+  authority.start(neonHarvest.id, neonHarvest.defaultMode);
+  assert.equal(latest().anchor, undefined, 'Neon Harvest keeps plain aim');
+  authority.abort();
+  authority.start(whackAMole.id, whackAMole.defaultMode);
+  assert.equal(latest().anchor, true, 'Whack-a-Mole opts in');
 });

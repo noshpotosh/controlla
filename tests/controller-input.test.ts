@@ -75,6 +75,8 @@ function fixture(config = configuration()) {
     gravity: [0, 0, 9.81],
     up: [0, 0, 1],
     tilt: { x: 0.4, y: -0.3 },
+    aim: { yaw: null, pitch: 0, anchored: false, epoch: 0 },
+    compass: { fresh: false, heading: null, accuracy: null },
     capabilities: {
       sensors: {
         gyro: { present: true, permission: 'granted' },
@@ -525,6 +527,30 @@ void test('frames show the swing button held while the aim is locked', () => {
   assert.equal(buttons(), 1);
   f.input.holdAim(false);
   assert.equal(buttons(), 0);
+});
+
+void test('only a configuration that opts in anchors aim, winning back a turn made while locked', () => {
+  const run = (anchor: boolean) => {
+    const config = configuration();
+    if (anchor) config.sensors.pointer.anchor = true;
+    const f = swingFixture(config);
+    for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
+    f.input.holdAim(true);
+    // Turning right while the aim is locked.
+    for (let i = 0; i < 10; i++) f.sample([0, 0, -0.6]);
+    f.input.holdAim(false);
+    for (let i = 0; i < 10; i++) f.sample([0, 0, 0]);
+    const released = f.input.previewPoint();
+    for (let i = 0; i < 10; i++) f.sample([0, 0, -0.4]);
+    return { released, aimed: f.input.previewPoint() };
+  };
+  const plain = run(false),
+    anchored = run(true);
+  assert.deepEqual(anchored.released, plain.released, 'no jump on release');
+  assert.ok(
+    anchored.aimed.x > plain.aimed.x,
+    `anchored ${anchored.aimed.x} vs ${plain.aimed.x}`,
+  );
 });
 
 void test('the host can keep the pointer inside the play field', () => {
