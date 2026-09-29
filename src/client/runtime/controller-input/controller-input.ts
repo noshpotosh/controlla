@@ -20,6 +20,7 @@ import {
   GyroPointer,
   PointerSmoother,
 } from '../../controls/motion/pointer.ts';
+import { CHOP, ChopDetector } from '../../controls/motion/chop.ts';
 import { encodeInput, type InputFrame } from '../../engine/protocol.ts';
 import type { WidgetValueMessage } from '../../engine/reliable-input.ts';
 import type { Point } from '../../../core/types.ts';
@@ -46,6 +47,10 @@ export class ControllerInput {
   private lastPointerSample: number | null = null;
   private motionEpoch = -1;
   private lastShakeSample = -1;
+  private chopDetector = new ChopDetector();
+  private lastChopSample = -1;
+  private holdingChop = false;
+  private chops = 0;
   private pointerPoint: Point = { x: 0.5, y: 0.5 };
   private recenters = 0;
   /** Tilt that reads as level: the grip the player last recentered at. */
@@ -73,6 +78,7 @@ export class ControllerInput {
       point: Object.freeze(this.previewPoint()),
       sensitivity: this.gyroPointer.gain,
       recenters: this.recenters,
+      chops: this.chops,
     });
   }
 
@@ -164,6 +170,8 @@ export class ControllerInput {
       this.lastPointerSample = null;
       this.gyroPointer.resumeAt(this.pointerPoint);
       this.pointerSmoother.reset();
+      this.chopDetector.reset();
+      this.holdingChop = false;
     }
     if (
       config.sensors.shake.enabled &&
@@ -178,6 +186,35 @@ export class ControllerInput {
       if (shake) this.action(shake.action, 1, config.generation);
     }
     this.lastShakeSample = motion.sequence;
+    // Detect before integrating, so the swing's own motion never moves the aim.
+    if (
+      config.sensors.chop?.enabled &&
+      motion.pointerFresh &&
+      motion.sequence !== this.lastChopSample
+    ) {
+      this.lastChopSample = motion.sequence;
+      const sampleAt = motion.at!;
+      const chop = this.chopDetector.sample(motion.rate, motion.up, sampleAt);
+      const widget = config.widgets.find((w) => w.type === 'chop');
+      if (chop && widget) {
+        if (config.sensors.pointer.enabled) {
+          this.pointerPoint = this.latestPoint = this.gyroPointer.holdAt(
+            chop.onsetAt - CHOP.captureLeadMs,
+            chop.at + CHOP.maxHoldMs,
+          );
+          this.pointerSmoother.reset();
+          this.holdingChop = true;
+        }
+        this.chops++;
+        this.haptic(20);
+        this.action(widget.action, chop.strength, config.generation, {
+          at: chop.onsetAt,
+        });
+      } else if (this.holdingChop && this.chopDetector.settled(sampleAt)) {
+        this.gyroPointer.release(sampleAt);
+        this.holdingChop = false;
+      }
+    }
     if (config.sensors.pointer.enabled && motion.pointerFresh) {
       // Integrate once per motion sample so a stalled sensor never replays
       // its last rate.
@@ -269,7 +306,13 @@ export class ControllerInput {
       },
     };
   }
-  action(action: string, raw: unknown, generation = this.config?.generation) {
+  /** `capture` dates a gesture's press to when it began, in local time. */
+  action(
+    action: string,
+    raw: unknown,
+    generation = this.config?.generation,
+    capture?: { at: number },
+  ) {
     const config = this.config;
     if (
       !config ||
@@ -326,8 +369,8 @@ export class ControllerInput {
           ? { x: (point.x + 1) / 2, y: (point.y + 1) / 2 }
           : { ...point },
       );
-    } else if (widget.type === 'shake') {
-      this.press(action, true, generation);
+    } else if (widget.type === 'shake' || widget.type === 'chop') {
+      this.press(action, true, generation, capture);
       this.press(action, false, generation);
     }
   }
@@ -367,7 +410,12 @@ export class ControllerInput {
     }
     if (resetSequence) this.widgetSequences.clear();
   }
-  press(action: string, down: boolean, generation = this.config?.generation) {
+  press(
+    action: string,
+    down: boolean,
+    generation = this.config?.generation,
+    capture?: { at: number },
+  ) {
     const config = this.config;
     if (
       !config ||
@@ -395,14 +443,19 @@ export class ControllerInput {
       )
         return;
       this.flushWidget(action);
+      const local = this.environment.localTime();
       if (config.sensors.pointer.enabled) {
-        this.pointerPoint = this.latestPoint = this.gyroPointer.holdForPress(
-          this.environment.localTime(),
-        );
+        this.pointerPoint = this.latestPoint =
+          this.gyroPointer.holdForPress(local);
         this.pointerSmoother.reset();
       }
       this.edges[button] = (this.edges[button] + 1) % 256;
-      this.edgeTimes[button] = this.environment.authorityTime();
+      // A gesture's press is dated to when it began, matching its captured aim.
+      this.edgeTimes[button] =
+        this.environment.authorityTime() -
+        (capture
+          ? Math.min(CHOP.maxHoldMs, Math.max(0, local - capture.at))
+          : 0);
       this.effects.reliable({
         type: 'press',
         press: {

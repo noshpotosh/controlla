@@ -1,7 +1,7 @@
 'use client';
-// Stand-in for motion inputs (pointer, tilt, shake) and other unported
+// Stand-in for motion inputs (pointer, tilt, shake, chop) and other unported
 // widgets wherever there's no live Runtime: the designer and phone preview.
-import { Move3d, Smartphone, Vibrate } from 'lucide-react';
+import { Hammer, Move3d, Smartphone, Vibrate } from 'lucide-react';
 import type { Widget } from './api.ts';
 
 const SENSORS: Partial<
@@ -10,6 +10,7 @@ const SENSORS: Partial<
   pointer: { Icon: Move3d, hint: 'Point your phone at the screen' },
   tilt: { Icon: Smartphone, hint: 'Tilt to steer' },
   shake: { Icon: Vibrate, hint: 'Shake your phone' },
+  chop: { Icon: Hammer, hint: 'Swing down to whack' },
 };
 
 export function SensorTile({ widget }: { widget: Widget }) {

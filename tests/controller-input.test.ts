@@ -362,3 +362,74 @@ void test('configuration and aim settings remain input-owned detached projection
   assert.equal(h.input.getSnapshot().adjustingAim, false);
   assert.equal(h.input.configure(configuration()), false);
 });
+void test('a hammer swing whacks with the aim from before the swing, dated to its onset', () => {
+  const config = configuration();
+  config.sensors.pointer.enabled = true;
+  config.sensors.chop = { enabled: true };
+  config.widgets = [
+    {
+      id: 'aim',
+      action: 'aim',
+      type: 'pointer',
+      label: 'Aim',
+      space: 'normalized',
+    },
+    { id: 'whack', action: 'whack', type: 'chop', label: 'Whack' },
+  ];
+  const f = fixture(config);
+  let at = 1000,
+    sequence = 1;
+  const sample = (rate: number[]) => {
+    at += 16;
+    sequence++;
+    f.at(at);
+    f.input.tick({ ...f.motion, at, sequence, rate });
+  };
+  // Aim right, then hold still.
+  for (let i = 0; i < 12; i++) sample([0, 0, -0.4]);
+  for (let i = 0; i < 6; i++) sample([0, 0, 0]);
+  const aimed = f.input.previewPoint();
+  assert.ok(aimed.x > 0.55);
+  const onset = at + 16;
+  for (const pitch of [-3, -8]) sample([pitch, 0, 0]);
+  const presses = f.messages.filter((m) => m.type === 'press');
+  assert.equal(presses.length, 1);
+  const press = presses[0];
+  assert.ok(press.type === 'press');
+  assert.ok(Math.abs(press.press.x - aimed.x) < 0.01);
+  assert.ok(Math.abs(press.press.y - aimed.y) < 0.01);
+  // Authority time runs 100 ms ahead of local time in this fixture.
+  assert.equal(press.press.time, onset + 100);
+  assert.equal(press.press.value, 8 / 12);
+  const value = f.messages.find((m) => m.type === 'widget');
+  assert.ok(value && value.type === 'widget' && value.action === 'whack');
+  assert.deepEqual(f.vibrations, [20]);
+  assert.equal(f.input.getSnapshot().chops, 1);
+  // The rebound neither moves the aim nor whacks again.
+  for (const pitch of [6, 4, -3, 0]) sample([pitch, 0, 0]);
+  assert.equal(f.messages.filter((m) => m.type === 'press').length, 1);
+  assert.deepEqual(f.input.previewPoint(), {
+    x: press.press.x,
+    y: press.press.y,
+  });
+  // Once settled, aiming works again.
+  for (let i = 0; i < 12; i++) sample([0, 0, 0]);
+  for (let i = 0; i < 6; i++) sample([0, 0, -0.4]);
+  assert.ok(f.input.previewPoint().x > press.press.x);
+});
+void test('chop is ignored when the host configuration does not enable it', () => {
+  const config = configuration();
+  config.sensors.pointer.enabled = true;
+  config.widgets = [
+    { id: 'whack', action: 'whack', type: 'chop', label: 'Whack' },
+  ];
+  const f = fixture(config);
+  for (const [i, pitch] of [-3, -8, -3].entries())
+    f.input.tick({
+      ...f.motion,
+      at: 1016 + i * 16,
+      sequence: i + 2,
+      rate: [pitch, 0, 0],
+    });
+  assert.equal(f.messages.filter((m) => m.type === 'press').length, 0);
+});

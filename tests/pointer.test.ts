@@ -160,3 +160,24 @@ void test('recenter returns the cursor to the middle', () => {
   pointer.recenter();
   assert.deepEqual(pointer.current, { x: 0.5, y: 0.5 });
 });
+
+void test('a hammer swing restores the aim from before it began and holds until released', () => {
+  const pointer = new GyroPointer(),
+    { at } = turn(pointer, [0, 0, -10 * DEG], 0.5),
+    aimed = pointer.current;
+  // The chop tips the phone down hard for 150 ms, diving the cursor.
+  const swing = turn(pointer, [-8, 0, 0], 0.15, FLAT, at);
+  assert.ok(swing.p.y > aimed.y + 0.2, 'the swing itself moves the cursor');
+  const held = pointer.holdAt(at - 30, swing.at + 700);
+  assert.ok(Math.abs(held.x - aimed.x) < 0.02);
+  assert.ok(Math.abs(held.y - aimed.y) < 0.02);
+  // The rebound swings back up: discarded while held, and a tap can't re-rewind.
+  const rebound = turn(pointer, [6, 0, 0], 0.1, FLAT, swing.at);
+  assert.deepEqual(rebound.p, held);
+  assert.deepEqual(pointer.holdForPress(rebound.at), held);
+  // Released once the phone settles, the cursor moves again from the held aim.
+  pointer.release(rebound.at);
+  const after = turn(pointer, [0, 0, -10 * DEG], 0.2, FLAT, rebound.at).p;
+  assert.ok(after.x > held.x);
+  assert.equal(after.y, held.y);
+});

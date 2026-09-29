@@ -24,6 +24,7 @@ export type WidgetType =
   | 'hold-meter'
   | 'tilt'
   | 'shake'
+  | 'chop'
   | 'pointer'
   | 'text';
 export interface Widget {
@@ -53,6 +54,8 @@ export interface ControllerConfig {
     pointer: { enabled: boolean; rateHz: number };
     tilt: { enabled: boolean };
     shake: { enabled: boolean; thresholdG: number };
+    /** A downward hammer swing; absent in configurations from older hosts. */
+    chop?: { enabled: boolean };
     accel: { enabled: boolean };
   };
   haptics: { enabled: boolean };
@@ -94,7 +97,7 @@ export type MenuCorner =
   | 'bottom-right';
 
 /** Motion inputs a layout can switch on. They have no on-screen footprint. */
-export type MotionInput = 'pointer' | 'tilt' | 'shake';
+export type MotionInput = 'pointer' | 'tilt' | 'shake' | 'chop';
 
 export interface GridRect {
   x: number;

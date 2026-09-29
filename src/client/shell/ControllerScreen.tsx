@@ -131,6 +131,7 @@ export function ControllerScreen({
               widget={w}
               port={phone.portFor(w, v.config!.generation)}
               previewPoint={phone.previewPoint}
+              chopCount={phone.chopCount}
               sensorHz={v.sensorHz}
             />
           )}

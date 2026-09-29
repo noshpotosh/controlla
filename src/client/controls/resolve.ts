@@ -16,7 +16,7 @@ import {
 import { layouts } from './layouts/index.ts';
 import { PRESS_SLOTS, usesPressSlot } from './registry.ts';
 export function available(type: WidgetType, c: Capabilities) {
-  if (type === 'pointer')
+  if (type === 'pointer' || type === 'chop')
     return (
       c.sensors.gyro.present &&
       c.sensors.gyro.permission === 'granted' &&
@@ -112,6 +112,7 @@ export function resolveConfig(
         enabled: types.includes('shake'),
         thresholdG: 1.8,
       },
+      chop: { enabled: types.includes('chop') },
       accel: { enabled: false },
     },
     haptics: { enabled: c.vibration },

@@ -21,7 +21,7 @@ export const probeLayout: ControllerLayout = {
   orientation: 'portrait',
   grid: { cols: 12, rows: 24 },
   menu: 'top-right',
-  motion: { pointer: false, tilt: false, shake: false },
+  motion: { pointer: false, tilt: false, shake: false, chop: false },
   items: [
     {
       name: 'move',

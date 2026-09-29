@@ -11,6 +11,7 @@ const MOTION_HELP: Record<MotionInput, string> = {
   pointer: 'Aim by pointing the phone',
   tilt: 'Steer by tilting the phone',
   shake: 'A shake counts as a press',
+  chop: 'A downward swing counts as a press',
 };
 
 export function Palette({

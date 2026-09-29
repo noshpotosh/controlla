@@ -25,7 +25,12 @@ export const whackAMole: GameDescriptor<WhackState> = {
         fallback: 'aim-pad',
         label: 'Aim',
       },
-      whack: { required: true, prefer: 'button', label: 'WHACK' },
+      whack: {
+        required: true,
+        prefer: 'chop',
+        fallback: 'button',
+        label: 'Whack',
+      },
     },
     controller: { layout: 'aim-and-whack' },
   },

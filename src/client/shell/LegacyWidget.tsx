@@ -8,6 +8,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { Hammer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import type { Widget, ControlPort } from '../controls/api.ts';
@@ -17,11 +18,13 @@ export function LegacyWidget({
   widget: w,
   port,
   previewPoint,
+  chopCount,
   sensorHz,
 }: {
   widget: Widget;
   port: ControlPort;
   previewPoint: PhoneActions['previewPoint'];
+  chopCount?: PhoneActions['chopCount'];
   sensorHz: number;
 }) {
   const [progress, setProgress] = useState(0),
@@ -127,6 +130,8 @@ export function LegacyWidget({
         <Button type="submit">Send</Button>
       </form>
     );
+  if (w.type === 'chop')
+    return <ChopTile label={w.label} port={port} chopCount={chopCount} />;
   if (w.type === 'pointer' || w.type === 'tilt' || w.type === 'shake')
     return (
       <div className="widget">
@@ -176,6 +181,58 @@ export function LegacyWidget({
         <span style={{ transform: `rotate(${angle}rad)` }}>↑</span>
       ) : null}
     </fieldset>
+  );
+}
+
+/**
+ * The swing-to-whack input. Each recognised swing slams the hammer, so players
+ * without vibration (every iPhone) still see that it counted. Tapping also whacks.
+ */
+function ChopTile({
+  label,
+  port,
+  chopCount,
+}: {
+  label: string;
+  port: ControlPort;
+  chopCount?: PhoneActions['chopCount'];
+}) {
+  const [hits, setHits] = useState(0);
+  useEffect(() => {
+    if (!chopCount) return;
+    let seen = chopCount(),
+      raf = 0;
+    const poll = () => {
+      const count = chopCount();
+      if (count !== seen) {
+        seen = count;
+        setHits((n) => n + 1);
+      }
+      raf = requestAnimationFrame(poll);
+    };
+    raf = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(raf);
+  }, [chopCount]);
+  return (
+    <button
+      type="button"
+      className="widget chop-tile"
+      aria-label={label}
+      onPointerDown={() => {
+        port.value(1);
+        port.haptic(12);
+        setHits((n) => n + 1);
+      }}
+    >
+      <span
+        key={hits}
+        className={hits ? 'chop-tile__hammer is-hit' : 'chop-tile__hammer'}
+      >
+        <Hammer strokeWidth={1.75} />
+      </span>
+      <span className="chop-tile__title">Swing down to {label}!</span>
+      <small>Point at the screen, then chop like a hammer · or tap here</small>
+    </button>
   );
 }
 

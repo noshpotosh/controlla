@@ -79,6 +79,18 @@ export const RECORDING_SCRIPT: Step[] = [
     taps: true,
   },
   {
+    label: 'chop',
+    prompt:
+      'Point at the TV, then chop down like swinging a hammer. Do it 5 times, pausing between.',
+    seconds: 8,
+  },
+  {
+    label: 'aim-down',
+    prompt:
+      'No chops: aim quickly at the bottom of the TV and back up, 5 times.',
+    seconds: 6,
+  },
+  {
     label: 'free',
     prompt: 'Point around at the TV however feels natural.',
     seconds: 8,

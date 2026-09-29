@@ -546,6 +546,9 @@ export class Runtime {
   previewPoint() {
     return this.input.previewPoint();
   }
+  chopCount() {
+    return this.input.getSnapshot().chops;
+  }
   setPoint(point: Point) {
     this.input.setPoint(point);
   }

@@ -21,7 +21,8 @@ export const GYRO = {
   // A tap jolts the phone: aim at where the cursor was `pressLookbackMs` earlier, then hold it.
   pressLookbackMs: 50,
   pressHoldMs: 120,
-  historyMs: 250,
+  // Long enough to rewind past a hammer swing to where the player was aiming.
+  historyMs: 600,
   // The canonical play area is 16:9; equal turn angles cover equal pixels on both axes.
   aspect: 16 / 9,
 };
@@ -77,12 +78,23 @@ export class GyroPointer {
 
   /** Freezes the cursor where it was just before a tap jolted the phone. */
   holdForPress(at: number): Point {
-    const before = at - GYRO.pressLookbackMs;
-    let held = this.history[0] ?? { at, ...this.point };
-    for (const h of this.history) if (h.at <= before) held = h;
+    // A gesture already restored the aim; don't rewind into its own motion.
+    if (at < this.holdUntil) return { ...this.point };
+    return this.holdAt(at - GYRO.pressLookbackMs, at + GYRO.pressHoldMs);
+  }
+
+  /** Restores the cursor to where it was at `captureAt` and holds it until `until`. */
+  holdAt(captureAt: number, until: number): Point {
+    let held = this.history[0] ?? { at: captureAt, ...this.point };
+    for (const h of this.history) if (h.at <= captureAt) held = h;
     this.point = { x: held.x, y: held.y };
-    this.holdUntil = at + GYRO.pressHoldMs;
+    this.holdUntil = until;
     return { ...this.point };
+  }
+
+  /** Ends a hold early, once the motion that caused it has settled. */
+  release(at: number) {
+    this.holdUntil = Math.min(this.holdUntil, at);
   }
 
   /** Retire pre-suspension history while preserving the last displayed aim. */

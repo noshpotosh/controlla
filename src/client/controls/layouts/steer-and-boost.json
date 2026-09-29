@@ -11,7 +11,8 @@
   "motion": {
     "pointer": false,
     "tilt": true,
-    "shake": false
+    "shake": false,
+    "chop": false
   },
   "items": [
     {

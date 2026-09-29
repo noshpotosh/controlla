@@ -38,6 +38,7 @@ const legacy: Partial<
   Record<WidgetType, { channel: Channel; throttle: boolean; kind: OutputKind }>
 > = {
   shake: { channel: 'both', throttle: false, kind: 'press' },
+  chop: { channel: 'both', throttle: false, kind: 'press' },
   text: { channel: 'value', throttle: false, kind: 'text' },
   slider: { channel: 'value', throttle: true, kind: 'scalar' },
   dial: { channel: 'value', throttle: true, kind: 'angle' },
