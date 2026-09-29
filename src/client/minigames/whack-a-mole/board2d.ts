@@ -24,6 +24,7 @@ export function drawBoard2d(
   state: ReadonlyDeep<WhackState>,
   players: ReadonlyDeep<Player[]>,
   cursors: ReadonlyDeep<Record<string, Point>>,
+  pressing: ReadonlyDeep<Record<string, boolean>>,
   time: number,
   reducedMotion: boolean,
 ) {
@@ -66,6 +67,7 @@ export function drawBoard2d(
       cursor,
       player.color,
       slam ? time - slam.at : Infinity,
+      pressing[player.id] === true,
       state.players[player.id].stunnedUntil > time,
       time,
       reducedMotion,
@@ -252,9 +254,12 @@ function drawEffect(
   ctx.restore();
 }
 
-/** A player's hammer: rests tilted up, slams flat on impact, then recoils. */
-export function hammerAngle(sinceSlam: number) {
-  if (sinceSlam < 0 || sinceSlam > 330) return -0.7;
+/**
+ * A player's hammer: rests tilted up (raised higher while the aim is locked),
+ * slams flat on impact, then recoils.
+ */
+export function hammerAngle(sinceSlam: number, raised = false) {
+  if (sinceSlam < 0 || sinceSlam > 330) return raised ? -1.15 : -0.7;
   if (sinceSlam < 70) return 0.15;
   const t = (sinceSlam - 70) / 260;
   return 0.15 - 0.85 * (1 - (1 - t) ** 2);
@@ -265,6 +270,7 @@ function drawHammer(
   cursor: ReadonlyDeep<Point>,
   color: string,
   sinceSlam: number,
+  raised: boolean,
   stunned: boolean,
   time: number,
   reducedMotion: boolean,
@@ -274,7 +280,7 @@ function drawHammer(
   ctx.save();
   ctx.translate(x + 70, y + 18);
   ctx.rotate(
-    hammerAngle(sinceSlam) +
+    hammerAngle(sinceSlam, raised) +
       (stunned && !reducedMotion ? Math.sin(time / 60) * 0.25 : 0),
   );
   ctx.fillStyle = PALETTE.wood;

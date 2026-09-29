@@ -5,6 +5,8 @@ export interface ScreenFrame {
   presentationTime: number;
   delay: number;
   localCursors: Readonly<Record<string, Readonly<Point>>>;
+  /** Local players holding a press control, such as a locked aim. */
+  localPressing?: Readonly<Record<string, boolean>>;
   /** Who each local cursor belongs to, so the lobby can draw cursors before a round. */
   localPlayers?: Readonly<
     Record<string, Readonly<{ name: string; color: string }>>

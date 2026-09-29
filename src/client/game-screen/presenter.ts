@@ -103,6 +103,7 @@ export function createPresenter(games: readonly GameDescriptor[]) {
           frame.localCursors,
           frame.delay,
           reducedMotion,
+          frame.localPressing,
         );
       } catch (error) {
         release();

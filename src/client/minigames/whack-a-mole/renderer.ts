@@ -50,6 +50,7 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
     width,
     height,
     localCursors = {},
+    localPressing = {},
     reducedMotion = false,
   }: Presentation<WhackState>): void {
     if (
@@ -68,20 +69,23 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
     const glide = reducedMotion ? 1 : 1 - Math.exp(-dt / 0.035);
     const at = Math.min(time, snapshot.endAt);
     // Settling freezes hammers where they were at the cutoff.
-    const live =
-      snapshot.phase === 'running'
-        ? { ...snapshot.cursors, ...localCursors }
-        : {};
+    const running = snapshot.phase === 'running',
+      local = running ? localCursors : {},
+      relayed = running ? snapshot.cursors : {};
     for (const player of snapshot.players) {
-      const point = live[player.id];
+      const point = local[player.id] ?? relayed[player.id];
       if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y))
         continue;
-      // Phone Wi-Fi delivers cursor packets in bursts; glide over them, but
-      // jump straight to a far-away point such as after Recenter.
+      // This screen's own phones arrive smoothed and bridged over Wi-Fi gaps
+      // already; another gliding step would only add lag. Cursors relayed in
+      // snapshots come in steps, so glide over those, but jump straight to a
+      // far-away point such as after Recenter.
       const last = this.positions.get(player.id);
       this.positions.set(
         player.id,
-        last && Math.hypot(point.x - last.x, point.y - last.y) < 0.25
+        !local[player.id] &&
+          last &&
+          Math.hypot(point.x - last.x, point.y - last.y) < 0.25
           ? {
               x: last.x + (point.x - last.x) * glide,
               y: last.y + (point.y - last.y) * glide,
@@ -92,6 +96,8 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
     const cursors = Object.fromEntries(this.positions) as ReadonlyDeep<
       Record<string, Point>
     >;
+    // A locked aim shows as a raised hammer and a solid ring.
+    const pressing = running ? localPressing : {};
     ctx.save();
     try {
       ctx.scale(width / 1600, height / 900);
@@ -100,13 +106,22 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
         state,
         snapshot.players,
         cursors,
+        pressing,
         at,
         snapshot.endAt,
         reducedMotion,
       );
       if (!labels)
-        drawBoard2d(ctx, state, snapshot.players, cursors, at, reducedMotion);
-      drawReticles(ctx, state, snapshot.players, cursors);
+        drawBoard2d(
+          ctx,
+          state,
+          snapshot.players,
+          cursors,
+          pressing,
+          at,
+          reducedMotion,
+        );
+      drawReticles(ctx, state, snapshot.players, cursors, pressing);
       if (labels) drawLabels(ctx, labels, snapshot.players);
       drawPops(ctx, state, snapshot.players, at, reducedMotion);
       drawHud(ctx, {
@@ -128,6 +143,7 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
     state: ReadonlyDeep<WhackState>,
     players: ReadonlyDeep<Player[]>,
     cursors: ReadonlyDeep<Record<string, Point>>,
+    pressing: ReadonlyDeep<Record<string, boolean>>,
     time: number,
     endAt: number,
     reducedMotion: boolean,
@@ -141,6 +157,7 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
         state,
         players,
         cursors,
+        pressing,
         time,
         endAt,
         reducedMotion,
@@ -169,26 +186,39 @@ export class WhackAMoleRenderer implements GameRenderer<WhackState> {
   }
 }
 
-/** Each hammer's hit area at its cursor: any part of this ring touching a mole counts. */
+/**
+ * Each hammer's hit area at its cursor: any part of this ring touching a mole
+ * counts. While the player holds the swing button the ring turns solid, so
+ * they can see their aim is locked before they swing.
+ */
 function drawReticles(
   ctx: CanvasRenderingContext2D,
   state: ReadonlyDeep<WhackState>,
   players: ReadonlyDeep<Player[]>,
   cursors: ReadonlyDeep<Record<string, Point>>,
+  pressing: ReadonlyDeep<Record<string, boolean>>,
 ) {
   ctx.save();
-  ctx.lineWidth = 3;
   for (const player of players) {
     const aim = cursors[player.id];
     if (!player.connected || !aim || !state.players[player.id]) continue;
     const x = aim.x * 1600,
       y = aim.y * 900,
-      radius = hammerRadius(aim);
+      radius = hammerRadius(aim),
+      locked = pressing[player.id] === true;
+    ctx.lineWidth = locked ? 5 : 3;
     ctx.globalAlpha = 0.5;
     ctx.strokeStyle = PALETTE.navy;
     ctx.beginPath();
-    ctx.arc(x, y, radius + 1.5, 0, Math.PI * 2);
+    ctx.arc(x, y, radius + (locked ? 2.5 : 1.5), 0, Math.PI * 2);
     ctx.stroke();
+    if (locked) {
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = player.color;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.globalAlpha = 0.9;
     ctx.strokeStyle = player.color;
     ctx.beginPath();

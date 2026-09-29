@@ -11,6 +11,8 @@ export interface StageFrame {
   players: ReadonlyDeep<Player[]>;
   /** Hammer positions in normalized screen space. */
   cursors: ReadonlyDeep<Record<string, Point>>;
+  /** Players holding the swing button: their aim is locked, hammer raised. */
+  pressing: ReadonlyDeep<Record<string, boolean>>;
   time: number;
   endAt: number;
   reducedMotion: boolean;

@@ -693,6 +693,7 @@ void test('screen exposes detached, deeply frozen progress and no completion cap
           'delay',
           'height',
           'localCursors',
+          'localPressing',
           'reducedMotion',
           'snapshot',
           'time',

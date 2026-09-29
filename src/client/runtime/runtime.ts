@@ -631,6 +631,7 @@ export class Runtime {
           { name: cursor.name, color: cursor.color },
         ]),
       ),
+      Object.fromEntries(cursors.map((cursor) => [cursor.id, cursor.pressing])),
     );
     this.view.state = this.playback.sampledSnapshot;
     return frame;

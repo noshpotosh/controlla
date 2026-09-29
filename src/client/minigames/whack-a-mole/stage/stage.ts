@@ -133,6 +133,9 @@ interface HoleView {
 interface HammerView {
   rig: HammerRig;
   head: THREE.Vector3;
+  /** 0 at rest, 1 fully raised while the swing button locks the aim. */
+  raise: number;
+  at: number;
 }
 
 class World {
@@ -573,7 +576,7 @@ class World {
   }
 
   private hammerFrame(frame: StageFrame): StageLabel[] {
-    const { state, players, cursors, time, reducedMotion } = frame;
+    const { state, players, cursors, pressing, time, reducedMotion } = frame;
     const labels: StageLabel[] = [];
     const size = this.size,
       length = size * 2.5,
@@ -590,6 +593,8 @@ class World {
         view = {
           rig: hammerRig(this.kit, player.color, size, length),
           head: new THREE.Vector3(),
+          raise: 0,
+          at: time,
         };
         this.scene.add(view.rig.root, view.rig.marker);
         this.hammers.set(player.id, view);
@@ -641,8 +646,15 @@ class World {
       rig.root.rotation.y = 0.45;
       rig.marker.visible = true;
       rig.marker.position.set(position.x, 0.03, position.z);
+      // Holding the swing button cocks the mallet back, ready to swing.
+      const target = pressing[player.id] === true ? 1 : 0,
+        step = Math.min(0.1, Math.max(0, (time - view.at) / 1000));
+      view.at = time;
+      view.raise = reducedMotion
+        ? target
+        : view.raise + (target - view.raise) * (1 - Math.exp(-step / 0.05));
       // Flat at impact, so the head lands exactly where placed; raised at rest.
-      const rest = 0.26,
+      const rest = 0.26 + 0.5 * view.raise,
         strike = 0;
       let angle =
         strike +
