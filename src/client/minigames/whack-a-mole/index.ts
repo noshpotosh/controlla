@@ -8,7 +8,7 @@ export const whackAMole: GameDescriptor<WhackState> = {
   name: 'Whack-a-Mole',
   instructions: [
     'Point your phone at the screen to move your hammer.',
-    'Swing down to whack a mole: 10 points, golden moles 30.',
+    'Hold the button to lock your aim, then swing to whack: 10 points, golden moles 30.',
     'Each mole can only be whacked once, so be first!',
     "Don't hit bomb moles: lose 20 points and get dizzy.",
     'Score double in the final ten-second frenzy.',

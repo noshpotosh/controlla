@@ -49,6 +49,9 @@ export class ControllerInput {
   private lastShakeSample = -1;
   private chopDetector = new ChopDetector();
   private lastChopSample = -1;
+  /** The swing button is held: aim is frozen and swings whack. */
+  private aimHeld = false;
+  /** Released mid-swing: aim stays frozen until the phone settles. */
   private holdingChop = false;
   private chops = 0;
   private pointerPoint: Point = { x: 0.5, y: 0.5 };
@@ -79,6 +82,7 @@ export class ControllerInput {
       sensitivity: this.gyroPointer.gain,
       recenters: this.recenters,
       chops: this.chops,
+      aimHeld: this.aimHeld,
     });
   }
 
@@ -105,6 +109,7 @@ export class ControllerInput {
       this.config?.configId !== config.configId;
     this.config = structuredClone(config);
     if (changed) {
+      this.letGoOfAim();
       this.clearWidgetInput(true);
       this.edges = [0, 0, 0, 0];
       this.edgeTimes = [0, 0, 0, 0];
@@ -136,6 +141,7 @@ export class ControllerInput {
     if (this.terminal) return;
     this.clearWidgetInput();
     this.buttonState = 0;
+    this.letGoOfAim();
   }
   end() {
     this.dispose();
@@ -150,9 +156,43 @@ export class ControllerInput {
   setSensitivity(gain: number) {
     if (!this.terminal) this.gyroPointer.gain = clampGain(gain);
   }
+  /**
+   * The swing button. Holding it freezes the aim where it was just before the
+   * thumb touched down; while held, a sharp swing whacks. Releasing lets the aim
+   * move again once the phone has settled from any swing.
+   */
+  holdAim(down: boolean) {
+    const config = this.config;
+    if (this.terminal || !this.active || !config?.sensors.chop?.enabled) return;
+    const local = this.environment.localTime();
+    if (down && !this.aimHeld) {
+      this.aimHeld = true;
+      this.holdingChop = false;
+      this.chopDetector.reset();
+      this.freezeAim(local - CHOP.touchLookbackMs);
+    } else if (!down && this.aimHeld) {
+      this.aimHeld = false;
+      if (this.chopDetector.settled(local)) this.gyroPointer.release(local);
+      else this.holdingChop = true;
+    }
+  }
+  private freezeAim(captureAt: number) {
+    if (!this.config?.sensors.pointer.enabled) return;
+    this.pointerPoint = this.latestPoint = this.gyroPointer.holdAt(
+      captureAt,
+      Infinity,
+    );
+    this.pointerSmoother.reset();
+  }
+  private letGoOfAim() {
+    if (!this.aimHeld && !this.holdingChop) return;
+    this.aimHeld = this.holdingChop = false;
+    this.gyroPointer.release(this.environment.localTime());
+  }
   recenter() {
     if (this.terminal) return;
     this.gyroPointer.recenter();
+    if (this.aimHeld) this.freezeAim(this.environment.localTime());
     this.pointerSmoother.reset();
     this.pointerPoint = this.latestPoint = this.gyroPointer.current;
     // Tilt is absolute, so recentering makes the current grip level.
@@ -172,6 +212,7 @@ export class ControllerInput {
       this.pointerSmoother.reset();
       this.chopDetector.reset();
       this.holdingChop = false;
+      if (this.aimHeld) this.freezeAim(local);
     }
     if (
       config.sensors.shake.enabled &&
@@ -186,31 +227,32 @@ export class ControllerInput {
       if (shake) this.action(shake.action, 1, config.generation);
     }
     this.lastShakeSample = motion.sequence;
-    // Detect before integrating, so the swing's own motion never moves the aim.
+    // Swings only whack while the button holds the aim still.
     if (
       config.sensors.chop?.enabled &&
-      motion.pointerFresh &&
       motion.sequence !== this.lastChopSample
     ) {
       this.lastChopSample = motion.sequence;
       const sampleAt = motion.at!;
-      const chop = this.chopDetector.sample(motion.rate, motion.up, sampleAt);
+      const chop = motion.pointerFresh
+        ? this.chopDetector.sample(
+            motion.rate,
+            motion.accelFresh ? motion.gravity : null,
+            sampleAt,
+          )
+        : null;
       const widget = config.widgets.find((w) => w.type === 'chop');
-      if (chop && widget) {
-        if (config.sensors.pointer.enabled) {
-          this.pointerPoint = this.latestPoint = this.gyroPointer.holdAt(
-            chop.onsetAt - CHOP.captureLeadMs,
-            chop.at + CHOP.maxHoldMs,
-          );
-          this.pointerSmoother.reset();
-          this.holdingChop = true;
-        }
+      if (this.aimHeld && chop && widget) {
         this.chops++;
         this.haptic(20);
         this.action(widget.action, chop.strength, config.generation, {
           at: chop.onsetAt,
         });
-      } else if (this.holdingChop && this.chopDetector.settled(sampleAt)) {
+      } else if (
+        this.holdingChop &&
+        !this.aimHeld &&
+        this.chopDetector.settled(sampleAt)
+      ) {
         this.gyroPointer.release(sampleAt);
         this.holdingChop = false;
       }

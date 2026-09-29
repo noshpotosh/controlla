@@ -207,6 +207,7 @@ export function adaptRuntime(runtime: Runtime): ShellSession {
       previewPoint: () =>
         closed ? { x: 0.5, y: 0.5 } : runtime.previewPoint(),
       chopCount: () => (closed ? 0 : runtime.chopCount()),
+      holdAim: (down) => active(() => runtime.holdAim(down)),
       portFor(widget, generation) {
         const port = runtime.portFor(widget, generation);
         return {

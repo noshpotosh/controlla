@@ -123,8 +123,10 @@ export interface PhoneActions {
   setSensitivity(this: void, value: number): void;
   recenter(this: void): void;
   previewPoint(this: void): Point;
-  /** Downward swings recognised so far, for on-phone feedback. */
+  /** Swings recognised so far, for on-phone feedback. */
   chopCount(this: void): number;
+  /** Holds or releases the swing button, which freezes the aim while held. */
+  holdAim(this: void, down: boolean): void;
   portFor(this: void, widget: Widget, generation: number): ControlPort;
 }
 /** Observation only; samples are detached and subscriptions retire with the session. */

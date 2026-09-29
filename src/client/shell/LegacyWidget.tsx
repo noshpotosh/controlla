@@ -19,12 +19,14 @@ export function LegacyWidget({
   port,
   previewPoint,
   chopCount,
+  holdAim,
   sensorHz,
 }: {
   widget: Widget;
   port: ControlPort;
   previewPoint: PhoneActions['previewPoint'];
   chopCount?: PhoneActions['chopCount'];
+  holdAim?: PhoneActions['holdAim'];
   sensorHz: number;
 }) {
   const [progress, setProgress] = useState(0),
@@ -131,7 +133,14 @@ export function LegacyWidget({
       </form>
     );
   if (w.type === 'chop')
-    return <ChopTile label={w.label} port={port} chopCount={chopCount} />;
+    return (
+      <ChopTile
+        label={w.label}
+        port={port}
+        chopCount={chopCount}
+        holdAim={holdAim}
+      />
+    );
   if (w.type === 'pointer' || w.type === 'tilt' || w.type === 'shake')
     return (
       <div className="widget">
@@ -185,19 +194,24 @@ export function LegacyWidget({
 }
 
 /**
- * The swing-to-whack input. Each recognised swing slams the hammer, so players
- * without vibration (every iPhone) still see that it counted. Tapping also whacks.
+ * The swing-to-whack input: hold to freeze your aim, then swing. Each recognised
+ * swing slams the hammer, so players without vibration (every iPhone) still see
+ * that it counted.
  */
 function ChopTile({
   label,
   port,
   chopCount,
+  holdAim,
 }: {
   label: string;
   port: ControlPort;
   chopCount?: PhoneActions['chopCount'];
+  holdAim?: PhoneActions['holdAim'];
 }) {
-  const [hits, setHits] = useState(0);
+  const [hits, setHits] = useState(0),
+    [held, setHeld] = useState(false);
+  const pointer = useRef<number | null>(null);
   useEffect(() => {
     if (!chopCount) return;
     let seen = chopCount(),
@@ -213,16 +227,37 @@ function ChopTile({
     raf = requestAnimationFrame(poll);
     return () => cancelAnimationFrame(raf);
   }, [chopCount]);
+  // Never leave the aim frozen if the tile goes away mid-hold.
+  useEffect(
+    () => () => {
+      if (pointer.current !== null) holdAim?.(false);
+    },
+    [holdAim],
+  );
+  const release = (e: ReactPointerEvent<HTMLElement>) => {
+    if (pointer.current !== e.pointerId) return;
+    pointer.current = null;
+    setHeld(false);
+    holdAim?.(false);
+  };
   return (
     <button
       type="button"
-      className="widget chop-tile"
-      aria-label={label}
-      onPointerDown={() => {
-        port.value(1);
-        port.haptic(12);
-        setHits((n) => n + 1);
+      className={held ? 'widget chop-tile is-held' : 'widget chop-tile'}
+      aria-label={`Hold, then swing to ${label}`}
+      aria-pressed={held}
+      onContextMenu={(e) => e.preventDefault()}
+      onPointerDown={(e) => {
+        if (pointer.current !== null) return;
+        pointer.current = e.pointerId;
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        setHeld(true);
+        holdAim?.(true);
+        port.haptic(8);
       }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      onLostPointerCapture={release}
     >
       <span
         key={hits}
@@ -230,8 +265,14 @@ function ChopTile({
       >
         <Hammer strokeWidth={1.75} />
       </span>
-      <span className="chop-tile__title">Swing down to {label}!</span>
-      <small>Point at the screen, then chop like a hammer · or tap here</small>
+      <span className="chop-tile__title">
+        {held ? `Swing to ${label}!` : 'Hold, then swing'}
+      </span>
+      <small>
+        {held
+          ? 'Your aim is locked while you hold'
+          : 'Point at a mole, hold here, then chop like a hammer'}
+      </small>
     </button>
   );
 }

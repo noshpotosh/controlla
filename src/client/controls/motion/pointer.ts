@@ -1,7 +1,8 @@
 import { clamp, type Point } from '../../../core/types.ts';
 
-// Screen widths per radian of turn at a curve multiplier of 1.
-export const DEFAULT_GAIN = 1.9,
+// Screen widths per radian of turn at a curve multiplier of 1. Playtests found
+// 1.9 too twitchy for aiming at small targets; players can still raise it.
+export const DEFAULT_GAIN = 1.35,
   MIN_GAIN = 0.6,
   MAX_GAIN = 6;
 export const clampGain = (gain: number) =>

@@ -549,6 +549,9 @@ export class Runtime {
   chopCount() {
     return this.input.getSnapshot().chops;
   }
+  holdAim(down: boolean) {
+    this.input.holdAim(down);
+  }
   setPoint(point: Point) {
     this.input.setPoint(point);
   }

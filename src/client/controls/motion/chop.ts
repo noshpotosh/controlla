@@ -1,17 +1,26 @@
-/** Tuning for the downward hammer swing; adjust from recorded traces. Rates in rad/s. */
+/**
+ * Tuning for the hammer swing; adjust from recorded traces. A swing only counts
+ * while the player holds the on-screen button, which also freezes their aim, so
+ * detection can be forgiving: any sharp spin or jolt in any direction.
+ */
 export const CHOP = {
-  // The swing starts once the phone tips down this fast...
-  onsetRate: 1.5,
-  // ...and counts as a chop when it passes this rate within `windupMs`.
-  fireRate: 4.5,
-  windupMs: 300,
-  // Strength reaches 1 at this rate.
-  fullRate: 12,
-  // No second chop until this long has passed and the downswing has ended.
+  // A swing starts once the phone spins this fast (rad/s) or jolts this hard (g)...
+  onsetRate: 1.2,
+  onsetJolt: 0.35,
+  // ...and counts as a whack at this spin or jolt.
+  fireRate: 3,
+  fireJolt: 0.9,
+  // A swing is dated no earlier than this before it is recognised.
+  maxWindupMs: 150,
+  // Strength reaches 1 at this spin or jolt.
+  fullRate: 10,
+  fullJolt: 2.5,
+  // No second whack until this long has passed and the phone has calmed.
   refractoryMs: 250,
-  // Aim comes from just before the swing began.
-  captureLeadMs: 30,
-  // The cursor stays put until the phone has been calm for `settleMs`, at most `maxHoldMs`.
+  // Aim comes from just before the thumb pressed the button and jolted the phone.
+  touchLookbackMs: 50,
+  // Releasing mid-swing keeps the aim still until the phone has been calm for
+  // `settleMs` (at least `minHoldMs` after the whack, at most `maxHoldMs`).
   settleRate: 1,
   settleMs: 60,
   minHoldMs: 120,
@@ -19,34 +28,19 @@ export const CHOP = {
 };
 
 export interface ChopEvent {
-  /** Sample time the chop was recognised (ms, the motion sample clock). */
+  /** Sample time the swing was recognised (ms, the motion sample clock). */
   at: number;
-  /** When the downswing began; aim is captured just before this. */
+  /** When the swing began; the whack is dated to this moment. */
   onsetAt: number;
   /** 0–1 by how hard the phone was swung. */
   strength: number;
 }
 
-/**
- * How fast the phone tips down, in rad/s (negative is down). This is rotation
- * about the phone's right edge levelled to the horizon, so it reads the same
- * whether the phone is held flat like a remote or upright like a hammer handle,
- * and tolerates a rolled wrist.
- *
- * @param rate angular velocity in the device frame (rad/s), bias-corrected
- * @param up world-up expressed in the device frame (unit vector)
- */
-export function chopRate(rate: readonly number[], up: readonly number[]) {
-  const axis = [1 - up[0] * up[0], -up[0] * up[1], -up[0] * up[2]],
-    length = Math.hypot(axis[0], axis[1], axis[2]);
-  // With the right edge pointing straight up there is no level axis; use the raw pitch.
-  if (length < 0.3) return rate[0];
-  return (rate[0] * axis[0] + rate[1] * axis[1] + rate[2] * axis[2]) / length;
-}
+const G = 9.81;
 
 /**
- * Recognises a quick downward swing, like bringing a hammer down. Pure: fed one
- * motion sample at a time by the phone, or by replay in tests.
+ * Recognises a sharp swing of the phone. Pure: fed one motion sample at a time
+ * by the phone, or by replay in tests.
  */
 export class ChopDetector {
   private onsetAt: number | null = null;
@@ -61,40 +55,50 @@ export class ChopDetector {
     this.calmSince = null;
   }
 
+  /**
+   * @param rate angular velocity in the device frame (rad/s), bias-corrected
+   * @param gravity acceleration including gravity (m/s²), or null when stale
+   * @param at sample time (ms)
+   */
   sample(
     rate: readonly number[],
-    up: readonly number[],
+    gravity: readonly number[] | null,
     at: number,
   ): ChopEvent | null {
-    const down = -chopRate(rate, up),
-      speed = Math.hypot(rate[0], rate[1], rate[2]);
-    if (speed < CHOP.settleRate) this.calmSince ??= at;
+    const spin = Math.hypot(rate[0], rate[1], rate[2]),
+      jolt = gravity
+        ? Math.abs(Math.hypot(gravity[0], gravity[1], gravity[2]) - G) / G
+        : 0;
+    const moving = spin >= CHOP.onsetRate || jolt >= CHOP.onsetJolt;
+    if (spin < CHOP.settleRate && jolt < CHOP.onsetJolt) this.calmSince ??= at;
     else this.calmSince = null;
     if (!this.armed) {
-      // The rebound and any wobble after a chop never count as another one.
-      if (at - this.firedAt < CHOP.refractoryMs || down >= CHOP.onsetRate)
-        return null;
+      // The follow-through and rebound never count as another whack.
+      if (at - this.firedAt < CHOP.refractoryMs || moving) return null;
       this.armed = true;
-      this.onsetAt = null;
     }
-    if (down < CHOP.onsetRate) {
+    if (!moving) {
       this.onsetAt = null;
       return null;
     }
     this.onsetAt ??= at;
-    // A slow, deliberate downward aim that later speeds up is not a swing.
-    if (down < CHOP.fireRate || at - this.onsetAt > CHOP.windupMs) return null;
+    if (spin < CHOP.fireRate && jolt < CHOP.fireJolt) return null;
     this.armed = false;
     this.firedAt = at;
     this.calmSince = null;
+    const onsetAt = Math.max(this.onsetAt, at - CHOP.maxWindupMs);
+    this.onsetAt = null;
     return {
       at,
-      onsetAt: this.onsetAt,
-      strength: Math.min(1, Math.max(0, down / CHOP.fullRate)),
+      onsetAt,
+      strength: Math.min(
+        1,
+        Math.max(spin / CHOP.fullRate, jolt / CHOP.fullJolt),
+      ),
     };
   }
 
-  /** Whether the swing has settled, so a cursor held for it can move again. */
+  /** Whether the phone has settled after the last whack. */
   settled(at: number) {
     const since = at - this.firedAt;
     return (

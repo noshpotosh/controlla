@@ -10,7 +10,7 @@ const SENSORS: Partial<
   pointer: { Icon: Move3d, hint: 'Point your phone at the screen' },
   tilt: { Icon: Smartphone, hint: 'Tilt to steer' },
   shake: { Icon: Vibrate, hint: 'Shake your phone' },
-  chop: { Icon: Hammer, hint: 'Swing down to whack' },
+  chop: { Icon: Hammer, hint: 'Hold, then swing to whack' },
 };
 
 export function SensorTile({ widget }: { widget: Widget }) {
