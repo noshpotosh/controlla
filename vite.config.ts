@@ -234,6 +234,8 @@ export default defineConfig(({ command }) => {
         '/signal': {
           target: `http://127.0.0.1:${SIGNAL_PORT}`,
           ws: true,
+          // Signaling matches phones to screens on the same Wi-Fi by address.
+          xfwd: true,
         },
       },
       ...(isCodexSeatbeltSandbox

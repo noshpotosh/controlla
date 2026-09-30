@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RoomRegistry, ALPHABET, RateLimiter } from '../server/rooms.ts';
+import {
+  RoomRegistry,
+  ALPHABET,
+  RateLimiter,
+  clientAddress,
+  networkKey,
+  sameNetwork,
+} from '../server/rooms.ts';
 void test('room codes are unambiguous and case-insensitive', () => {
   const r = new RoomRegistry(),
     host = r.join({ role: 'host' });
@@ -143,4 +150,115 @@ void test('venue grace expiration releases orphaned phones and the screen slot',
   );
   assert.equal(r.roster(h.room).players.length, 0);
   assert.equal(h.room.ended, false);
+});
+
+void test('screens get the lowest free number, keep it on resume, and reuse it after expiry', () => {
+  const r = new RoomRegistry(),
+    h = r.join({ role: 'host' }),
+    a = r.join({ role: 'display', room: h.room.code }, 1000),
+    b = r.join({ role: 'display', room: h.room.code, name: 'Den' }, 1000);
+  assert.deepEqual(
+    r.roster(h.room).venues.map((v) => [v.index, v.name]),
+    [
+      [1, 'Host screen'],
+      [2, 'Screen 2'],
+      [3, 'Den'],
+    ],
+  );
+  r.disconnect(h.room, a.identity.id, 2000);
+  assert.equal(
+    r.join({ role: 'display', token: a.identity.token }, 3000).member.index,
+    2,
+  );
+  r.disconnect(h.room, a.identity.id, 4000);
+  r.expireDisconnected(h.room, 65000);
+  assert.equal(
+    r.join({ role: 'display', room: h.room.code }, 65000).member.index,
+    2,
+  );
+  assert.equal(b.member.index, 3);
+});
+void test('phones join a screen by its full id only, never by a short prefix', () => {
+  const r = new RoomRegistry(),
+    h = r.join({ role: 'host' });
+  assert.throws(
+    () =>
+      r.join({
+        role: 'controller',
+        room: h.room.code,
+        venueId: h.identity.id.slice(0, 4),
+      }),
+    /screen first/,
+  );
+  assert.equal(
+    r.join({ role: 'controller', room: h.room.code, venueId: h.identity.id })
+      .member.venueId,
+    h.identity.id,
+  );
+});
+void test('room previews list connected screens in order without credentials', () => {
+  const r = new RoomRegistry(),
+    h = r.join({ role: 'host' }),
+    a = r.join({ role: 'display', room: h.room.code, name: 'Den' }),
+    b = r.join({ role: 'display', room: h.room.code });
+  r.disconnect(h.room, b.identity.id);
+  const preview = r.preview(
+    r.find(h.room.code.toLowerCase()),
+    (id) => id === a.identity.id,
+  );
+  assert.deepEqual(preview, {
+    room: h.room.code,
+    screens: [
+      { id: h.identity.id, index: 1, name: 'Host screen', sameNetwork: false },
+      { id: a.identity.id, index: 2, name: 'Den', sameNetwork: true },
+    ],
+    full: false,
+  });
+  assert.equal(JSON.stringify(preview).includes('token'), false);
+  assert.throws(() => r.find('ZZZZZ'), /Room not found/);
+});
+void test('network keys group a household and trust forwarding only from a local proxy', () => {
+  assert.equal(networkKey('192.168.1.23'), 'lan:192.168.1');
+  assert.equal(networkKey('::ffff:10.0.4.9'), 'lan:10.0.4');
+  assert.equal(networkKey('172.20.1.2'), 'lan:172.20.1');
+  assert.equal(networkKey('172.32.1.2'), 'ip:172.32.1.2');
+  assert.equal(networkKey('100.64.3.2'), 'ip:100.64.3.2');
+  assert.equal(networkKey('203.0.113.7'), 'ip:203.0.113.7');
+  assert.equal(
+    networkKey('2001:db8:1:2:aaaa::1'),
+    networkKey('2001:0db8:0001:0002:bbbb:cccc:dddd:eeee'),
+  );
+  assert.notEqual(networkKey('2001:db8:1:2::1'), networkKey('2001:db8:1:3::1'));
+  assert.equal(networkKey('fe80::1%en0'), 'v6:fe80:0000:0000:0000');
+  assert.equal(networkKey(''), '');
+  assert.equal(networkKey('not an address'), '');
+  assert.equal(networkKey('127.0.0.1'), networkKey('::1'));
+
+  assert.ok(
+    sameNetwork(networkKey('192.168.1.23'), networkKey('192.168.1.40')),
+  );
+  assert.equal(
+    sameNetwork(networkKey('192.168.1.23'), networkKey('192.168.2.40')),
+    false,
+  );
+  assert.ok(sameNetwork(networkKey('203.0.113.7'), networkKey('203.0.113.7')));
+  assert.ok(sameNetwork(networkKey('127.0.0.1'), networkKey('192.168.1.40')));
+  assert.equal(
+    sameNetwork(networkKey('127.0.0.1'), networkKey('203.0.113.7')),
+    false,
+  );
+  assert.equal(sameNetwork('', ''), false);
+
+  const forwarded = {
+    'x-forwarded-for': '192.168.1.23, 127.0.0.1',
+    'cf-connecting-ip': '198.51.100.4',
+  };
+  assert.equal(clientAddress('127.0.0.1', forwarded), '198.51.100.4');
+  assert.equal(
+    clientAddress('::ffff:127.0.0.1', { 'x-forwarded-for': '192.168.1.23' }),
+    '192.168.1.23',
+  );
+  assert.equal(clientAddress('203.0.113.9', forwarded), '203.0.113.9');
+  assert.equal(clientAddress('::1', {}), '::1');
+  assert.equal(clientAddress(undefined, forwarded), '');
 });

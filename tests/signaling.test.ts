@@ -167,8 +167,69 @@ void test(
           (p: Message) => p.id === phone.identity.id && p.connected,
         ),
     );
+    // A device can look at a room's screens before joining, and sees new ones arrive.
+    const watcher = new WebSocket(url, { origin: 'http://localhost:3000' });
+    clients.push(watcher);
+    const seen: Message[] = [];
+    watcher.on('message', (raw) =>
+      seen.push(
+        JSON.parse(
+          (Buffer.isBuffer(raw)
+            ? raw
+            : Array.isArray(raw)
+              ? Buffer.concat(raw)
+              : Buffer.from(raw)
+          ).toString(),
+        ),
+      ),
+    );
+    await once(watcher, 'open');
+    const look = (room: string) =>
+      watcher.send(
+        JSON.stringify({
+          type: 'watch',
+          room,
+          protocolVersion: APP_PROTOCOL_VERSION,
+        }),
+      );
+    look('ZZZZZ');
+    assert.match(
+      (await wait(seen, (m) => m.type === 'error')).message,
+      /Room not found/,
+    );
+    look(host.identity.room.toLowerCase());
+    const first = await wait(seen, (m) => m.type === 'room');
+    assert.equal(first.room, host.identity.room);
+    assert.deepEqual(
+      first.screens.map((s: Message) => [s.index, s.sameNetwork]),
+      [
+        [1, true],
+        [2, true],
+        [3, true],
+      ],
+    );
+    assert.equal(JSON.stringify(first).includes('token'), false);
+    const late = await connect({
+      role: 'display',
+      room: host.identity.room,
+      name: 'Den',
+    });
+    const update = await wait(
+      seen,
+      (m) =>
+        m.type === 'room' &&
+        m.screens.some((s: Message) => s.id === late.identity.id),
+    );
+    assert.equal(
+      update.screens.find((s: Message) => s.id === late.identity.id).name,
+      'Den',
+    );
     host.ws.close();
     const ended = await wait(phone.messages, (m) => m.type === 'ended');
     assert.match(ended.reason, /host screen disconnected/);
+    assert.match(
+      (await wait(seen, (m) => m.type === 'ended')).reason,
+      /host screen disconnected/,
+    );
   },
 );
