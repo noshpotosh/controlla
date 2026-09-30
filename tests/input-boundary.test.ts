@@ -11,6 +11,7 @@ import { Network } from '../src/client/transport/network.ts';
 import {
   APP_PROTOCOL_VERSION,
   PROTOCOL_MISMATCH,
+  REPLACED_CLOSE_CODE,
 } from '../src/shared/app-protocol.ts';
 import { SessionAuthority } from '../src/client/engine/session.ts';
 import { games, findGame } from '../src/client/minigames/catalog.ts';
@@ -712,7 +713,7 @@ class FakeSocket {
   closed = false;
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
-  onclose: (() => void) | null = null;
+  onclose: ((event?: { code: number }) => void) | null = null;
   onerror: (() => void) | null = null;
   constructor(_url: string) {
     FakeSocket.instances.push(this);
@@ -762,6 +763,27 @@ void test('every role announces its version and rejects mismatched welcomes befo
     t.mock.timers.tick(10000);
     assert.equal(FakeSocket.instances.length, count);
   }
+});
+
+void test('a socket whose identity resumed in another tab ends instead of taking it back', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  globals(t, { WebSocket: FakeSocket });
+  const network = new Network('ws://unused', { role: 'controller' });
+  const ended: string[] = [];
+  network.onEnded = (reason) => ended.push(reason);
+  network.connect();
+  const socket = FakeSocket.instances.at(-1)!;
+  socket.message({
+    type: 'welcome',
+    protocolVersion: APP_PROTOCOL_VERSION,
+    identity: { ...identity, role: 'controller' },
+    iceServers: [],
+  });
+  const count = FakeSocket.instances.length;
+  socket.onclose?.({ code: REPLACED_CLOSE_CODE });
+  t.mock.timers.tick(10000);
+  assert.equal(FakeSocket.instances.length, count, 'no reconnect');
+  assert.match(ended[0], /another tab or device/);
 });
 
 void test('matching welcome admits traffic and resumed mismatches or superseded sockets cannot bypass it', (t) => {

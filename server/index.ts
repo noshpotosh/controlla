@@ -2,6 +2,7 @@ import {
   APP_PROTOCOL_VERSION,
   PROTOCOL_MISMATCH,
   PROTOCOL_RELOAD_MESSAGE,
+  REPLACED_CLOSE_CODE,
 } from '../src/shared/app-protocol.ts';
 import { createServer } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -168,7 +169,7 @@ wss.on('connection', (ws, req) => {
         const previous = sockets.get(id);
         sockets.set(id, ws);
         networks.set(id, network);
-        previous?.close(1000, 'Replaced by resumed device');
+        previous?.close(REPLACED_CLOSE_CODE, 'Replaced by resumed device');
         clearTimeout(joinTimeout);
         send(ws, {
           type: 'welcome',

@@ -262,3 +262,27 @@ void test('network keys group a household and trust forwarding only from a local
   assert.equal(clientAddress('::1', {}), '::1');
   assert.equal(clientAddress(undefined, forwarded), '');
 });
+void test('a stale saved identity joins afresh when the request names a room', () => {
+  const r = new RoomRegistry(),
+    h = r.join({ role: 'host' }),
+    v = r.join({ role: 'display', room: h.room.code }, 1000);
+  r.disconnect(h.room, v.identity.id, 2000);
+  r.expireDisconnected(h.room, 63000);
+  const again = r.join(
+    { role: 'display', room: h.room.code, token: v.identity.token },
+    63000,
+  );
+  assert.notEqual(again.member.id, v.member.id);
+  assert.equal(again.member.index, 2);
+  assert.throws(
+    () => r.join({ role: 'display', token: v.identity.token }, 63000),
+    /Invalid resume identity/,
+  );
+  const forged = r.join({
+    role: 'controller',
+    room: h.room.code,
+    venueId: h.identity.id,
+    token: 'bogus.token',
+  });
+  assert.equal(forged.member.role, 'controller');
+});

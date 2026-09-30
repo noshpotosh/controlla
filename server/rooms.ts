@@ -71,23 +71,9 @@ export class RoomRegistry {
     if (!['host', 'display', 'controller'].includes(request.role))
       throw new Error('Choose a screen or a phone');
     let room: Room, member: Member;
-    if (request.token) {
-      const p = this.verify(request.token);
-      room = this.rooms.get(p.room)!;
-      if (!room || room.ended)
-        throw new Error('This session has ended. Start a new room.');
-      member = room.members.get(p.id)!;
-      if (
-        !member ||
-        member.role !== request.role ||
-        p.venueId !== member.venueId
-      )
-        throw new Error('Invalid resume identity');
-      if (!member.connected && at - (member.disconnectedAt ?? at) > 60000)
-        throw new Error('Your reserved seat expired. Join again.');
-      member.connected = true;
-      delete member.disconnectedAt;
-    } else if (request.role === 'host') {
+    const resumed = request.token && this.resume(request, request.token, at);
+    if (resumed) ({ room, member } = resumed);
+    else if (request.role === 'host') {
       if (this.rooms.size >= 200)
         throw new Error('The room service is full. Try again shortly.');
       let code = '';
@@ -144,7 +130,8 @@ export class RoomRegistry {
           role: 'controller',
           venueId: venue.id,
           connected: true,
-          name: (request.name ?? 'Player').trim().slice(0, 24) || 'Player',
+          name:
+            (request.name ?? '').trim().slice(0, 24) || `Player ${seat + 1}`,
           seat,
           color: COLORS[seat],
         };
@@ -180,6 +167,38 @@ export class RoomRegistry {
         hostId: room.hostId,
       },
     };
+  }
+  /**
+   * Reclaims a saved identity. When the request also names a room, a stale
+   * one (expired, forged, or from an ended session) just joins afresh: that
+   * grants nothing a plain join would not, and saves a dead-end retry.
+   */
+  private resume(
+    request: { role: Role; room?: string },
+    token: string,
+    at: number,
+  ): { room: Room; member: Member } | null {
+    try {
+      const p = this.verify(token);
+      const room = this.rooms.get(p.room);
+      if (!room || room.ended)
+        throw new Error('This session has ended. Start a new room.');
+      const member = room.members.get(p.id);
+      if (
+        !member ||
+        member.role !== request.role ||
+        p.venueId !== member.venueId
+      )
+        throw new Error('Invalid resume identity');
+      if (!member.connected && at - (member.disconnectedAt ?? at) > 60000)
+        throw new Error('Your reserved seat expired. Join again.');
+      member.connected = true;
+      delete member.disconnectedAt;
+      return { room, member };
+    } catch (error) {
+      if (request.room && request.role !== 'host') return null;
+      throw error;
+    }
   }
   /** A live room by its code, ignoring case and surrounding space. */
   find(code: string): Room {

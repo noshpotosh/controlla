@@ -2,6 +2,7 @@ import type { LinkStats, Transport } from './contracts.ts';
 import {
   APP_PROTOCOL_VERSION,
   PROTOCOL_MISMATCH,
+  REPLACED_CLOSE_CODE,
   PROTOCOL_RELOAD_MESSAGE,
 } from '../../shared/app-protocol.ts';
 import type { Channel, Message } from '../engine/messages.ts';
@@ -281,13 +282,22 @@ export class Network implements Transport {
         this.onWarning('Invalid signaling response');
       }
     };
-    socket.onclose = () => {
+    socket.onclose = (event?: CloseEvent) => {
       if (this.ws !== socket) return;
       this.welcomed = false;
       this.clearHistory();
       for (const p of this.peers.values()) p.close();
       this.peers.clear();
       if (this.stopped) return;
+      // Another tab or device resumed this identity; reconnecting would
+      // take it back and the two would trade places forever.
+      if (event?.code === REPLACED_CLOSE_CODE) {
+        this.stopped = true;
+        this.onEnded(
+          'This seat moved to another tab or device. Join again to play here.',
+        );
+        return;
+      }
       if (this.identity?.role === 'host') {
         this.stopped = true;
         this.onEnded('The host connection closed. This session has ended.');
