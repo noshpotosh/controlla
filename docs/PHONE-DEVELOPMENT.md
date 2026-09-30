@@ -11,10 +11,10 @@ npm run dev:phone
 
 The command starts the frontend, room service, and a Cloudflare Quick Tunnel.
 Wait for **Phone development is ready**, then open the printed
-`https://…trycloudflare.com` URL on both the laptop and phone. Create the room
-from that URL so **Copy phone link** retains the public HTTPS origin. On the
-phone, join the room, tap **Enable motion**, and grant the browser's motion
-permission. Stop the entire stack with Ctrl+C.
+`https://…trycloudflare.com` URL on the laptop and start a game there, so the
+screen's QR code and invite link use the public HTTPS origin. On the phone,
+scan the QR code (or open the invite link), join, tap **Enable motion**, and
+grant the browser's motion permission. Stop the entire stack with Ctrl+C.
 
 No Cloudflare account, DNS configuration, local CA, phone profile, or router
 port-forwarding is required. The first run uses the repository's pinned
