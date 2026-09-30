@@ -1,6 +1,10 @@
-import { Runtime, type JoinOptions } from '../runtime/runtime.ts';
+import {
+  Runtime,
+  TAB_IDENTITY_KEY,
+  type JoinOptions,
+} from '../runtime/runtime.ts';
 import type { Motion } from '../controls/motion/provider.ts';
-import type { Identity } from '../../shared/room.ts';
+import { ROOM_CODE, type Identity, type Role } from '../../shared/room.ts';
 import { MAX_GAIN, MIN_GAIN } from '../controls/motion/pointer.ts';
 import { standingsForPresentation } from './standings.ts';
 import type {
@@ -94,10 +98,11 @@ function project(runtime: Runtime): ShellView {
           connected,
         }),
       ),
-      venues: v.roster.venues.map(({ id, name, connected }) => ({
+      venues: v.roster.venues.map(({ id, name, connected, index }) => ({
         id,
         name,
         connected,
+        index,
       })),
     },
     status: v.status,
@@ -270,13 +275,53 @@ function resumeToken(request: JoinRequest): string | undefined {
       )
         continue;
       const identity = JSON.parse(localStorage.getItem(key)!) as Identity;
-      if (
-        !request.venue ||
-        identity.venueId === request.venue ||
-        identity.venueId.startsWith(request.venue.toLowerCase())
-      )
+      if (!request.venue || identity.venueId === request.venue)
         return identity.token;
     }
+  } catch {
+    /* Storage is optional. */
+  }
+}
+/** The room identity this tab held before a reload, if it was in `room`. */
+export function tabIdentity(
+  room: string,
+): { role: Exclude<Role, 'host'>; venueId: string } | null {
+  try {
+    const saved = JSON.parse(
+      sessionStorage.getItem(TAB_IDENTITY_KEY) ?? 'null',
+    ) as { role?: unknown; room?: unknown; venueId?: unknown } | null;
+    if (
+      saved &&
+      saved.room === room.toUpperCase() &&
+      (saved.role === 'display' || saved.role === 'controller') &&
+      typeof saved.venueId === 'string'
+    )
+      return { role: saved.role, venueId: saved.venueId };
+  } catch {
+    /* Storage is optional. */
+  }
+  return null;
+}
+/** The screen this browser last held (or last played on) in `room`. */
+export function savedVenue(
+  role: Exclude<Role, 'host'>,
+  room: string,
+): string | null {
+  try {
+    const prefix = `controlla:resume:${role}:${room.toUpperCase()}:`;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)!;
+      if (key.startsWith(prefix)) return key.slice(prefix.length);
+    }
+  } catch {
+    /* Storage is optional. */
+  }
+  return null;
+}
+/** Leaving on purpose: a reload should land on the join page, not rejoin. */
+export function forgetTab() {
+  try {
+    sessionStorage.removeItem(TAB_IDENTITY_KEY);
   } catch {
     /* Storage is optional. */
   }
@@ -287,15 +332,10 @@ export function createSession(
 ): ShellSession {
   const room = request.room.toUpperCase().trim(),
     venueId = request.venue.trim();
-  if (
-    request.role !== 'host' &&
-    !/^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{4,6}$/i.test(room)
-  )
+  if (request.role !== 'host' && !ROOM_CODE.test(room))
     throw new Error('Enter the room code shown on the screen.');
   if (request.role === 'controller' && !venueId)
-    throw new Error(
-      'Open the room on a screen first, then enter its screen code or open its phone link.',
-    );
+    throw new Error('Pick the screen you’re playing on first.');
   if (!['ws:', 'wss:'].includes(new URL(request.endpoint).protocol))
     throw new Error('Room service address must start with ws:// or wss://');
   const runtime = create({

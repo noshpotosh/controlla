@@ -30,7 +30,14 @@ npm run dev
 
 Stop each process with Ctrl+C when finished. Stopping the signaling service ends its active sessions. No database, account setup, or environment file is needed for local desktop testing.
 
-Open http://localhost:3000. Create a room on a screen. Connect one to eight phones using **Copy phone link**, or the five-character room code and four-character screen code. A second screen uses only the room code, then gets its own phone link. Select Neon Harvest: a 45-second collection round with motion aim or absolute touch aim and a separate pulse button.
+Open http://localhost:3000 and start a game on a screen. The address bar becomes the room's invite link (for example `/K7QMX`), and the screen shows a QR code, its emblem and its number.
+
+- **Phones in the same room** scan the QR code, which links to that screen (`/K7QMX/1`), confirm their name, and play.
+- **Anyone with the invite link** opens it on any device. A TV or laptop joins as another screen with its own QR code. A phone joins the screen on its Wi-Fi when there is exactly one. Otherwise it asks "Which screen are you playing on?" and shows each screen's emblem, plus **My own screen**.
+- **My own screen** asks the phone to open the same link on a nearby TV or laptop. That screen then appears on the phone, ready to join.
+- The typing fallback is only the five-character room code, entered on the home page.
+
+Reloading a screen or phone rejoins it where it was. Select Neon Harvest: a 45-second collection round with motion aim or absolute touch aim and a separate pulse button.
 
 On a single computer, separate browser tabs can act as phones using touch/mouse fallback. Choose **Join as a new device** in connection settings to avoid resuming another tab's saved identity. This is a functional test, not a latency measurement.
 
@@ -73,7 +80,8 @@ Keep phones on the same network as their own screen, use Game Mode on television
 ## Troubleshooting
 
 - **“Cannot reach the room service”:** check that both terminals are running. The local frontend forwards `/signal` to port 8787.
-- **Phone link contains `localhost`:** that address refers to the phone itself. Open the host screen through the shared HTTPS address before copying its phone link.
+- **QR code or invite link contains `localhost`:** that address refers to the phone itself. The dev server substitutes its LAN address when it knows one. Otherwise, open the host screen through the shared HTTPS address (`npm run dev:lan` or `npm run dev:phone`).
+- **A phone isn't matched to the screen on its Wi-Fi:** matching compares network addresses. It can't match a phone on mobile data, on a VPN, or reaching the service over IPv6 while the screen uses IPv4. The phone falls back to asking which screen it's using.
 - **Connection rejected from a phone or local proxy:** set `ALLOWED_ORIGINS` to the exact frontend origin, including its scheme and non-default port, then restart signaling. Multiple origins are comma-separated.
 - **Motion unavailable:** use HTTPS, tap **Enable motion**, and check the browser’s site permissions. Touch fallback lets you continue without motion.
 - **A second tab resumes the same player:** choose **Join as a new device** under connection settings.

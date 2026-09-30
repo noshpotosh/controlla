@@ -8,6 +8,7 @@ import { Crosshair, Menu, RotateCcw, X } from 'lucide-react';
 import type { MenuCorner } from '../controls/api.ts';
 import { RecenterButton } from '../controls/kit/RecenterButton.tsx';
 import type { ShellView, PhoneActions } from './ports.ts';
+import { ScreenEmblem } from './ScreenEmblem.tsx';
 
 export function ControllerMenu({
   view: v,
@@ -28,6 +29,7 @@ export function ControllerMenu({
   const [open, setOpen] = useState(false),
     me = v.identity,
     player = v.roster.players.find((p) => p.id === me?.id),
+    screen = v.roster.venues.find((venue) => venue.id === me?.venueId),
     pointer = v.config?.sensors.pointer.enabled,
     aimed = !!(pointer || v.config?.sensors.tilt.enabled),
     needsMotion =
@@ -68,8 +70,12 @@ export function ControllerMenu({
               <strong style={{ color: player?.color }}>
                 {player?.name ?? 'Your controller'}
               </strong>
-              <span>
-                Room {me?.room} · Screen {me?.venueId.slice(0, 4).toUpperCase()}
+              <span className="ctl-sheet__where">
+                Room {me?.room} ·{' '}
+                {screen?.index && (
+                  <ScreenEmblem index={screen.index} size={14} />
+                )}
+                {screen?.name ?? 'Screen'}
               </span>
             </div>
             <button

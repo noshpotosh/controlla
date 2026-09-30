@@ -1012,6 +1012,7 @@ function assertShellComposition(sourceText?: string) {
     'ConnectedShell.tsx',
     'extensions.ts',
     'ports.ts',
+    'join-link.ts',
   ].map((file) => join(shell, file));
   allowed.push(join(root, 'src/client/GameCanvas.tsx'), catalog);
   for (const edge of imports(composition, sourceText))

@@ -907,3 +907,154 @@ body {
     padding: 16px 0;
   }
 }
+
+/* One-link joining: screen emblems, the screen picker, and each screen's QR. */
+.emblem {
+  --emblem: var(--primary);
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  padding: 9px;
+  border-radius: 14px;
+  background: var(--emblem);
+  color: #1a1f38;
+  border: 2px solid #11162a;
+  box-shadow: 3px 3px 0 #0d1125;
+}
+.emblem[data-emblem='star'] {
+  --emblem: #ffd65c;
+}
+.emblem[data-emblem='moon'] {
+  --emblem: #b7a0ff;
+}
+.emblem[data-emblem='bolt'] {
+  --emblem: #d5ff70;
+}
+.emblem[data-emblem='heart'] {
+  --emblem: #ff91bc;
+}
+.emblem[data-emblem='leaf'] {
+  --emblem: #72f0cd;
+}
+.emblem[data-emblem='flame'] {
+  --emblem: #ff8a5c;
+}
+.emblem[data-emblem='anchor'] {
+  --emblem: #74d9ff;
+}
+.emblem[data-emblem='rocket'] {
+  --emblem: #fff9e8;
+}
+.screen-options {
+  display: grid;
+  gap: 10px;
+}
+.role-card > .emblem {
+  flex: none;
+}
+.screen-option small svg {
+  display: inline;
+  vertical-align: -2px;
+}
+.screen-option small .badge {
+  white-space: nowrap;
+}
+.screen-option--static {
+  cursor: default;
+}
+.text-link {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  color: #b8bed5;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-align: left;
+}
+.text-link:hover {
+  color: var(--foreground);
+}
+.invite-url {
+  margin: 0;
+  padding: 14px;
+  font-family: monospace;
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: var(--primary);
+  background: #191f39;
+  border: 1px dashed #586389;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.waiting {
+  animation: waiting 1.6s ease-in-out infinite alternate;
+}
+@keyframes waiting {
+  from {
+    opacity: 0.55;
+  }
+}
+.join-settings {
+  display: grid;
+  gap: 12px;
+}
+.join-settings summary {
+  cursor: pointer;
+}
+.join-heading h2 {
+  margin: 6px 0 0;
+}
+.room-id {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.room-join {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.room-join .note {
+  margin: 0;
+  max-width: 150px;
+}
+.join-qr {
+  width: 168px;
+  height: 168px;
+  border: 2px solid #11162a;
+  border-radius: 12px;
+  background: #fff9e8;
+  box-shadow: 4px 4px 0 #0d1125;
+}
+.invite-inline {
+  color: var(--primary);
+  font-family: monospace;
+  font-weight: 600;
+}
+.ctl-sheet__where {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ctl-sheet__where .emblem {
+  padding: 3px;
+  border-radius: 6px;
+  border-width: 1px;
+  box-shadow: none;
+}
+@media (max-width: 800px) {
+  /* A phone opening an invite gets straight to the question. */
+  .entry--room .entry-copy {
+    display: none;
+  }
+  .entry--room {
+    padding-top: 20px;
+  }
+  .room-id {
+    align-items: flex-start;
+  }
+  .invite-url {
+    font-size: 16px;
+  }
+}

@@ -3,24 +3,14 @@
 // address (localhost means nothing to a phone).
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-
-async function phoneOrigin() {
-  try {
-    const res = await fetch('/__controlla/lan');
-    const { origins } = (await res.json()) as { origins: string[] };
-    if (origins[0]) return origins[0].replace(/\/$/, '');
-  } catch {
-    /* Deployed build: no dev endpoint; this origin is already reachable. */
-  }
-  return location.origin;
-}
+import { publicOrigin } from '../../shell/public-origin.ts';
 
 export function PhoneLink({ layoutId }: { layoutId: string }) {
   const [url, setUrl] = useState<string | null>(null),
     canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     let live = true;
-    void phoneOrigin().then((origin) => {
+    void publicOrigin().then((origin) => {
       if (live) setUrl(`${origin}/?role=preview&layout=${layoutId}`);
     });
     return () => {

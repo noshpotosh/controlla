@@ -5,12 +5,16 @@ import {
   Gamepad2,
   ArrowUpRight,
   Maximize,
-  Copy,
+  Share2,
   Activity,
   Download,
   Trophy,
 } from 'lucide-react';
 import { DiagnosticsPanel } from './DiagnosticsPanel.tsx';
+import { ScreenEmblem } from './ScreenEmblem.tsx';
+import { roomPath } from './join-link.ts';
+import { publicOrigin } from './public-origin.ts';
+import { shareLink } from './share.ts';
 import type {
   ShellView,
   RoomActions,
@@ -37,36 +41,37 @@ export function RoomScreen({
   const [game, setGame] = useState(games[0].id),
     [mode, setMode] = useState(games[0].defaultMode),
     [hud, setHud] = useState(false),
-    [copied, setCopied] = useState(false);
+    [copied, setCopied] = useState(false),
+    [origin, setOrigin] = useState<string | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mounted = useRef(false);
   useEffect(() => {
     mounted.current = true;
+    void publicOrigin().then((found) => {
+      if (mounted.current) setOrigin(found);
+    });
     return () => {
       mounted.current = false;
       if (copyTimer.current) clearTimeout(copyTimer.current);
     };
   }, []);
-  async function copy() {
-    const url = new URL(location.href);
-    url.search = '';
-    url.searchParams.set('role', 'controller');
-    url.searchParams.set('room', me!.room);
-    url.searchParams.set('venue', me!.venueId);
-    url.searchParams.set('signal', actions.endpoint);
-    try {
-      await navigator.clipboard.writeText(url.href);
-      if (!mounted.current) return;
+  const venue = v.roster.venues.find((x) => x.id === me.venueId),
+    index = venue?.index ?? 1,
+    invite = origin && `${origin}${roomPath(me.room)}`,
+    phoneLink = origin && `${origin}${roomPath(me.room, index)}`;
+  async function share() {
+    if (!invite) return;
+    const result = await shareLink(invite);
+    if (!mounted.current) return;
+    if (result === 'copied') {
       setCopied(true);
       if (copyTimer.current) clearTimeout(copyTimer.current);
       copyTimer.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      if (!mounted.current) return;
+    } else if (result === 'failed')
       actions.warn(
-        'Clipboard access is unavailable. Use the room and screen codes shown above.',
+        'Clipboard access is unavailable. Read out the invite link shown above.',
       );
-    }
   }
   const active = v.roster.players.filter((p) => p.connected),
     selected = games.find((choice) => choice.id === game) ?? games[0],
@@ -87,26 +92,41 @@ export function RoomScreen({
         </span>
       </header>
       <section className="room-head">
-        <div>
-          <span className="eyebrow">YOUR ROOM</span>
-          <h1>
-            <span className="code">{me.room}</span>
-            <span className="screen-code">
-              SCREEN {me.venueId.slice(0, 4).toUpperCase()}
+        <div className="room-id">
+          <ScreenEmblem index={index} size={44} />
+          <div>
+            <span className="eyebrow">
+              SCREEN {index} · {(venue?.name ?? '').toUpperCase()}
             </span>
-          </h1>
+            <h1>
+              <span className="code">{me.room}</span>
+            </h1>
+            <p className="note">
+              Friends elsewhere open{' '}
+              <strong className="invite-inline">
+                {invite?.replace(/^https?:\/\//, '') ?? '…'}
+              </strong>{' '}
+              on a TV, laptop or phone.
+            </p>
+          </div>
+        </div>
+        <div className="room-join">
+          {phoneLink && <JoinQr url={phoneLink} />}
           <p className="note">
-            Phones join this screen. Other screens join with the room code.
+            <strong>Playing here?</strong>
+            <br />
+            Scan with your phone’s camera.
           </p>
         </div>
         <div className="actions">
           <Button
             className="action"
             variant="outline"
-            onClick={() => void copy()}
+            disabled={!invite}
+            onClick={() => void share()}
           >
-            <Copy />
-            {copied ? 'Copied' : 'Copy phone link'}
+            <Share2 />
+            {copied ? 'Copied' : 'Share invite link'}
           </Button>
           <Button
             className="action"
@@ -174,8 +194,7 @@ export function RoomScreen({
             <p className="empty">
               The gang’s all… almost here.
               <br />
-              Open the phone link or enter the room and screen codes on each
-              phone.
+              Scan this screen’s code with each phone, or share the invite link.
             </p>
           )}
           <hr style={{ borderColor: 'var(--border)', margin: '22px 0' }} />
@@ -300,5 +319,33 @@ export function RoomScreen({
         </span>
       </footer>
     </main>
+  );
+}
+
+/** Encodes this screen's own link, so scanning it skips every question. */
+function JoinQr({ url }: { url: string }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    let live = true;
+    void import('qrcode').then(({ default: QRCode }) => {
+      if (live && canvas.current)
+        void QRCode.toCanvas(canvas.current, url, {
+          margin: 1,
+          width: 168,
+          color: { dark: '#111427', light: '#fff9e8' },
+        });
+    });
+    return () => {
+      live = false;
+    };
+  }, [url]);
+  return (
+    <canvas
+      ref={canvas}
+      width={168}
+      height={168}
+      className="join-qr"
+      aria-label={`QR code for ${url}`}
+    />
   );
 }

@@ -59,6 +59,8 @@ export interface RuntimeView {
 }
 // Pointer sensitivity is a property of the player and phone, not the room.
 const POINTER_GAIN_KEY = 'controlla:pointer-gain';
+/** sessionStorage: which room identity this tab holds, for reload resume. */
+export const TAB_IDENTITY_KEY = 'controlla:tab';
 export interface JoinOptions {
   role: Role;
   room?: string;
@@ -367,6 +369,20 @@ export class Runtime {
     } catch {
       /* Private browsing can disallow storage. */
     }
+    // Reloading this tab resumes this identity without asking which screen.
+    if (identity.role !== 'host')
+      try {
+        sessionStorage.setItem(
+          TAB_IDENTITY_KEY,
+          JSON.stringify({
+            role: identity.role,
+            room: identity.room,
+            venueId: identity.venueId,
+          }),
+        );
+      } catch {
+        /* Storage is optional. */
+      }
     if (identity.role === 'host' && !this.authority)
       this.authority = new SessionAuthority(identity.id, {
         toPlayer: (id, msg) => this.toPlayer(id, msg),
