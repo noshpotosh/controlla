@@ -33,7 +33,8 @@ value needs tuning on the phone, give the starting value and say so.
 
 ## Acceptance criteria
 
-Each line can be checked. Tag it `(test)`, `(desktop)` or `(device)`.
+Each line can be checked. Tag it `(test)`, `(desktop)`, `(device)`
+or `(doc)`.
 
 - [ ] …
 

@@ -10,13 +10,17 @@ reprioritize, move a line.
 
 ## Ready
 
-_None yet._
+- [BL-001 Latency and netcode architecture review](backlog/BL-001-latency-architecture-review.md):
+  explain the cursor lag, late hits and lagging second screens; weigh server
+  authority, rollback, tick-numbered input and edge hosting; recommend a target
+  and draft the follow-up items.
 
 ## Draft
 
 Items with open questions, listed in the item.
 
-_None yet._
+- [BL-002 Rebuild netcode to the reviewed target architecture](backlog/BL-002-netcode-rebuild.md):
+  placeholder; BL-001 rewrites and splits it once you pick its recommendations.
 
 ## In progress
 

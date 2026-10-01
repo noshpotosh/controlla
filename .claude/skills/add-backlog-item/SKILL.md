@@ -22,8 +22,8 @@ built.
    describe how they behave today, using real paths. This research is what lets
    an agent build the item without the user.
 3. Draft the item from the template. Turn the user's words into a Goal, Scope,
-   Decisions and Acceptance criteria. Tag every criterion `(test)`, `(desktop)`
-   or `(device)`, and write the human test plan so that every `(device)`
+   Decisions and Acceptance criteria. Tag every criterion `(test)`, `(desktop)`,
+   `(device)` or `(doc)`, and write the human test plan so that every `(device)`
    criterion has a step with an expected result.
 4. Settle the decisions. For each choice that would change what gets built:
    - If the codebase or an earlier decision gives an obvious default, take it

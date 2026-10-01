@@ -63,6 +63,9 @@ An item is **Ready** when all of these hold. Otherwise it is a **Draft**.
    - `(test)`: an automated test the agent adds or updates.
    - `(desktop)`: a check the agent runs in a desktop browser.
    - `(device)`: a step in the human test plan.
+   - `(doc)`: a written deliverable, such as a review, a decision record or new
+     backlog items. The agent checks it against the criterion, and the user
+     reads it during testing.
 6. The **human test plan** covers every `(device)` criterion, and each step has
    an expected result.
 7. **Depends on** names only items that are Done. If a dependency is not merged
