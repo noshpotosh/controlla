@@ -132,9 +132,11 @@ Out:
   and a verdict: adopt now, adopt later, or reject.
   - **Server-authoritative simulation**, in at least two placements: a single
     small server and an edge or regional platform such as Cloudflare Durable
-    Objects or Fly.io. Note that local-only cleanup `f2e199c` removed the old
-    Cloudflare tooling on purpose, so bringing a provider back is a decision for
-    the user.
+    Objects or Fly.io. Background: the project template once
+    built the frontend as a Cloudflare Worker (the OpenAI Sites and Cloudflare
+    Vite plugins, plus Wrangler). It was never deployed and never ran the
+    signaling server. PR #12 (`ddb83a9`, 2026-09-28) removed it as unused
+    scaffolding. Picking a provider is still the user's decision.
   - **Rollback**, compared with client-side prediction plus reconciliation, and
     with today's timestamp judging and 200 ms maturation.
   - **Tick-numbered input frames**, compared with today's timestamped frames plus
