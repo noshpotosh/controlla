@@ -1986,3 +1986,27 @@ Save progress; status confirmed completion at 18:17:04 local. Screenshot:
 closed to release its memory. Baseline race tab 14 remains open and paused.
 The saved candidate state is scoped to port 8082 and its core hash; restore
 has not yet been reverified.
+
+### Finite paired arithmetic native and initial browser results
+
+Build session 65455 completed successfully. Exact WASM:
+`215574b1bfcb9a2e57de35cd481da473d51b5614b8b1c69fbb1d15b8595dcdaf`.
+The arithmetic runner passed all 3,744 cases with profiling off/on/off,
+including 576 paired add/sub comparisons and existing scalar alias/FPRF/next-PC
+checks. Native controller ABI checks accepted all four ports' connection and
+disconnection, rejecting invalid ports. Logs:
+`/tmp/controlla-finite-paired-check.log` and the configure/build logs.
+
+Official candidate selection admitted this exact verified output on port 8083
+(server session 68234). Fresh browser tab 24 booted muted and rendered attract
+scenes. Presented frames advanced 724 over 56.396665 monotonic seconds,
+12.8376 fps. No console errors appeared. Reports:
+`work/double-dash-finite-paired-attract-{a,b}.json`; screenshot:
+`work/double-dash-finite-paired-attract.png`. Tab 24 is paused and retained;
+baseline tab 14 remains preserved.
+
+This interval differs in scene and timing from the earlier e65f32b6 attract
+sample, so it does not establish a causal speed gain. Full speed remains unmet.
+Rc/exception-enable coverage, matched-race performance, full races, audio and
+physical motion qualification remain outstanding. Default candidate launcher
+continues using the earlier preserved output rather than promoting this one.
