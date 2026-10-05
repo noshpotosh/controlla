@@ -1312,3 +1312,14 @@ rate is close to the prior 30.86 fps sample and does not establish a useful
 speed gain. Fresh boot, driving and full pixel fidelity remain unverified;
 keep this output isolated. Evidence: `work/double-dash-paired-sign-{a,b}.json`
 and final `b.png`.
+
+Guarded-tier screen of the same paired-sign core (`wasmjit=1`) restored the
+baseline and rendered 1,296 → 2,300 presented frames in 41.682 seconds
+(24.09 fps), speed 50% → 34%. Cross-module FP helpers advanced only
+841 → 1,785 and system helpers stayed zero, but rejected blocks may execute
+within the native interpreter and are not represented by those import counts.
+Thus low imported-helper counts do not establish low total CPU cost. This
+sample was slower than the preceding mixed-tier screen; it does not establish
+a repeatable tier ranking because no repeated paired comparison was run.
+Neither tier is near full speed. Evidence:
+`work/double-dash-paired-guarded-{a,b}.json` and final `b.png`.
