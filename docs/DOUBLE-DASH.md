@@ -1078,3 +1078,24 @@ Do not promote the combined candidate. Fresh boot evidence:
 `work/double-dash-combined-fresh-{a,b,c,stall}.json` and associated PNGs.
 A useful next isolation is hardware rendering with a single CPU/GPU thread,
 keeping the corrected core and no progress restore.
+
+
+### Single-core hardware fresh menu-to-race verification
+
+The same combined native candidate with `cpu=single`, hardware WebGPU, WASM JIT,
+and caches disabled booted without progress restore (generation zero). Start
+reached the memory-card prompt; Confirm led to the Start Game menu. Native inputs
+then selected one player, Grand Prix, 50cc, Mario and Luigi, the default kart,
+and Mushroom Cup. Luigi Circuit loaded and completed the countdown. A 300-frame
+acceleration probe moved the kart from the starting grid onto the grass.
+
+Race samples advanced from core/presented 14,257/14,242 to 15,874/15,860,
+delivering 1,618 frames in 57.970 seconds (27.91 fps), including intro/countdown
+and driving. The latter instantaneous speed was 52%; this is not full-speed
+qualification. The race-intro camera showed rendering defects, while the later
+race screenshot showed the kart, course, minimap, lap and speed HUD. Full-race,
+other courses, multiplayer, physical phone motion, and visual equivalence remain
+unverified. Do not promote this candidate yet. The normal room runtime remains
+unchanged. Evidence: `work/double-dash-combined-single-fresh-{a,b}.json`,
+`work/double-dash-single-fresh-race-{a,b}.json`, and
+`work/double-dash-single-fresh-race-driving.png`. Baseline progress was preserved.
