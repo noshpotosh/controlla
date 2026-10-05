@@ -777,3 +777,26 @@ evidence rather than an average. The run-loop sample average is 57 us over
 before concluding that CPU instruction execution dominates. Capture:
 `work/double-dash-alpha-ppc-attribution.json`; visible race proof:
 `work/double-dash-alpha-timing-race.png`.
+
+### Native state-cache experiment (2026-10-05)
+
+An isolated `wgpustatecache=1` run used the same alpha core, restored checkpoint,
+and metrics/native phase options, with PPC profiling off. Generation-1
+captures `work/double-dash-alpha-cache-a.json` and `...cache-b.json` span
+380 frames over 38.048 seconds. The producer suppressed about 295 slot-1
+and 461 slot-2 bind-group commands per frame, with zero suppressed pipeline
+commands. Browser drain time is 19.432 ms/frame, native FIFO decode estimate
+20.848 ms/frame; end-of-window speed is 18 percent, zero renderer errors and
+zero producer ring waits. This window does not show a speed improvement.
+Different window lengths and progressing race state prevent attributing the
+higher costs solely to caching. The experiment is not enabled in the normal
+runtime. Screenshot `work/double-dash-alpha-state-cache-race.png` shows the
+bright course, kart, and HUD intact at 0 mph. It does not prove full-render
+parity across gameplay. Source inspection confirms cached pass state resets
+at pass boundaries and compares bind-group dynamic offsets before suppression.
+
+The profiler's `other-core-timing` category includes `SyncGPUCallback`, which
+executes GPU FIFO work on the CPU in single-core mode, as well as DSP and
+other events. No named slow-event logs were available from the browser log
+capture, so the worst timing callback is not yet identified. Compare dual-core
+scheduling and/or expand the event categories before attributing that spike.
