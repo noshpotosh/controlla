@@ -1,0 +1,76 @@
+--- a/core/upstream/dolphin_web_discio.cpp
++++ b/core/upstream/dolphin_web_discio.cpp
+@@ -130,7 +130,9 @@
+ };
+ 
+ std::mutex s_input_state_mutex;
+-InputStateSnapshot s_input_state;
++std::array<InputStateSnapshot, 4> s_controller_states{};
++InputStateSnapshot& s_input_state = s_controller_states[0];
++std::array<bool, 4> s_controller_connected{true, false, false, false};
+ std::mutex s_pad_poll_mutex;
+ PadPollSnapshot s_pad_poll;
+ bool s_using_xfb_frame = false;
+@@ -844,6 +846,37 @@
+   s_input_update_count.fetch_add(1, std::memory_order_relaxed);
+ }
+ 
++// Port-aware ABI; retain SetInputState for the existing port-0 SAB path.
++int SetControllerInputState(int port, int connected, std::uint32_t mask, int stick_x,
++                            int stick_y, int c_stick_x, int c_stick_y, int trigger_left,
++                            int trigger_right, int analog_a, int analog_b,
++                            std::uint32_t generation)
++{
++  if (port < 0 || port >= 4)
++    return 0;
++  InputStateSnapshot next;
++  if (connected)
++  {
++    next.mask = mask;
++    next.generation = generation;
++    next.stick_x = ClampPadByte(stick_x);
++    next.stick_y = ClampPadByte(stick_y);
++    next.c_stick_x = ClampPadByte(c_stick_x);
++    next.c_stick_y = ClampPadByte(c_stick_y);
++    next.trigger_left = ClampPadByte(trigger_left);
++    next.trigger_right = ClampPadByte(trigger_right);
++    next.analog_a = ClampPadByte(analog_a);
++    next.analog_b = ClampPadByte(analog_b);
++  }
++  {
++    const std::lock_guard<std::mutex> lock(s_input_state_mutex);
++    s_controller_states[port] = next;
++    s_controller_connected[port] = connected != 0;
++  }
++  s_input_update_count.fetch_add(1, std::memory_order_relaxed);
++  return 1;
++}
++
+ int SetPresentationScale(float scale)
+ {
+   if (scale < 0.25f || scale > 1.0f)
+@@ -1087,17 +1120,21 @@
+ 
+ int DolphinWeb_GetPadStatus(int pad_num, GCPadStatus* status)
+ {
+-  if (!status || pad_num != 0)
++  if (!status || pad_num < 0 || pad_num >= 4)
+     return 0;
+ 
+   InputStateSnapshot input;
++  bool connected;
+   {
+     const std::lock_guard<std::mutex> lock(s_input_state_mutex);
+-    input = s_input_state;
++    input = s_controller_states[pad_num];
++    connected = s_controller_connected[pad_num];
+   }
+ 
+   *status = {};
+-  status->isConnected = true;
++  status->isConnected = connected;
++  if (!connected)
++    return 1;
+   status->stickX = input.stick_x;
+   status->stickY = input.stick_y;
+   status->substickX = input.c_stick_x;

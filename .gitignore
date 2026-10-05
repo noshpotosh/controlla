@@ -37,3 +37,9 @@ next-env.d.ts
 /.worktrees/
 *.tsbuildinfo
 !.env.example
+
+# Local game disc images
+*.ciso
+*.iso
+*.gcm
+*.rvz
