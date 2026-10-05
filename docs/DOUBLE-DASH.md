@@ -1244,3 +1244,13 @@ synchronization was added. Automatic preparation and shipping output are
 unchanged. Forward/reverse application and worker syntax checks passed on the
 active runtime tree, preserving the pre-existing immediate-upload scratch
 implementation. A browser reload and performance/reliability check are pending.
+
+The synchronized trace-gated run restored successfully and continued rendering
+1,101 → 2,303 presented frames over 42.065 seconds (28.57 fps). Finish requests,
+schedules and deliveries reached 4,607 with no stall during this short sample.
+The preceding matching restored stationary screen measured 28.39 fps; this
+single comparison does not establish a meaningful speed gain. Patch 0015 stays
+experimental and excluded from automatic preparation, and its active runtime
+application was reversed after measurement (forward applicability and worker
+syntax rechecked). The browser retains the tested loaded worker until reload.
+Evidence: `work/double-dash-sync-trace-off-{a,b}.json` and final `b.png`.
