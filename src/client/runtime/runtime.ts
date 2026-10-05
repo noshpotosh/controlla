@@ -241,6 +241,8 @@ export class Runtime {
       {
         localTime: now,
         authorityTime: () => this.time(),
+        screenAngle: () => screen.orientation?.angle ??
+          (typeof window.orientation === 'number' ? window.orientation : 0),
         schedule: (callback, delay) => {
           const timer = setTimeout(callback, delay);
           return () => clearTimeout(timer);

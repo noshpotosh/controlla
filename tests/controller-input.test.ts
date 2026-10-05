@@ -37,7 +37,7 @@ function configuration(): ControllerConfig {
     },
   };
 }
-function fixture(config = configuration()) {
+function fixture(config = configuration(), screenAngle = 0) {
   let now = 1000;
   const timers: { at: number; callback(): void; canceled: boolean }[] = [];
   const messages: Parameters<InputEffects['reliable']>[0][] = [],
@@ -47,6 +47,7 @@ function fixture(config = configuration()) {
     {
       localTime: () => now,
       authorityTime: () => now + 100,
+      screenAngle: () => screenAngle,
       schedule(callback, delay) {
         const timer = { at: now + delay, callback, canceled: false };
         timers.push(timer);
@@ -286,6 +287,21 @@ void test('recentering makes the current tilt level', () => {
   f.input.tick({ ...f.motion, tilt: { x: -0.9, y: 0.9 } });
   assert.equal(f.frames.at(-1)!.x, -1);
   assert.equal(f.frames.at(-1)!.y, 1);
+});
+void test('tilt follows both landscape rotations and retains recentering', () => {
+  for (const [angle, x, y] of [[0, 0.4, -0.3], [90, -0.3, -0.4], [-90, 0.3, 0.4], [180, -0.4, 0.3]]) {
+    const config = configuration();
+    config.sensors.tilt.enabled = true;
+    const f = fixture(config, angle);
+    f.input.tick(f.motion);
+    assert.ok(Math.abs(f.frames.at(-1)!.x - x) < 0.001);
+    assert.ok(Math.abs(f.frames.at(-1)!.y - y) < 0.001);
+    f.input.recenter();
+    f.at(1700);
+    f.input.tick(f.motion);
+    assert.ok(Math.abs(f.frames.at(-1)!.x) < 0.001);
+    assert.ok(Math.abs(f.frames.at(-1)!.y) < 0.001);
+  }
 });
 void test('pointer sampling and recovery preserve position, press anchoring and player settings', () => {
   const config = configuration();

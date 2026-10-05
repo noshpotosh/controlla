@@ -28,6 +28,14 @@ import type { Point } from '../../../core/types.ts';
 
 const WIDGET_THROTTLE_MS = 30;
 
+export function screenTilt(point: Point, angle: number): Point {
+  const radians = (Number.isFinite(angle) ? angle : 0) * Math.PI / 180;
+  return {
+    x: clampUnit(point.x * Math.cos(radians) + point.y * Math.sin(radians)),
+    y: clampUnit(-point.x * Math.sin(radians) + point.y * Math.cos(radians)),
+  };
+}
+
 /** Phone-side input processing. Transport and browser resource ownership stay outside. */
 export class ControllerInput {
   private config: ControllerConfig | null = null;
@@ -302,10 +310,10 @@ export class ControllerInput {
     } else if (config.sensors.tilt.enabled) {
       if (motion.accelFresh) this.lastTilt = { ...motion.tilt };
       point = motion.accelFresh
-        ? {
-            x: clampUnit(motion.tilt.x - this.tiltZero.x),
-            y: clampUnit(motion.tilt.y - this.tiltZero.y),
-          }
+        ? screenTilt({
+            x: motion.tilt.x - this.tiltZero.x,
+            y: motion.tilt.y - this.tiltZero.y,
+          }, this.environment.screenAngle?.() ?? 0)
         : { x: 0, y: 0 };
     }
     if (local >= this.nextSend) {
