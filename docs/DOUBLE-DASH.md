@@ -1205,3 +1205,12 @@ This verifies initial fresh-start driving without a restored checkpoint;
 it does not qualify full-race completion, sustained full speed or phone motion.
 Evidence: `work/double-dash-sync-fresh-race-{a,b}.json` and
 `work/double-dash-sync-fresh-race-driving.png`.
+
+Fresh synchronized-race rider swap was visibly accepted: rear rider changed
+Luigi → Mario and the minimap driver icon changed to Mario. A combined
+drift/steering/gas probe moved the kart off the grass and turned it onto the
+road, but telemetry snapshots sampled neutral input before/after the held
+interval and screenshots do not prove sustained drift or mini-turbo. Keep
+drift qualification pending rather than treating combined movement as proof.
+Evidence: `work/double-dash-sync-fresh-swap.png` and
+`work/double-dash-sync-drift-{held,held-b,immediate}.json`.
