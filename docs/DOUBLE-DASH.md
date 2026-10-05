@@ -44,6 +44,9 @@ replaces the current build's slot. Browser data clearing removes it. Keep a
 **Download state** backup for progress you want to retain elsewhere.
 This is explicit snapshot persistence; automatic memory-card persistence and
 an actual browser save/reload round trip still need verification.
+`npm run mario-kart:check-state` checks native serialization/restoration against
+the rebuilt WASM and supplied disc without running a browser. It passed locally,
+including confirmation from the native after-load callback.
 
 Keyboard controls follow the emulator's bindings:
 

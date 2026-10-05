@@ -66,7 +66,18 @@ node scripts/mario-kart/prepare-core.mjs
 node scripts/mario-kart/configure-macos.mjs
 ```
 
-Preparation applies all three Controlla patches idempotently, copies the shared
+Preparation applies all four Controlla patches idempotently, copies the shared
 packet validator into the runtime, and adds the port-aware setter to the full Core Emscripten export list. The third patch configures four emulated
 GameCube controller devices. These changes affect only the isolated build
 checkout, not the current prebuilt runtime.
+
+## Restore confirmation
+
+`0004-confirm-state-restore.patch` waits for the core's after-load checkpoint
+generation to change before reporting a successful restore. A native load
+return value of 1 only means the request was queued. Rejection or an eight-second
+timeout now returns `loaded: false`. This is a worker-only change; it needs no
+native rebuild. The actual compiled core passed `npm run mario-kart:check-state`:
+a 10,245,299-byte Double Dash state was serialized, copied into a new virtual
+file, loaded, and confirmed by generation advancing from 0 to 1 with the core
+still Running. Browser WebGPU restoration and IndexedDB remain unverified.
