@@ -1373,3 +1373,10 @@ does not guarantee zero collisions or remove profiling overhead. Reverse
 patch provenance and default-output rejection passed. Configuration completed
 for isolated output `work/double-dash-broad-profile-core`; compilation and
 browser behavior remain unverified at this checkpoint.
+
+The broad-attribution build subsequently completed successfully and its loader
+passed module syntax validation. WASM SHA-256:
+`77487fd18c360e5d019f1092f5dd1e513feb86c4c8dfd8a126c68b4075ec9005`.
+Native input ABI validation passed connection/disconnection on four ports and
+invalid-port rejection (179 exports). This check does not boot the game or
+validate profiling coverage. Browser testing remains pending.
