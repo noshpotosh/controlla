@@ -685,3 +685,27 @@ backend is present and records its source hash, prototype marker and patch
 verified before starting any compilation. Because the running build loaded
 the earlier builder script, rerun the updated isolated builder after it exits
 to refresh metadata; do not start a second build while the linker is live.
+
+### Destination-alpha candidate race result (2026-10-05)
+
+The isolated build completed successfully, including WASM optimization and
+module validation (179 exports). Rerunning the updated builder refreshed
+patch-0008 provenance without recompiling. The four-port native ABI check
+passed connection/disconnection on all ports and invalid-port rejection.
+Candidate SHA256:
+`6c7107b1bfe9dea4364f998e3fb86ebbb29dc23f496ae7e67222e650777560d3`.
+Output and manifest are in `work/double-dash-alpha-core/`.
+
+The source-snapshot server was switched to that isolated candidate with no
+shader-skip probes. Browser evidence confirms this exact core hash, loaded
+checkpoint generation 1, 131 shaders, 104 pipeline descriptions, and no
+reported renderer errors. The saved Luigi Circuit race now visibly renders
+a bright sky, road, scenery, and kart with the HUD intact. Evidence:
+`work/double-dash-alpha-race-report.json` and `work/double-dash-alpha-race.png`.
+This is the first verified native candidate that removes the previously
+measured dark-blue course. It supports the destination-alpha diagnosis.
+
+This remains a candidate, not completed fidelity: driving and menu regressions,
+other tracks, four-player split screen, sound, performance, ubershader coverage,
+and failure handling still need validation. The default core has not been
+replaced, and patch 0008 remains outside automatic prepare-core application.
