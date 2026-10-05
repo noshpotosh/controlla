@@ -1363,3 +1363,13 @@ Thus the repeatable leaders are not evidence of a dominant opcode bottleneck.
 Before selecting a new specialization, broader attribution is needed. The
 profile excludes the normal redispatch path and its measurement overhead is
 not separately quantified, which further limits conclusions about normal play.
+
+Extended experimental patch 0018 to use 32,768 attribution entries and display
+32 blocks. Reports now include exact `totalns`, `attributedns`, `displayedns`,
+and `unique` values so coverage does not depend on a rounded average. The
+larger table adds approximately 896 KiB of static storage relative to the
+previous candidate. It retains the eight-probe bound and sampling rate; it
+does not guarantee zero collisions or remove profiling overhead. Reverse
+patch provenance and default-output rejection passed. Configuration completed
+for isolated output `work/double-dash-broad-profile-core`; compilation and
+browser behavior remain unverified at this checkpoint.
