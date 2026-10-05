@@ -28,6 +28,7 @@
     "mario-kart:test": "node --test scripts/mario-kart/*.test.mjs",
     "mario-kart:build": "node scripts/mario-kart/build-macos.mjs",
     "mario-kart:check-abi": "node scripts/mario-kart/check-native-abi.mjs",
+    "mario-kart:check-arithmetic": "node scripts/mario-kart/check-paired-arithmetic.mjs",
     "mario-kart:check-state": "node scripts/mario-kart/check-state.mjs"
   },
   "dependencies": {

@@ -1624,3 +1624,21 @@ The earlier 56a9c321 candidate binaries/manifest are preserved at
 `work/double-dash-reference-paired-before-regression`; the regression build
 uses `work/double-dash-reference-paired-core`. Executing the new smoke remains
 pending until compilation completes. The already-loaded browser stays paused.
+
+### Native scalar alias regression passed (2026-10-05)
+
+Build session 82230 completed successfully. WASM SHA-256 is
+`d8a9863f91f476bd4a6ddc7165f8f52c34777d927218409027bac5fd27a6275b`. The integrity-checking runner
+`scripts/mario-kart/check-paired-arithmetic.mjs` initialized the native runtime
+and executed the exported generated-WASM smoke successfully: all four alias
+result pairs, FPRF updates, and final next-PC passed. Existing single-precision
+smoke cases also passed. The refreshed binary passed all four-port ABI checks.
+No game was booted during these checks.
+
+Run with `DOLPHIN_WASM_OUTPUT_DIR=/absolute/candidate/output npm run
+mario-kart:check-arithmetic`. The runner rejects missing regression provenance
+and checks loader/WASM hashes before execution. Output is retained in
+`/tmp/controlla-paired-arithmetic-check.log`. Full rounding/exception coverage
+and an unfixed-emitter negative control remain to be exercised. The previous server 10756 exited 130; replacement server 82779 verifies
+and serves the new manifest on port 8081. The browser remains paused with
+the earlier binary loaded until its next reload.
