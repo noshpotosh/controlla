@@ -1430,3 +1430,17 @@ the reference paired-sum instruction behavior. Rc forms remain excluded.
 Reverse patch validation, builder syntax, isolated configuration and default
 output rejection passed. Native build is running for isolated output
 `work/double-dash-sum-helper-core`; behavior and speed are not yet verified.
+
+The paired-sum helper candidate built successfully (179 exports) and passed
+four-port connection/disconnection plus invalid-port ABI checks. WASM SHA-256:
+`40171cdf0765bb3fab02724e11258c65ac406c4cf6051370f7cd884802b5ea94`.
+Restored the fixed race with guarded JIT, `ppcprof=0`, producer profiling and
+classification off. Presented frames advanced 1,744 → 3,147 in 42.18243s
+(33.26 fps), reported speed 59% → 58%. Paired-sum opcodes appeared in FP
+helper counts rather than the prior leading block-rejection list, confirming
+the changed admission path. This one interval is not a repeatable performance
+qualification against the earlier 24.09 fps guarded screen: repeated paired
+measurements were not run. The screenshot shows an active Luigi Circuit race
+but does not establish full-race or all-track fidelity. Paused without saving
+over the comparison state. Evidence: `work/double-dash-sum-helper-{a,b}.json`
+and `-paused.png`. The candidate remains isolated from the normal runtime.
