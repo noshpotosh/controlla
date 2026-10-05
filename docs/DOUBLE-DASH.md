@@ -2074,3 +2074,26 @@ baseline restore has no corresponding sustained interval, so this sample
 cannot establish a speed improvement. A matched scene interval comparison is
 still required. The native-verified status core now also has browser boot and
 checkpoint-load evidence, but full-speed gameplay remains unqualified.
+
+### Status-core simulation throughput and CPU profile
+
+The recorded status comparison interval advanced 15.501644529 seconds of
+native time in 43.863715 seconds wall time: 35.3405% of real time. Native
+frame count advanced 925 versus 930 presented frames; telemetry snapshots
+are asynchronous. WebGPU drain work increased 8526.23 ms during this interval
+(19.4% of wall time, overlapping the native worker). Presentation reported
+zero dropped frames, zero queue depth and zero frame lag. These observations
+point toward slow frame production rather than a presentation queue bottleneck;
+they do not isolate CPU, native video production or GPU costs completely.
+
+A fresh status-core run with `ppcprof=1` loaded successfully after releasing
+the previous paused engine and restored the same saved record. Its report
+`work/double-dash-status-cpu-profile.json` now contains nonzero sampled block
+execution timing: 113671936 ns across 7545 unique blocks, sample rate 1024.
+Hot displayed PCs include 800f6c68, 800f6f0c, 800f6eb4 and 800f6c78. Entries
+label the first opcode of a block, not the cost of that individual instruction.
+The profile includes startup before restoration; it is not a post-restore-only
+cost attribution or a profiling-off speed measurement. Saved screenshot:
+`work/double-dash-status-cpu-profile.png`. The profiled scene is paused for
+further inspection; optimizing these blocks requires inspecting their entire
+instruction sequences and compilation paths before changing semantics.
