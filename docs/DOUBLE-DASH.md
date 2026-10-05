@@ -628,3 +628,30 @@ operations as well as its draws; blaming the last recorded pipeline was too
 narrow. Next record the pass's loadOp, encoded clear RGBA, independent
 color/depth flags, and in-pass ClearRect commands. The non-skipping server
 was restored; the skip probe remains ignored and must not be shipped.
+
+### Pass load/clear and destination-alpha evidence (2026-10-05)
+
+The local pass-state probe captures up to forty passes after restore with
+load flags, RGBA, draw sequence, and ClearRect records. Syntax validation
+passes. Generation 1 reports no renderer errors. Evidence:
+`work/double-dash-race-pass-state.json`. The affected EFB pass uses
+`clearMask=0`, color/depth `load`, and no ClearRect. It begins with one
+six-index draw using pipeline 420 (fragment 419), followed by the textured
+quads investigated previously. The full-screen clear occurs only after
+the XFB copy. Thus attachment clears do not explain this pass's collapse.
+
+The first fragment shader (`work/darkpass-419.wgsl`) writes alpha from
+`global.member_2[3]` (I_ALPHA.a), not the TEV alpha. Its pipeline blends
+color with `src-alpha` / `one-minus-src-alpha`, always depth, and writes
+all RGBA. Native PixelShaderGen.cpp WriteColor explicitly says destination
+alpha writes the 6-bit override to ocol0 while blending must use the real
+TEV alpha from ocol1. WebGPU VideoBackend.cpp advertises dual-source blend
+false; ShaderCache.cpp consequently sets no_dual_src and disables the
+second source. The current single-output pipeline therefore uses the
+destination-alpha override as the color blend factor in this draw.
+
+This provides a concrete semantic mismatch to repair: preserve real TEV
+alpha for color blending while independently writing destination alpha.
+It does not yet prove this is the only rendering defect. Next implement
+and test a faithful two-pass destination-alpha path or supported equivalent,
+not a shader skip or replacement color.
