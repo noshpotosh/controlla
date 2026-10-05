@@ -1,0 +1,78 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -5330,6 +5330,35 @@
+     EmitStorePsqU8Scale61Lane(body, layout, inst.RS, 1, sizeof(u8));
+ }
+ 
++// WASM scale-zero quantized store candidate: preserve float conversion and NaN fallback.
++void EmitStorePsqScaleZero(std::vector<u8>& body, const WasmStateLayout& layout,
++                           UGeckoInstruction inst, bool signed_halfword)
++{
++  for (u32 lane = 0; lane < (inst.W ? 1u : 2u); ++lane)
++  {
++    EmitStateLoadF64(body, PsOffset(layout, inst.RS, lane));
++    body.push_back(0xb6);  // f32.demote_f64: quantization first rounds to float.
++    body.push_back(0xbb);  // f64.promote_f32
++    EmitF64ConstBits(body, std::bit_cast<u64>(signed_halfword ? -32768.0 : 0.0));
++    body.push_back(0xa5);  // f64.max
++    EmitF64ConstBits(body, std::bit_cast<u64>(signed_halfword ? 32767.0 : 255.0));
++    body.push_back(0xa4);  // f64.min
++    body.push_back(0xfc);
++    EmitU32Leb(body, 2);  // i32.trunc_sat_f64_s
++    EmitLocalSet(body, 2);
++    if (signed_halfword)
++    {
++      EmitBswap16FromLocal(body, 2);
++      EmitLocalSet(body, 3);
++    }
++    EmitRamAddress(body, layout);
++    EmitLocalGet(body, signed_halfword ? 3 : 2);
++    body.push_back(signed_halfword ? 0x3b : 0x3a);
++    body.push_back(0x00);
++    EmitU32Leb(body, lane * (signed_halfword ? 2 : 1));
++  }
++}
++
+ void EmitPairedQuantizedFloatMemory(std::vector<u8>& body, const WasmStateLayout& layout,
+                                     const PPCAnalyst::CodeOp& op, u32 downcount)
+ {
+@@ -5420,7 +5449,39 @@
+   }
+ 
+   body.push_back(0x05);
++  if (!load)
++  {
++    for (const bool signed_halfword : {true, false})
++    {
++      EmitPsqTypeScaleFastPathCondition(body, layout, inst, true,
++          signed_halfword ? QUANTIZE_S16 : QUANTIZE_U8, 0,
++          signed_halfword ? sizeof(u16) : sizeof(u8), false);
++      // NaNs retain interpreter semantics; do not replace them with saturating zero.
++      for (u32 lane = 0; lane < (inst.W ? 1u : 2u); ++lane)
++      {
++        EmitStateLoadF64(body, PsOffset(layout, inst.RS, lane));
++        EmitStateLoadF64(body, PsOffset(layout, inst.RS, lane));
++        body.push_back(0x61);  // f64.eq
++        body.push_back(0x71);  // i32.and
++      }
++      body.push_back(0x04);
++      body.push_back(0x40);
++      EmitStorePsqScaleZero(body, layout, inst, signed_halfword);
++      if (update)
++      {
++        EmitStateStoreU32Prefix(body);
++        EmitLocalGet(body, 1);
++        EmitStateStoreU32Suffix(body, GprOffset(layout, inst.RA));
++      }
++      body.push_back(0x05);
++    }
++  }
+   EmitFpCall(body, op, downcount);
++  if (!load)
++  {
++    body.push_back(0x0b);
++    body.push_back(0x0b);
++  }
+   body.push_back(0x0b);
+   if (!load)
+     body.push_back(0x0b);
