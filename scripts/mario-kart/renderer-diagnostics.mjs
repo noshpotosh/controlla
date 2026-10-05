@@ -23,13 +23,17 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
   controls.innerHTML = '<summary>Input probe</summary>';
   document.querySelector('.topbar-actions').append(controls);
   let held = null, targetFrame = 0;
-  for (const [name, mask] of [['Start', 16], ['Confirm', 1], ['Back', 2], ['Up', 256], ['Down', 512], ['Left', 1024], ['Right', 2048]]) {
+  const probes = [
+    ['Start', 16], ['Confirm', 1], ['Back', 2], ['Up', 256], ['Down', 512], ['Left', 1024], ['Right', 2048],
+    ['Accelerate', 1, 300], ['Steer left + gas', 1, 90, 64], ['Steer right + gas', 1, 90, 192],
+  ];
+  for (const [name, mask, frames = 30, stickX = 128] of probes) {
     const button = document.createElement('button');
-    button.textContent = `${name} (30 frames)`;
+    button.textContent = `${name} (${frames} frames)`;
     button.onclick = () => {
       if (!getAdapter()?.loaded) return;
-      targetFrame = (getFrame()?.frame ?? 0) + 30;
-      held = { connected: true, mask, stickX: 128, stickY: 128, cStickX: 128, cStickY: 128,
+      targetFrame = (getFrame()?.frame ?? 0) + frames;
+      held = { connected: true, mask, stickX, stickY: 128, cStickX: 128, cStickY: 128,
         triggerLeft: 0, triggerRight: 0, analogA: mask === 1 ? 255 : 0, analogB: mask === 2 ? 255 : 0 };
       setProbeInput(held);
     };

@@ -50,3 +50,22 @@ test('input probes hold for game frames and release when the target is reached',
   frame = 130; env.intervals[1](); assert.equal(inputs.at(-1), null);
   env.cleanups.forEach(callback => callback()); assert.deepEqual(env.cleared, [1, 2]);
 });
+test('driving probes hold acceleration and use the analog steering axis', t => {
+  const env = environment(t, '?rendererdiagnostics=1&probeinputs=1');
+  let frame = 100;
+  const inputs = [];
+  installRendererDiagnostics({ getAdapter: () => ({ loaded: true }), getFrame: () => ({ frame }),
+    setProbeInput: state => inputs.push(state) });
+  env.elements.find(element => element.textContent === 'Accelerate (300 frames)').onclick();
+  assert.equal(inputs.at(-1).mask, 1);
+  assert.equal(inputs.at(-1).analogA, 255);
+  frame = 399; env.intervals[1](); assert.equal(inputs.at(-1).mask, 1);
+  frame = 400; env.intervals[1](); assert.equal(inputs.at(-1), null);
+  for (const [name, axis] of [['Steer left + gas', 64], ['Steer right + gas', 192]]) {
+    env.elements.find(element => element.textContent === `${name} (90 frames)`).onclick();
+    assert.equal(inputs.at(-1).stickX, axis);
+    assert.equal(inputs.at(-1).mask, 1);
+    assert.equal(inputs.at(-1).analogA, 255);
+    frame += 90; env.intervals[1](); assert.equal(inputs.at(-1), null);
+  }
+});

@@ -100,5 +100,7 @@ also records shader compilation errors in the bounded error history, alongside
 existing GPU validation errors. It changes observation only and needs no native
 rebuild. Add `rendererdiagnostics=1` to the standalone diagnostic URL to capture
 the report in the hidden `controlla-renderer-diagnostics` DOM element. Optional
-`probeinputs=1` adds explicit 30-game-frame menu input probes; it is absent from
-the normal room and game presentation.
+`probeinputs=1` adds 30-game-frame menu input probes, 300-frame acceleration,
+and 90-frame analog steering with acceleration. Each probe releases when its
+target game frame is reached. These controls are absent from the normal room
+and game presentation.

@@ -184,6 +184,28 @@ The ignored probe servers are `work/double-dash-depth-probe-serve.mjs` and
 `work/double-dash-native-depth-probe-serve.mjs`; they rewrite served worker text
 on the isolated diagnostic port and do not modify the runtime source or core.
 
+The alternate-depth probe progressed through Mushroom Cup selection and loaded
+the original Luigi Circuit race. It displayed the race HUD, timer, standings,
+lap counter and minimap, but the world and kart stayed dark at 0 mph. Thus the
+preview improvement does not establish a valid whole-game depth correction;
+the candidate was not promoted into the normal runtime. A race-state snapshot
+was saved at 11:43:31 AM on 2026-10-05 for subsequent matched comparisons.
+Evidence: `work/double-dash-gpu-native-depth-race.png` and its matching
+`-report.json`. The isolated server was restored to the normal source after
+the probe. Input probes now include bounded acceleration and analog steering
+for checking driving at measured game frames rather than wall-clock key taps.
+
+The original GPU depth convention also restored that race state with a dark
+world and missing kart, while the HUD continued to advance. The 300-frame
+acceleration probe moved the player marker and produced an observed 22 mph
+speedometer reading after starting at 0 mph. Native input generations advanced
+on press and release. This proves acceleration affects the emulated race, not
+correct visuals, responsive steering or physical-phone motion. Original-depth
+race evidence is `work/double-dash-gpu-original-depth-race.png` and its matching
+`-report.json`; post-input captures are retained under
+`work/double-dash-browser-acceleration*` and `work/double-dash-browser-steering*`.
+All 22 local runtime tests pass, including frame-bounded analog driving probes.
+
 Keyboard controls follow the emulator's bindings:
 
 | Input | Key |
