@@ -730,3 +730,24 @@ in one acceleration screenshot and needs investigation. Physical phone
 motion, sound audibility, full races, four-player performance, other tracks,
 and wider destination-alpha behavior remain unverified. Candidate remains
 isolated from the normal embedded runtime.
+
+### Candidate timing attribution (2026-10-05)
+
+The plain alpha candidate server, without shader snapshot injection, restored
+the same generation-1 race with `metrics=1`. The capture at frame 2737
+reported 19 percent speed, zero renderer errors, zero producer ring/upload
+waits, no residual command backlog after drains, and a host RAF average of
+0.223 ms. XFB decoding averaged 2.3 ms; frame intervals averaged 66.5 ms.
+Evidence: `work/double-dash-alpha-causal-performance.json` (ignored local file).
+These counters do not prove GPU execution cost or isolate PPC execution time.
+
+A second capture with `wgpuprodprofile=1&wgpudrawprofile=1`, frame 583,
+reported 20 percent speed. Native sampled estimates include 2.774 seconds
+for FIFO decoding across the capture, 0.301 seconds for draw resources,
+and 0.266 seconds for upload copies; shader translation accumulated
+1.056 seconds. Phase totals can overlap and include boot work, so they
+must not be summed into a CPU budget or treated as steady-state race costs.
+Evidence: `work/double-dash-alpha-native-performance.json`. Next measurement
+should use differences between two restored-race captures and enable the
+existing core slice profiler to attribute emulation/advance/throttle time.
+The runtime remains experimental and is not promoted by these measurements.
