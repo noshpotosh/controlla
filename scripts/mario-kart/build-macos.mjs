@@ -11,6 +11,13 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
 const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
 const nativeCpu = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp');
 const nativeFifo = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/Fifo.cpp');
+const referencePairedArithmetic = readFileSync(nativeCpu, 'utf8').includes('WASM reference paired arithmetic candidate');
+if (referencePairedArithmetic) {
+  if (output === defaultOutput) throw new Error('Reference paired arithmetic requires an isolated DOLPHIN_WASM_OUTPUT_DIR.');
+  const check = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0021-reference-paired-arithmetic.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('Reference paired arithmetic source does not match patch 0021: ' + check.stderr);
+}
 const pairedSumHelpers = readFileSync(nativeCpu, 'utf8').includes('WASM paired-sum helper admission candidate');
 if (pairedSumHelpers) {
   if (output === defaultOutput) throw new Error('Paired sum helper candidate requires an isolated DOLPHIN_WASM_OUTPUT_DIR.');
@@ -118,6 +125,8 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   pairedSignOperations,
   preciseSampledProfile,
   pairedSumHelpers,
+  referencePairedArithmetic,
+  referencePairedArithmeticPatchSha256: referencePairedArithmetic ? hash(resolve(repo, 'scripts/mario-kart/patches/0021-reference-paired-arithmetic.patch')) : null,
   pairedSumPatchSha256: pairedSumHelpers ? hash(resolve(repo, 'scripts/mario-kart/patches/0019-admit-paired-sum-helpers.patch')) : null,
   preciseProfilePatchSha256: preciseSampledProfile ? hash(resolve(repo, 'scripts/mario-kart/patches/0018-preserve-sampled-profile-precision.patch')) : null,
   pairedSignPatchSha256: pairedSignOperations ? hash(resolve(repo, 'scripts/mario-kart/patches/0017-inline-paired-sign-operations.patch')) : null,

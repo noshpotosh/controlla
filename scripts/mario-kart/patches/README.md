@@ -161,3 +161,8 @@ check passed; native WASM compilation and browser validation remain pending.
 and unsupported-format dummy substitutions in `commandReplay.textureFallbacks`.
 It copies the ID/format sets into the report and leaves replay behavior unchanged.
 It is a JS-only preparation patch; scene attribution requires counter deltas.
+
+`0021-reference-paired-arithmetic.patch` is an isolated native fidelity candidate.
+It routes paired arithmetic through the reference interpreter to preserve scalar
+aliasing, FPSCR/FPRF, operand rounding, and fused operations. It retains existing
+sign/merge paths and is excluded from preparation. Performance is unverified.

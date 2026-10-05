@@ -1,0 +1,97 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -4809,88 +4809,25 @@
+ void EmitPairedSingleAddSub(std::vector<u8>& body, const WasmStateLayout& layout,
+                             const PPCAnalyst::CodeOp& op, u32 downcount)
+ {
+-  const UGeckoInstruction inst = op.inst;
+-  const u8 opcode = inst.SUBOP5 == 21 ? 0xa0 : 0xa1;
+-
+-  EmitFpuAvailableOrFallback(body, op, layout, downcount);
+-
+-  for (u32 lane = 0; lane < 2; ++lane)
+-  {
+-    EmitStateStoreU32Prefix(body);
+-    EmitStateLoadF64(body, PsOffset(layout, inst.FA, lane));
+-    EmitStateLoadF64(body, PsOffset(layout, inst.FB, lane));
+-    body.push_back(opcode);
+-    body.push_back(0xb6);
+-    body.push_back(0xbb);
+-    EmitStateStoreF64Suffix(body, PsOffset(layout, inst.FD, lane));
+-  }
+-
+-  body.push_back(0x05);
++  // WASM reference paired arithmetic candidate: preserve aliases and FPSCR.
++  (void)layout;
+   EmitFpCall(body, op, downcount);
+-  body.push_back(0x0b);
+ }
+ 
+ void EmitPairedSingleMulAddSub(std::vector<u8>& body, const WasmStateLayout& layout,
+                                const PPCAnalyst::CodeOp& op, u32 downcount)
+ {
+-  const UGeckoInstruction inst = op.inst;
+-  const bool multiply_only = inst.SUBOP5 == 25;
+-  const bool add = inst.SUBOP5 == 29 || inst.SUBOP5 == 31;
+-  const bool negate = inst.SUBOP5 == 30 || inst.SUBOP5 == 31;
+-
+-  EmitFpuAvailableOrFallback(body, op, layout, downcount);
+-
+-  for (u32 lane = 0; lane < 2; ++lane)
+-  {
+-    EmitStateStoreU32Prefix(body);
+-    EmitStateLoadF64(body, PsOffset(layout, inst.FA, lane));
+-    EmitStateLoadF64(body, PsOffset(layout, inst.FC, lane));
+-    body.push_back(0xa2);
+-    if (!multiply_only)
+-    {
+-      EmitStateLoadF64(body, PsOffset(layout, inst.FB, lane));
+-      body.push_back(add ? 0xa0 : 0xa1);
+-    }
+-    body.push_back(0xb6);
+-    body.push_back(0xbb);
+-    if (negate)
+-      body.push_back(0x9a);
+-    EmitStateStoreF64Suffix(body, PsOffset(layout, inst.FD, lane));
+-  }
+-
+-  body.push_back(0x05);
++  // WASM reference paired arithmetic candidate: preserve aliases and FPSCR.
++  (void)layout;
+   EmitFpCall(body, op, downcount);
+-  body.push_back(0x0b);
+ }
+ 
+ void EmitPairedSingleScalarMulAdd(std::vector<u8>& body, const WasmStateLayout& layout,
+                                   const PPCAnalyst::CodeOp& op, u32 downcount)
+ {
+-  const UGeckoInstruction inst = op.inst;
+-  const u32 scalar_lane = (inst.SUBOP5 == 13 || inst.SUBOP5 == 15) ? 1 : 0;
+-  const bool add = inst.SUBOP5 == 14 || inst.SUBOP5 == 15;
+-
+-  EmitFpuAvailableOrFallback(body, op, layout, downcount);
+-
+-  for (u32 lane = 0; lane < 2; ++lane)
+-  {
+-    EmitStateStoreU32Prefix(body);
+-    EmitStateLoadF64(body, PsOffset(layout, inst.FA, lane));
+-    EmitStateLoadF64(body, PsOffset(layout, inst.FC, scalar_lane));
+-    body.push_back(0xa2);
+-    if (add)
+-    {
+-      EmitStateLoadF64(body, PsOffset(layout, inst.FB, lane));
+-      body.push_back(0xa0);
+-    }
+-    body.push_back(0xb6);
+-    body.push_back(0xbb);
+-    EmitStateStoreF64Suffix(body, PsOffset(layout, inst.FD, lane));
+-  }
+-
+-  body.push_back(0x05);
++  // WASM reference paired arithmetic candidate: preserve aliases and FPSCR.
++  (void)layout;
+   EmitFpCall(body, op, downcount);
+-  body.push_back(0x0b);
+ }
+ 
+ bool IsPairedSingleMergeSubop(u32 subop10)

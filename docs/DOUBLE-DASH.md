@@ -1549,3 +1549,30 @@ first sampled pass is empty but later color readbacks are nonzero. This differs
 from the previous run and makes first-pass classification unsuitable as an
 image-equivalence gate after restore. The emulator is paused and the saved
 race baseline was not overwritten.
+
+### Reference paired arithmetic candidate (2026-10-05)
+
+Source audit found a concrete aliasing defect in `EmitPairedSingleScalarMulAdd`:
+when `FD == FC` and scalar lane zero is selected, writing destination lane zero
+changes the scalar read by lane one. For `ps_muls0`, A=[2,3], C=[5,7], FD=FC,
+the emitted sequential arithmetic produces [10,30] rather than [10,15].
+The reference interpreter calculates both results before `SetBoth`.
+The direct add/sub, multiply/add/sub, and scalar multiply/add emitters also
+skip the reference handlers' FPSCR/FPRF updates; multiply paths omit
+`Force25Bit`, and separate WASM multiply/add is not equivalent to the
+reference fused arithmetic for all operands. No claim is made that this
+explains the distant pink artwork or that the game executes the alias case.
+
+Experimental patch `0021-reference-paired-arithmetic.patch` replaces those
+three emitters with `EmitFpCall`, retaining block execution while delegating
+these operations to the existing native reference interpreter. Sign and merge
+operations remain separate. It is excluded from automatic preparation. The
+builder requires isolated output, verifies reverse applicability, and records
+its flag/hash. Syntax, reverse applicability (including patch 0019), default
+output rejection, and isolated configuration passed. Native compilation is
+running under exec session 24970, logging to
+`/tmp/controlla-reference-paired-build.log`, with output
+`work/double-dash-reference-paired-core`. An initial relative output path
+failed the output guard; reconfiguration used an absolute path. Browser and
+performance validation remain pending. Existing candidate binaries and the
+shipping core are preserved.
