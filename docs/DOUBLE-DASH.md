@@ -206,6 +206,30 @@ race evidence is `work/double-dash-gpu-original-depth-race.png` and its matching
 `work/double-dash-browser-acceleration*` and `work/double-dash-browser-steering*`.
 All 22 local runtime tests pass, including frame-bounded analog driving probes.
 
+The race-state depth-bypass probe displayed the missing kart but left the scene
+very dark (`work/double-dash-gpu-race-depth-always.png`). Software restored the
+same snapshot and displayed the bright course, kart and scenery correctly
+(`work/double-dash-software-race-reference.png`). Both have matching
+`-report.json` files. Depth rejection therefore does not explain the full race
+rendering failure.
+
+Patch `0007-restore-console-depth-conversion.patch` restores console-depth
+conversion for fog and per-pixel depth in both pixel shader generators. An
+isolated native build completed in `work/double-dash-depth-core`, with 179 WASM
+exports and four-controller ABI checks passing. Its SHA-256 is
+`e5fee0966f3dfee66cf1b60c754aa328974217cc18d1ff49e3a55241c764207a`.
+The normal core remains `829e4655…dec9` and its manifest validates unchanged.
+
+The isolated candidate server restored the legacy race snapshot for a controlled
+comparison (the normal per-core progress policy remains unchanged). The browser
+confirmed the candidate hash and native after-load generation 1. With ordinary
+GPU depth testing, the kart became visible, but course shading remained dark.
+The report recorded 114 successful shaders and pipelines, no missing resources
+or skipped draws, and no GPU errors. Evidence:
+`work/double-dash-gpu-console-depth-race.png` and its matching `-report.json`.
+This is an experimental rendering improvement, not verified whole-game fidelity.
+The ignored `work/double-dash-depth-core-serve.mjs` retains the comparison setup.
+
 Keyboard controls follow the emulator's bindings:
 
 | Input | Key |

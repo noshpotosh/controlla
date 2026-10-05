@@ -66,7 +66,7 @@ node scripts/mario-kart/prepare-core.mjs
 node scripts/mario-kart/configure-macos.mjs
 ```
 
-Preparation applies all six Controlla patches idempotently, copies the shared
+Preparation applies all seven Controlla patches idempotently, copies the shared
 packet validator into the runtime, and adds the port-aware setter to the full Core Emscripten export list. The third patch configures four emulated
 GameCube controller devices. These changes affect only the isolated build
 checkout, not the current prebuilt runtime.
@@ -104,3 +104,19 @@ the report in the hidden `controlla-renderer-diagnostics` DOM element. Optional
 and 90-frame analog steering with acceleration. Each probe releases when its
 target game frame is reached. These controls are absent from the normal room
 and game presentation.
+
+## Candidate console depth conversion
+
+`0007-restore-console-depth-conversion.patch` restores depth conversion in the
+specialized and uber pixel shader generators when the backend cannot reverse
+its depth range. Fog receives console depth; per-pixel depth writes convert it
+back to host depth. The pinned WebGPU source had exempted the Vulkan shader
+dialect from both conversions despite declaring no reversed-depth-range support.
+This candidate requires a native rebuild and browser comparison; it is not
+verified merely by applying the patch or compiling it.
+
+For isolated candidate artifacts, set `DOLPHIN_WASM_OUTPUT_DIR` to the same
+absolute directory for both `configure-macos.mjs` and `build-macos.mjs`. The
+builder checks the configured directory and writes its build manifest beside
+the candidate core. Default builds retain the existing output and manifest
+locations. This preserves the current core during renderer experiments.

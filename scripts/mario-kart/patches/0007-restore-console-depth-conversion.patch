@@ -1,0 +1,69 @@
+--- a/vendor/dolphin/Source/Core/VideoCommon/PixelShaderGen.cpp
++++ b/vendor/dolphin/Source/Core/VideoCommon/PixelShaderGen.cpp
+@@ -1159,16 +1159,9 @@
+   }
+   else
+   {
+-    // §28as: WebGPU/Vulkan emits native [0,1] clip-control window
+-    // depth (rawpos.z = projected depth, NOT GL-inverted) — true
+-    // whether or not the depth RANGE is reversed (reversal is a
+-    // viewport/compare concern, independent of the fog zCoord
+-    // formula). Decouple from bSupportsReversedDepthRange for
+-    // api_type Vulkan so flag=false (the single non-reverse
+-    // convention that kills the mixed-pass flicker, §28aq/ar)
+-    // keeps fog correct instead of saturating to the black fog
+-    // colour (the §28b regression). OGL/D3D/SW untouched.
+-    if (!host_config.backend_reversed_depth_range && api_type != APIType::Vulkan)
++    // Fog uses console depth. A backend without reversed depth ranges
++    // inverts raster depth, so undo that conversion before computing fog.
++    if (!host_config.backend_reversed_depth_range)
+       out.Write("\tint zCoord = int((1.0 - rawpos.z) * 16777216.0);\n");
+     else
+       out.Write("\tint zCoord = int(rawpos.z * 16777216.0);\n");
+@@ -1185,7 +1178,7 @@
+                            uid_data->ztest == EmulatedZ::EarlyWithZComplocHack;
+   if (uid_data->per_pixel_depth && early_ztest)
+   {
+-    if (!host_config.backend_reversed_depth_range && api_type != APIType::Vulkan)  // §28as
++    if (!host_config.backend_reversed_depth_range)
+       out.Write("\tdepth = 1.0 - float(zCoord) / 16777216.0;\n");
+     else
+       out.Write("\tdepth = float(zCoord) / 16777216.0;\n");
+@@ -1207,7 +1200,7 @@
+ 
+   if (uid_data->per_pixel_depth && uid_data->ztest == EmulatedZ::Late)
+   {
+-    if (!host_config.backend_reversed_depth_range && api_type != APIType::Vulkan)  // §28as
++    if (!host_config.backend_reversed_depth_range)
+       out.Write("\tdepth = 1.0 - float(zCoord) / 16777216.0;\n");
+     else
+       out.Write("\tdepth = float(zCoord) / 16777216.0;\n");
+--- a/vendor/dolphin/Source/Core/VideoCommon/UberShaderPixel.cpp
++++ b/vendor/dolphin/Source/Core/VideoCommon/UberShaderPixel.cpp
+@@ -951,11 +951,8 @@
+ 
+   if (host_config.fast_depth_calc)
+   {
+-    // §28at: mirror the §28as PixelShaderGen fog/depth decouple in
+-    // the ubershader fast-depth path — WebGPU/Vulkan emits native
+-    // [0,1] clip-control window depth, independent of the depth-range
+-    // flag. NO-OP at flag=true (else branch). OGL/D3D/SW untouched.
+-    if (!host_config.backend_reversed_depth_range && api_type != APIType::Vulkan)
++    // Convert between console depth and the backend raster convention.
++    if (!host_config.backend_reversed_depth_range)
+       out.Write("  int zCoord = int((1.0 - rawpos.z) * 16777216.0);\n");
+     else
+       out.Write("  int zCoord = int(rawpos.z * 16777216.0);\n");
+@@ -1011,10 +1008,8 @@
+     out.Write("  // If early depth is enabled, write to zbuffer before depth textures\n"
+               "  // If early depth isn't enabled, we write to the zbuffer here\n"
+               "  int zbuffer_zCoord = bpmem_late_ztest ? zCoord : early_zCoord;\n");
+-    // §28at: WebGPU/Vulkan per-pixel depth stays non-inverted
+-    // (matches the flag-independent VS + de-inverted peek/clear).
+-    // NO-OP at flag=true. OGL/D3D/SW untouched.
+-    if (!host_config.backend_reversed_depth_range && api_type != APIType::Vulkan)
++    // Convert between console depth and the backend raster convention.
++    if (!host_config.backend_reversed_depth_range)
+       out.Write("  depth = 1.0 - float(zbuffer_zCoord) / 16777216.0;\n");
+     else
+       out.Write("  depth = float(zbuffer_zCoord) / 16777216.0;\n");

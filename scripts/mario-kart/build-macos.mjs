@@ -6,6 +6,13 @@ import { fileURLToPath } from 'node:url';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const stage = resolve(repo, 'work/double-dash-build');
+const defaultOutput = resolve(stage, 'cores/dolphin');
+const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
+const cache = readFileSync(resolve(stage, 'build/dolphin-wasm/CMakeCache.txt'), 'utf8');
+const configuredOutput = cache.match(/^DOLPHIN_WASM_OUTPUT_DIR:[^=]+=(.*)$/m)?.[1];
+if (!configuredOutput || resolve(configuredOutput) !== output) {
+  throw new Error('Configured WASM output differs from the requested output. Reconfigure with the same DOLPHIN_WASM_OUTPUT_DIR.');
+}
 const manifest = JSON.parse(readFileSync(resolve(stage, 'controlla-macos-toolchain.json'), 'utf8'));
 const hash = path => createHash('sha256').update(readFileSync(path)).digest('hex');
 for (const [name, record] of Object.entries(manifest.tools)) {
@@ -20,16 +27,16 @@ const env = { ...process.env,
 };
 const result = spawnSync(manifest.tools.cmake.path, ['--build', resolve(stage, 'build/dolphin-wasm'), '--target', 'dolphin_web_core', '--parallel', '4'], { env, stdio: 'inherit' });
 if (result.status !== 0) process.exit(result.status ?? 1);
-const wasm = resolve(stage, 'cores/dolphin/dolphin-core-upstream.wasm');
-const js = resolve(stage, 'cores/dolphin/dolphin-core-upstream.js');
+const wasm = resolve(output, 'dolphin-core-upstream.wasm');
+const js = resolve(output, 'dolphin-core-upstream.js');
 if (!readFileSync(js, 'utf8').includes('SetControllerInputState')) throw new Error('Built loader lacks the four-controller native export.');
 // Compilation validates the module without instantiating or booting game code.
 const module = new WebAssembly.Module(readFileSync(wasm));
-writeFileSync(resolve(stage, 'controlla-core-build.json'), JSON.stringify({
+writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.json') : resolve(output, 'controlla-core-build.json'), JSON.stringify({
   platform: manifest.platform, wasmSha256: hash(wasm), loaderSha256: hash(js),
   toolchainSha256: hash(resolve(stage, 'controlla-macos-toolchain.json')),
   wasmExportCount: WebAssembly.Module.exports(module).length,
-  patches: ['0001-four-controller-state.patch', '0002-controller-worker-transport.patch', '0003-four-controller-devices.patch'].map(name => ({ name, sha256: hash(resolve(repo, 'scripts/mario-kart/patches', name)) })),
+  patches: ['0001-four-controller-state.patch', '0002-controller-worker-transport.patch', '0003-four-controller-devices.patch', '0007-restore-console-depth-conversion.patch'].map(name => ({ name, sha256: hash(resolve(repo, 'scripts/mario-kart/patches', name)) })),
   validatedGameplay: false,
 }, null, 2) + '\n');
 console.log('Four-controller WASM built and module syntax validated. Browser gameplay remains unverified.');
