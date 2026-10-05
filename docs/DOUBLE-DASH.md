@@ -48,6 +48,13 @@ an actual browser save/reload round trip still need verification.
 the rebuilt WASM and supplied disc without running a browser. It passed locally,
 including confirmation from the native after-load callback.
 
+The browser-storage component was checked separately in the Codex in-app
+browser using the actual progress controls and a synthetic 10,245,299-byte
+snapshot. After closing and reopening the page, Resume progress retrieved the
+snapshot and verified every byte. This proves IndexedDB persistence in that
+browser, not the combined emulator/WebGPU restore or desktop Chrome behavior.
+Local evidence: `work/double-dash-storage-proof.png` (ignored).
+
 Keyboard controls follow the emulator's bindings:
 
 | Input | Key |

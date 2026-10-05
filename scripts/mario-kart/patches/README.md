@@ -80,4 +80,6 @@ timeout now returns `loaded: false`. This is a worker-only change; it needs no
 native rebuild. The actual compiled core passed `npm run mario-kart:check-state`:
 a 10,245,299-byte Double Dash state was serialized, copied into a new virtual
 file, loaded, and confirmed by generation advancing from 0 to 1 with the core
-still Running. Browser WebGPU restoration and IndexedDB remain unverified.
+still Running. Browser WebGPU restoration remains unverified. IndexedDB was
+checked separately with a synthetic snapshot and a close/reopen cycle in the
+Codex in-app browser; that does not prove the complete emulator restore path.
