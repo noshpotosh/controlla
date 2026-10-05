@@ -11,6 +11,13 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
 const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
 const nativeCpu = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp');
 const nativeFifo = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/Fifo.cpp');
+const pairedSignOperations = readFileSync(nativeCpu, 'utf8').includes('WASM paired-sign candidate');
+if (pairedSignOperations) {
+  if (output === defaultOutput) throw new Error('Paired sign candidate requires an isolated DOLPHIN_WASM_OUTPUT_DIR.');
+  const check = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0017-inline-paired-sign-operations.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('Paired sign source does not match patch 0017: ' + check.stderr);
+}
 const scaleZeroQuantizedStores = readFileSync(nativeCpu, 'utf8').includes('WASM scale-zero quantized store candidate');
 if (scaleZeroQuantizedStores) {
   if (output === defaultOutput) throw new Error('Quantized store candidate requires an isolated DOLPHIN_WASM_OUTPUT_DIR.');
@@ -94,6 +101,8 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   patches: ['0001-four-controller-state.patch', '0002-controller-worker-transport.patch', '0003-four-controller-devices.patch', '0007-restore-console-depth-conversion.patch', ...(destinationAlphaPrototype ? ['0008-emulate-destination-alpha.patch'] : []), ...(fifoGateDiagnostics ? ['0009-observe-fifo-drain-gates.patch'] : []), ...(fifoIdleSleep ? ['0011-sleep-empty-wasm-fifo.patch'] : []), ...(pixelEngineDiagnostics ? ['0012-observe-pixel-engine-finish.patch'] : []), ...(cachedCodeInvalidation ? ['0013-preserve-cached-code-invalidation.patch'] : []), ...(boundedGpuDistance ? ['0014-bound-cpu-gpu-distance.patch'] : [])].map(name => ({ name, sha256: hash(resolve(repo, 'scripts/mario-kart/patches', name)) })),
   boundedGpuDistance,
   scaleZeroQuantizedStores,
+  pairedSignOperations,
+  pairedSignPatchSha256: pairedSignOperations ? hash(resolve(repo, 'scripts/mario-kart/patches/0017-inline-paired-sign-operations.patch')) : null,
   quantizedStorePatchSha256: scaleZeroQuantizedStores ? hash(resolve(repo, 'scripts/mario-kart/patches/0016-inline-scale-zero-quantized-stores.patch')) : null,
   fifoIdleSleep,
   cachedCodeInvalidation,

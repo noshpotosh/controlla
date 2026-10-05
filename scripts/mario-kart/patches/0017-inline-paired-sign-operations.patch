@@ -1,0 +1,53 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -4757,6 +4757,27 @@
+   body.push_back(0x40);
+ }
+ 
++// WASM paired-sign candidate: bit-preserving moves and sign operations.
++void EmitPairedSingleSign(std::vector<u8>& body, const WasmStateLayout& layout,
++                          const PPCAnalyst::CodeOp& op, u32 downcount)
++{
++  const UGeckoInstruction inst = op.inst;
++  EmitFpuAvailableOrFallback(body, op, layout, downcount);
++  for (u32 lane = 0; lane < 2; ++lane)
++  {
++    EmitStateStoreU32Prefix(body);
++    EmitStateLoadF64(body, PsOffset(layout, inst.FB, lane));
++    if (inst.SUBOP10 == 136 || inst.SUBOP10 == 264)
++      body.push_back(0x99);  // f64.abs preserves payload bits.
++    if (inst.SUBOP10 == 40 || inst.SUBOP10 == 136)
++      body.push_back(0x9a);  // f64.neg toggles only the sign bit.
++    EmitStateStoreF64Suffix(body, PsOffset(layout, inst.FD, lane));
++  }
++  body.push_back(0x05);
++  EmitFpCall(body, op, downcount);
++  body.push_back(0x0b);
++}
++
+ void EmitPairedSingleMerge(std::vector<u8>& body, const WasmStateLayout& layout,
+                            const PPCAnalyst::CodeOp& op, u32 downcount)
+ {
+@@ -5111,7 +5132,8 @@
+   case 55:  // stfdu
+     return true;
+   case 4:
+-    return (IsPairedSingleMergeSubop(inst.SUBOP10) ||
++    return (inst.SUBOP10 == 40 || inst.SUBOP10 == 72 || inst.SUBOP10 == 136 ||
++            inst.SUBOP10 == 264 || IsPairedSingleMergeSubop(inst.SUBOP10) ||
+             IsPairedSingleArithmeticSubop(inst.SUBOP5)) &&
+            !inst.Rc;
+   case 59:
+@@ -5850,6 +5872,12 @@
+   switch (inst.OPCD)
+   {
+   case 4:
++    if ((inst.SUBOP10 == 40 || inst.SUBOP10 == 72 || inst.SUBOP10 == 136 ||
++         inst.SUBOP10 == 264) && !inst.Rc)
++    {
++      EmitPairedSingleSign(body, layout, op, downcount);
++      return true;
++    }
+     if (IsPairedSingleMergeSubop(inst.SUBOP10) && !inst.Rc)
+     {
+       EmitPairedSingleMerge(body, layout, op, downcount);
