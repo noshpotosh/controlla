@@ -1444,3 +1444,14 @@ measurements were not run. The screenshot shows an active Luigi Circuit race
 but does not establish full-race or all-track fidelity. Paused without saving
 over the comparison state. Evidence: `work/double-dash-sum-helper-{a,b}.json`
 and `-paused.png`. The candidate remains isolated from the normal runtime.
+
+Measured the matching broad-profile core without patch 0019, with the same
+saved race and URL settings (`ppcprof=0`). Presented frames advanced
+1,590 → 2,759 in 40.064285s (29.18 fps), speed 54% → 59%. The preceding
+candidate interval was 33.26 fps, a 13.99% difference in this pair. This is
+stronger evidence than comparison with the older guarded run, but only one
+interval per core has been measured and their frame ranges are not identical;
+it does not establish a repeatable patch effect. Both remain below full speed.
+Baseline core SHA starts `77487fd1`; candidate starts `40171cdf`. Paused the
+baseline without overwriting the save. Evidence:
+`work/double-dash-sum-baseline-{a,b}.json` and `-paused.png`.
