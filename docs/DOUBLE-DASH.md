@@ -1323,3 +1323,15 @@ sample was slower than the preceding mixed-tier screen; it does not establish
 a repeatable tier ranking because no repeated paired comparison was run.
 Neither tier is near full speed. Evidence:
 `work/double-dash-paired-guarded-{a,b}.json` and final `b.png`.
+
+Enabled existing `ppcprof=1` on guarded paired-sign core to collect native block
+and slice timing. Later telemetry published 995,579,196 blocks / 972,245 samples
+at rate 1/1,024, but the current window average rounded to 0 microseconds;
+the top window included `0x800a9740` (psq_l), 28 samples / 30us, max 20us.
+This sparse microsecond-resolution window is too weak to identify the dominant
+execution cost. The worst recorded slice was 53,789us, of which 53,730us was
+VI end-field throttling (requested 49,236us), not useful instruction work.
+Profiling also disables the native block redispatch shortcut, so throughput
+with profiling must not be compared as normal-play performance. These results
+justify improving measurement before further opcode optimization.
+Evidence: `work/double-dash-paired-ppc-profile{,-later}.json`.
