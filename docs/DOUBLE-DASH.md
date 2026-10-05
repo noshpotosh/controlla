@@ -751,3 +751,29 @@ Evidence: `work/double-dash-alpha-native-performance.json`. Next measurement
 should use differences between two restored-race captures and enable the
 existing core slice profiler to attribute emulation/advance/throttle time.
 The runtime remains experimental and is not promoted by these measurements.
+
+The follow-up steady-state window (`double-dash-alpha-steady-a.json` to
+`double-dash-alpha-steady-b.json`, ignored under `work/`) spans 856 frames
+and 59.577 seconds with checkpoint generation 1 throughout. Estimated native
+FIFO decode cost is 14.944 ms/frame; shader translation is 0.013 ms/frame.
+Browser command drain time is 16.356 ms/frame. Native upload copying is
+1.953 ms/frame, ring publication 1.601 ms/frame, draw resources 2.079 ms/frame,
+and geometry commit 0.774 ms/frame. FIFO decode surrounds `RunFifo`, including
+nested draw/upload work, so these phase estimates overlap. The command drain
+measurement covers browser CPU replay, not GPU completion.
+
+Source inspection found that `ppcprof=1` disables Cached Interpreter block
+redispatch (`CachedInterpreter.cpp`, `redispatch_enabled`). Consequently PPC
+profiled speed cannot serve as an unchanged-runtime baseline. Its block/slice
+attribution can locate work, but any optimization must be compared afterward
+with profiling off. The steady-state evidence above leaves profiling off.
+
+The bounded PPC attribution capture at frame 750, generation 1, reports
+14 percent speed with redispatch disabled. Its worst slice is 72.304 ms:
+71.725 ms in timing advance, 0.579 ms in execution, no compilation, throttle,
+or DVD wait in that slice, and event `other-core-timing`. This is worst-case
+evidence rather than an average. The run-loop sample average is 57 us over
+567,946 slices, spanning boot and restore. Inspect the timing event callbacks
+before concluding that CPU instruction execution dominates. Capture:
+`work/double-dash-alpha-ppc-attribution.json`; visible race proof:
+`work/double-dash-alpha-timing-race.png`.
