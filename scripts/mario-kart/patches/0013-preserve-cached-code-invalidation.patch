@@ -1,0 +1,33 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -10592,26 +10592,10 @@
+     }
+ 
+     const u32 line_count = extra_iterations + 1;
+-    bool skipped_large_data_flush = false;
+-#ifdef __EMSCRIPTEN__
+-    // Large dcb* sweeps are overwhelmingly data-buffer flushes in the browser path. Keeping small
+-    // invalidations preserves the self-modifying-code heuristic while avoiding multi-megabyte
+-    // block-cache scans in hot post-boot loops. Additionally, when the experimental WASM JIT is
+-    // not active (interpreter-only mode), there are no compiled blocks to invalidate, so every
+-    // invalidation is wasted work - skip them all.
+-    skipped_large_data_flush =
+-        !s_wasm_jit_enabled || line_count > LARGE_DCBX_DATA_FLUSH_SKIP_LINES;
+-#endif
+-    if (skipped_large_data_flush)
+-    {
+-      ++s_fast_dcbx_loop_skipped_large_invalidations;
+-      s_fast_dcbx_loop_skipped_large_lines =
+-          SaturatingAddU32(s_fast_dcbx_loop_skipped_large_lines, line_count);
+-    }
+-    else
+-    {
+-      system.GetJitInterface().InvalidateICacheLines(address, line_count);
+-    }
++    // Preserve CachedInterpreter block invalidation even when the optional
++    // WASM JIT is off. Large cache sweeps can cover reused executable memory.
++    // WASM cached-code invalidation candidate: keep batching, invalidate all lines.
++    system.GetJitInterface().InvalidateICacheLines(address, line_count);
+ 
+     if (extra_iterations != 0)
+     {
