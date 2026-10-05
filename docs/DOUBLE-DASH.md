@@ -1702,3 +1702,19 @@ establish a repeatable gain. Both use the same restored idle race workload.
 The candidate retains reference handlers and passes the concrete arithmetic
 regression; full FP edge cases, sustained driving throughput and full-speed
 original fidelity remain unverified. Baseline progress was not overwritten.
+
+### Repeated direct reference dispatch measurement (2026-10-05)
+
+A fresh reload/boot restored the same saved race with candidate SHA e8a5d7fa,
+profile and classifier disabled. Reports
+`work/double-dash-direct-repeat-{a,b}.json` span 1293 presented frames over
+45.931335 monotonic seconds: 28.1507 fps, with no renderer errors.
+Screenshot `work/double-dash-direct-repeat-paused.png` shows the idle kart
+on the starting straight, Lap 1/3 at 53.551 seconds; emulator is paused and
+progress baseline remains untouched.
+
+The two candidate intervals measure 27.5880 and 28.1507 fps, versus the one
+reference-table interval at 24.6283 fps. Candidate repeat consistency is useful
+but does not establish the gain until a repeated baseline comparison is
+collected. These idle race intervals still fall far short of original full
+speed and do not qualify sustained motion-controlled racing.
