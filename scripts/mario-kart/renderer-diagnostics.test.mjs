@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { installRendererDiagnostics } from './renderer-diagnostics.mjs';
+
+function environment(t, search) {
+  const elements = [], intervals = [], cleanups = [];
+  const replace = (name, value) => {
+    const old = Object.getOwnPropertyDescriptor(globalThis, name);
+    Object.defineProperty(globalThis, name, { configurable: true, value });
+    t.after(() => old ? Object.defineProperty(globalThis, name, old) : Reflect.deleteProperty(globalThis, name));
+  };
+  replace('location', { search });
+  replace('document', {
+    createElement(tag) { const element = { tag, append() {} }; elements.push(element); return element; },
+    body: { append() {} }, querySelector() { return { append() {} }; },
+  });
+  replace('window', { addEventListener(event, callback) { assert.equal(event, 'pagehide'); cleanups.push(callback); } });
+  replace('setInterval', callback => { intervals.push(callback); return intervals.length; });
+  const cleared = [];
+  replace('clearInterval', id => cleared.push(id));
+  return { elements, intervals, cleanups, cleared };
+}
+test('renderer diagnostics are opt-in and never request a worker report by default', t => {
+  const env = environment(t, '');
+  installRendererDiagnostics({ getAdapter() { throw new Error('Should not read worker'); } });
+  assert.equal(env.elements.length, 0);
+  assert.equal(env.intervals.length, 0);
+});
+test('diagnostics preserve worker GPU errors, serialize the current frame and retire polling', async t => {
+  const env = environment(t, '?rendererdiagnostics=1');
+  const renderer = { commandReplay: { draw: 12, shaderFail: 1 }, errors: [{ kind: 'shader-compilation', message: 'bad binding' }] };
+  installRendererDiagnostics({ getAdapter: () => ({ loaded: true, async request(type) { assert.equal(type, 'rendererDiagnostics'); return renderer; } }),
+    getFrame: () => ({ frame: 99 }) });
+  await env.intervals[0]();
+  assert.equal(env.elements[0].hidden, true);
+  const report = JSON.parse(env.elements[0].textContent);
+  assert.deepEqual(report.renderer, renderer);
+  assert.equal(report.frame.frame, 99);
+  env.cleanups[0](); assert.deepEqual(env.cleared, [1]);
+});
+test('input probes hold for game frames and release when the target is reached', t => {
+  const env = environment(t, '?rendererdiagnostics=1&probeinputs=1');
+  let frame = 100;
+  const inputs = [];
+  installRendererDiagnostics({ getAdapter: () => ({ loaded: true }), getFrame: () => ({ frame }),
+    setProbeInput: state => inputs.push(state) });
+  const start = env.elements.find(element => element.textContent === 'Start (30 frames)');
+  start.onclick(); assert.equal(inputs.at(-1).mask, 16);
+  frame = 129; env.intervals[1](); assert.equal(inputs.at(-1).mask, 16);
+  frame = 130; env.intervals[1](); assert.equal(inputs.at(-1), null);
+  env.cleanups.forEach(callback => callback()); assert.deepEqual(env.cleared, [1, 2]);
+});

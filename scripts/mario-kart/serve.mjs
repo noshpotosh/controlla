@@ -110,6 +110,8 @@ localButton.addEventListener('click', async () => {
 finishGameShell();
 `;
 const boot = `
+installRendererDiagnostics({ getAdapter: () => host.adapter, getFrame: () => lastFrameInfo,
+  setProbeInput: state => { controllaPhone.state = state; controllaPhone.at = performance.now(); syncInput('Input probe'); } });
 if (new URLSearchParams(location.search).get('embed') === '1') {
   installGameShell();
   void installEmbeddedGame({ getAdapter: () => host.adapter, mount: mountFile,
@@ -153,7 +155,7 @@ const handleRequest = async (request, response) => {
       response.writeHead(405).end(); return;
     }
     if (!['GET', 'HEAD'].includes(request.method)) { response.writeHead(405).end(); return; }
-    if (['/progress.mjs', '/game-shell.mjs', '/game-shell.css', '/embedded.mjs', '/embedded.css'].includes(pathname)) {
+    if (['/progress.mjs', '/game-shell.mjs', '/game-shell.css', '/embedded.mjs', '/embedded.css', '/renderer-diagnostics.mjs'].includes(pathname)) {
       response.setHeader('Content-Type', extensionTypes[extname(pathname)]);
       response.end(request.method === 'HEAD' ? undefined : readFileSync(resolve(repo, 'scripts/mario-kart', pathname.slice(1))));
       return;
@@ -192,7 +194,7 @@ const handleRequest = async (request, response) => {
       const app = readFileSync(path, 'utf8').replace(
         'host.setInputState(inputStateFromPressed(combinedPressed, gamepadInputState));',
         'if (new URLSearchParams(location.search).get("embed") !== "1") host.setInputState(controllaPhone.state?.connected && performance.now() - controllaPhone.at <= 250 ? controllaPhone.state : inputStateFromPressed(combinedPressed, gamepadInputState));');
-      response.end('import { installGameShell, finishGameShell } from "../game-shell.mjs";\nimport { installProgressControls } from "../progress.mjs";\nimport { installEmbeddedGame } from "../embedded.mjs";\nconst controllaPhone = { state: null, at: 0 };\n' + app + boot); return;
+      response.end('import { installGameShell, finishGameShell } from "../game-shell.mjs";\nimport { installProgressControls } from "../progress.mjs";\nimport { installEmbeddedGame } from "../embedded.mjs";\nimport { installRendererDiagnostics } from "../renderer-diagnostics.mjs";\nconst controllaPhone = { state: null, at: 0 };\n' + app + boot); return;
     }
     if (relative === 'index.html') {
       const html = readFileSync(path, 'utf8').replaceAll('<title>wasm-dolphin</title>', '<title>Controlla · Double Dash</title>').replace('<h1>wasm-dolphin</h1>', '<h1>controlla</h1>').replace('</head>', '<link rel="stylesheet" href="./game-shell.css"><link rel="stylesheet" href="./embedded.css"></head>');

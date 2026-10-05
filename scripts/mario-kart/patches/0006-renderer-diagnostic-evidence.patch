@@ -1,0 +1,24 @@
+--- a/src/upstream-discio-worker.js
++++ b/src/upstream-discio-worker.js
+@@ -715,6 +715,13 @@
+     ...rendererDiagnostics,
+     coreSelection: { ...rendererDiagnostics.coreSelection },
+     activePresenterBackend: renderBackend,
++    commandReplay: {
++      ...webGpuExecStats,
++      canvasOwnedByCommandRing: cmdRingOwnsCanvas,
++      shaderOk: webGpuObjects.shaderOk,
++      shaderFail: webGpuObjects.shaderFail,
++      pipelines: { ...webGpuPcfg },
++    },
+     metrics: metricsDiagnosticsPayload(),
+     errors: rendererDiagnostics.errors.map((entry) => ({ ...entry })),
+     emscriptenPrintErr: [...rendererDiagnostics.emscriptenPrintErr],
+@@ -14013,6 +14020,7 @@
+         }
+       } else {
+         webGpuObjects.shaderFail += 1;
++        recordRendererError("shader-compilation", errs.map(error => `L${error.lineNum}:${error.linePos} ${error.message}`).join("; "));
+         if (!self._webGpuShaderFirstCompileErr) {
+           self._webGpuShaderFirstCompileErr = true;
+           const e0 = errs[0];

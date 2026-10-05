@@ -66,7 +66,7 @@ node scripts/mario-kart/prepare-core.mjs
 node scripts/mario-kart/configure-macos.mjs
 ```
 
-Preparation applies all five Controlla patches idempotently, copies the shared
+Preparation applies all six Controlla patches idempotently, copies the shared
 packet validator into the runtime, and adds the port-aware setter to the full Core Emscripten export list. The third patch configures four emulated
 GameCube controller devices. These changes affect only the isolated build
 checkout, not the current prebuilt runtime.
@@ -91,3 +91,14 @@ settings URL, including Software. Upstream removed the default Software value
 when applying settings, allowing the automatic GM4E01 profile to replace it
 with WebGPU hardware at the next mount. All four renderer choices now survive
 the settings URL round trip. This is a JavaScript-only patch.
+
+## Renderer evidence
+
+`0006-renderer-diagnostic-evidence.patch` adds draw, presentation, missing-resource,
+shader compilation, and pipeline counters to the worker diagnostic report. It
+also records shader compilation errors in the bounded error history, alongside
+existing GPU validation errors. It changes observation only and needs no native
+rebuild. Add `rendererdiagnostics=1` to the standalone diagnostic URL to capture
+the report in the hidden `controlla-renderer-diagnostics` DOM element. Optional
+`probeinputs=1` adds explicit 30-game-frame menu input probes; it is absent from
+the normal room and game presentation.
