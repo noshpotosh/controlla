@@ -1642,3 +1642,22 @@ and checks loader/WASM hashes before execution. Output is retained in
 and an unfixed-emitter negative control remain to be exercised. The previous server 10756 exited 130; replacement server 82779 verifies
 and serves the new manifest on port 8081. The browser remains paused with
 the earlier binary loaded until its next reload.
+
+### Native negative control detects scalar alias defect (2026-10-05)
+
+Negative-control build session 52415 completed successfully with patch 0022
+and the original arithmetic emitters (patch 0021 temporarily reversed). Its
+manifest records `referencePairedArithmetic: false`, regression enabled, and
+WASM SHA-256 `79182c863a1209d3f8d3b8e9fb36075934afcdfd681e8909e6069be92a5a4865`.
+The same integrity-checking regression runner fails with code 71, the first
+`ps_muls0` alias result check. The fixed binary passes via
+`npm run mario-kart:check-arithmetic`. This establishes an actual generated-WASM
+regression and its correction, rather than a source-only prediction.
+
+Negative output is preserved in `work/double-dash-paired-negative-core`;
+logs are `/tmp/controlla-paired-negative-build.log` and
+`/tmp/controlla-paired-negative-check.log`. Patch 0021 was reapplied and reverse
+applicability confirmed. Configuration was successfully restored to the fixed output.
+The paused browser and test server continue to use the fixed candidate.
+This validation does not establish full game fidelity or solve its performance
+cost. Further exact arithmetic optimization remains necessary.
