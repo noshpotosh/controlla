@@ -9,13 +9,26 @@ const client = [...crypto.getRandomValues(new Uint8Array(18))].map(byte => byte.
 const status = document.querySelector('#status');
 const connection = document.querySelector('#connection');
 const buttons = new Map();
-let tilt = NaN, sampleAt = 0, enabled = false, sequence = 0, busy = false;
-document.querySelector('#enable').onclick = async () => {
+let tilt = NaN, sampleAt = 0, enabled = false, sequence = 0, busy = false, focused = true;
+let snapshotAt = performance.now();
+const enableButton = document.querySelector('#enable');
+function useTouch(message = 'Touch steering enabled. Tap Enable motion to use sensors again.') {
+  enabled = false;
+  tilt = NaN;
+  sampleAt = 0;
+  steering.reset();
+  fallback.value = '128';
+  enableButton.textContent = 'Enable motion';
+  status.textContent = message;
+}
+enableButton.onclick = async () => {
+  if (enabled) { useTouch(); return; }
   try {
     if (!isSecureContext) throw new Error('Motion needs a trusted HTTPS phone link. Touch steering is available.');
     if (typeof DeviceMotionEvent === 'undefined') throw new Error('Motion sensors unavailable. Use touch steering.');
     if (DeviceMotionEvent.requestPermission && await DeviceMotionEvent.requestPermission() !== 'granted') throw new Error('Motion permission denied.');
     enabled = true;
+    enableButton.textContent = 'Use touch steering';
     status.textContent = 'Motion enabled. Hold a comfortable angle and tap Recenter.';
   } catch (error) { status.textContent = error.message; }
 };
@@ -38,10 +51,14 @@ for (const button of document.querySelectorAll('[data-mask]')) {
   button.onpointerup = button.onpointercancel = button.onlostpointercapture = event => buttons.delete(event.pointerId);
 }
 const fallback = document.querySelector('#fallback');
+fallback.onpointerdown = () => { if (enabled) useTouch(); };
 fallback.onpointerup = fallback.onpointercancel = () => { fallback.value = '128'; };
 function snapshot(connected) {
+  const now = performance.now();
+  const dtMs = Math.max(0, now - snapshotAt);
+  snapshotAt = now;
   const mask = connected ? [...buttons.values()].reduce((a, b) => a | b, 0) : 0;
-  return { connected, mask, stickX: connected ? (enabled ? steering.sample(tilt, 40, { sampleAgeMs: performance.now() - sampleAt }) : Number(fallback.value)) : 128,
+  return { connected, mask, stickX: connected ? (enabled ? steering.sample(tilt, dtMs, { sampleAgeMs: now - sampleAt }) : Number(fallback.value)) : 128,
     stickY: 128, cStickX: 128, cStickY: 128, triggerLeft: mask & 32 ? 255 : 0, triggerRight: mask & 64 ? 255 : 0, analogA: mask & 1 ? 255 : 0, analogB: mask & 2 ? 255 : 0 };
 }
 async function send(connected = true) {
@@ -56,6 +73,13 @@ async function send(connected = true) {
   finally { busy = false; }
 }
 function release() { buttons.clear(); steering.reset(); fallback.value = '128'; void send(false); }
-window.addEventListener('blur', release);
+window.addEventListener('blur', () => { focused = false; release(); });
+window.addEventListener('focus', () => { focused = true; snapshotAt = performance.now(); });
+function orientationChanged() {
+  release();
+  useTouch('Phone orientation changed. Enable motion and recenter for your new grip.');
+}
+if (screen.orientation?.addEventListener) screen.orientation.addEventListener('change', orientationChanged);
+else window.addEventListener('orientationchange', orientationChanged);
 document.addEventListener('visibilitychange', () => { if (document.hidden) release(); });
-setInterval(() => { if (!document.hidden) void send(); }, 40);
+setInterval(() => { if (!document.hidden && focused) void send(); }, 40);

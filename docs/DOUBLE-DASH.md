@@ -124,6 +124,10 @@ It supports recentering at the held angle, sensitivity, a neutral deadzone,
 and sample-rate-independent smoothing. Missing, disconnected, or over-250-ms-old
 motion samples immediately return steering to center. Acceleration, braking,
 drift, items, rider switching, and Start remain explicit touch buttons.
+After enabling motion, **Use touch steering** switches back to the slider;
+touching the slider also selects it. Rotating the screen releases old input
+and requires enabling motion and recentering for the new grip. Unfocused or
+hidden pages release their controls and stop sending connected packets.
 
 The controller page and relay now connect the mapper to emulator port 1 (zero-based
 port 0). Click **Player 1 motion** on the emulator screen. The resulting link
@@ -158,8 +162,9 @@ phone origin. For a reverse proxy, set only `DOUBLE_DASH_PHONE_ORIGIN`; omit
 the certificate/key variables. A self-signed certificate that the phone does
 not trust will not provide usable motion access.
 
-The mapper and relay pass twelve unit tests including stale-input release and
-controller ownership. Served emulator-module syntax and the controller route
+The Double Dash suite passes eighteen tests including stale-input release,
+controller ownership, and actual phone-script lifecycle behavior against browser
+event doubles. Served emulator-module syntax and the controller route
 were checked. End-to-end steering, motion permissions, landscape-axis direction,
 and gameplay still require real browser/device validation.
 
