@@ -1718,3 +1718,24 @@ reference-table interval at 24.6283 fps. Candidate repeat consistency is useful
 but does not establish the gain until a repeated baseline comparison is
 collected. These idle race intervals still fall far short of original full
 speed and do not qualify sustained motion-controlled racing.
+
+### Repeated reference baseline comparison (2026-10-05)
+
+The preserved reference arithmetic binary d8a9863f (regression patch included,
+direct-dispatch patch absent) was served by session 42424 after candidate
+server 66790 exited 130. Fresh reload/boot restored the same saved race, and
+browser active SHA matched the baseline. Renderer, CPU/JIT and disabled
+profile/classifier settings matched the candidate. Captures
+`work/double-dash-reference-baseline-repeat-{a,b}.json` span 942 presented
+frames over 47.96046 monotonic seconds: 19.6412 fps. No renderer errors were
+reported. The paused screenshot shows the idle starting straight at 46.942
+race seconds. Baseline progress was not overwritten.
+
+Baseline intervals are 24.6283 and 19.6412 fps, while direct-reference dispatch
+intervals are 27.5880 and 28.1507 fps. Both baseline intervals are slower,
+supporting retaining patch 0023 as a candidate, with its native arithmetic
+regression already passing. Baseline variation and nonidentical race-clock
+windows preclude a precise percentage-gain claim. These measurements do not
+prove full-speed gameplay, driving performance, or complete original fidelity.
+The live server/browser currently use the paused baseline; isolated candidate
+binaries remain preserved for the next experiment.
