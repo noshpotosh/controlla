@@ -1739,3 +1739,23 @@ windows preclude a precise percentage-gain claim. These measurements do not
 prove full-speed gameplay, driving performance, or complete original fidelity.
 The live server/browser currently use the paused baseline; isolated candidate
 binaries remain preserved for the next experiment.
+
+### Expanded native paired arithmetic comparison (2026-10-05)
+
+Patch 0024 adds 3744 differential cases to the exported arithmetic smoke:
+13 A-form paired operations, three aliased destination registers, eight
+FPSCR low-bit modes (rounding and NI), and 12 rotated operand vectors.
+Values cover signed zero, finite rounding boundaries, single subnormals,
+large finite values, infinities and quiet/signaling NaNs. Each case first runs
+the reference table handler, then resets inputs and runs the emitted WASM
+block, comparing both result lanes bit-for-bit, complete FPSCR and next-PC.
+The original smoke inputs are reset before its existing tests run. This
+qualifies emitted arithmetic against the native reference, not independently
+against physical GameCube hardware or all exception-enable modes.
+
+The builder/runner verify patch 0024 provenance. Syntax, reverse applicability
+of patches 0022/0024, and isolated configuration passed. Build session 61226
+is running to `work/double-dash-paired-differential-core`, logging to
+`/tmp/controlla-paired-differential-build.log`. Prior candidate binaries remain
+preserved, and browser baseline stays paused. Differential execution is
+pending compilation.

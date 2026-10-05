@@ -11,6 +11,9 @@ assert.equal(manifest.pairedArithmeticRegression, true, 'Candidate must include 
 const hash = file => createHash('sha256').update(readFileSync(file)).digest('hex');
 assert.equal(manifest.pairedArithmeticRegressionPatchSha256,
   hash(new URL('./patches/0022-test-paired-arithmetic-aliases.patch', import.meta.url)));
+if (manifest.pairedDifferentialRegression)
+  assert.equal(manifest.pairedDifferentialRegressionPatchSha256,
+    hash(new URL('./patches/0024-differential-paired-arithmetic.patch', import.meta.url)));
 for (const [file, expected] of [['dolphin-core-upstream.wasm', manifest.wasmSha256],
   ['dolphin-core-upstream.js', manifest.loaderSha256]])
   assert.equal(hash(resolve(output, file)), expected, `Integrity mismatch: ${file}`);
@@ -21,6 +24,7 @@ try {
   const result = core.ccall('RunPpcWasmSinglePrecisionArithmeticSmoke', 'number', [], []);
   assert.equal(result, 1, `Generated-WASM arithmetic regression failed with code ${result}`);
   console.log('Generated WASM scalar alias results, FPRF updates and next-PC passed. No game was booted.');
+  if (manifest.pairedDifferentialRegression) console.log('All 3744 paired differential cases passed.');
   process.exit(0);
 } catch (error) {
   console.error(error.message);

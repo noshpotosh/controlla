@@ -1,0 +1,62 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -12148,6 +12148,59 @@
+         handle, static_cast<int>(reinterpret_cast<std::uintptr_t>(&state)));
+   };
+ 
++  // WASM paired differential regression: compare emitted blocks with reference.
++  const std::array<u32, 13> arithmetic_ops = {10, 11, 12, 13, 14, 15, 20, 21, 25, 28, 29, 30, 31};
++  const std::array<u64, 12> values = {
++      0x0000000000000000ULL, 0x8000000000000000ULL,
++      0x3ff0000000000000ULL, 0xbff0000000000000ULL,
++      0x3ff0000010000000ULL, 0x3eb0000000000000ULL,
++      0x47efffffe0000000ULL, 0x36a0000000000000ULL,
++      0x7ff0000000000000ULL, 0xfff0000000000000ULL,
++      0x7ff8000000001234ULL, 0x7ff0000000000001ULL};
++  for (const u32 subop : arithmetic_ops)
++  {
++    for (const u32 destination : {2u, 3u, 4u})
++    {
++      for (u32 mode = 0; mode < 8; ++mode)
++      {
++        for (u32 vector = 0; vector < values.size(); ++vector)
++        {
++          const auto reset_inputs = [&] {
++            for (u32 reg = 2; reg <= 4; ++reg)
++              state.ps[reg].SetBoth(values[(vector + reg - 2) % values.size()],
++                                    values[(vector + reg + 1) % values.size()]);
++            state.fpscr.Hex = mode;
++            state.Exceptions = 0;
++          };
++          const auto inst = EncodeAFormForWasmBlockTest(4, destination, 2, 3, 4, subop);
++          reset_inputs();
++          Interpreter::GetInterpreterOp(inst)(Core::System::GetInstance().GetInterpreter(), inst);
++          const u64 expected0 = state.ps[destination].PS0AsU64();
++          const u64 expected1 = state.ps[destination].PS1AsU64();
++          const u32 expected_fpscr = state.fpscr.Hex;
++          reset_inputs();
++          if (run_op(inst, 0x80003300, 0x80003304) != 0)
++            return 100 + subop;
++          if (state.ps[destination].PS0AsU64() != expected0 ||
++              state.ps[destination].PS1AsU64() != expected1)
++            return 200 + subop;
++          if (state.fpscr.Hex != expected_fpscr)
++            return 300 + subop;
++          if (state.npc != 0x80003304)
++            return 400 + subop;
++        }
++      }
++    }
++  }
++  state.npc = 0;
++  state.fpscr.Hex = 0;
++  state.Exceptions = 0;
++  state.ps[1].Fill(0.0);
++  state.ps[2].Fill(1.5);
++  state.ps[3].Fill(2.25);
++  for (u32 reg = 4; reg <= 7; ++reg)
++    state.ps[reg].Fill(0.0);
++
+   if (run_op(EncodeAFormForWasmBlockTest(59, 1, 2, 3, 0, 21), 0x80003200, 0x80003204) != 0)
+     return 10;
+   if (!NearlyEqualForWasmBlockTest(state.ps[1].PS0AsDouble(), 3.75) ||

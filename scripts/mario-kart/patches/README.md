@@ -175,3 +175,7 @@ experimental and excluded from preparation; executing it requires a fresh build.
 that directly invokes the existing paired arithmetic handlers instead of table
 lookup/indirect dispatch. It adds no approximate arithmetic. Native regression
 and browser performance validation are required; preparation excludes it.
+
+`0024-differential-paired-arithmetic.patch` extends the native arithmetic smoke
+with 3744 generated-WASM/reference comparisons across operations, destination
+aliases, FPSCR modes and edge operands. Preparation excludes this experiment.
