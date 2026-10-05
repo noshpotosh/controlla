@@ -1335,3 +1335,20 @@ Profiling also disables the native block redispatch shortcut, so throughput
 with profiling must not be compared as normal-play performance. These results
 justify improving measurement before further opcode optimization.
 Evidence: `work/double-dash-paired-ppc-profile{,-later}.json`.
+
+The isolated precise-profile candidate completed compilation and passed the
+four-port native input ABI check (179 exports). WASM SHA-256:
+`33a8e55cce925633f994124c563b9d5dedda4fb2a5157290e9c4e6ac26746b66`.
+Restored the same saved race with guarded JIT and `ppcprof=1`. Two published
+windows retained 99,718 and 99,146 samples, averaging 525ns and 493ns per
+sampled block. Nanosecond units preserve clock precision; they do not imply
+nanosecond clock resolution. Both windows led with `0x8005b5fc` (rlwinm),
+`0x800a9740` (psq_l), and `0x800a9774` (stwu), although their ordering varied.
+The first block accumulated 665,344ns / 1,412 samples and 608,256ns / 1,381
+samples respectively. This repeatability supports examining these blocks
+before another speculative opcode change; it does not prove total CPU cost
+or a full-speed improvement. Profiling disables block redispatch and retains
+its own overhead. The 850 presented-frame interval took 40.06412 seconds
+(21.22 fps), so it is not a normal-play throughput qualification. Paused after
+capture without overwriting the saved race. Evidence:
+`work/double-dash-precise-profile-{a,b}.json` and `-paused.png`.
