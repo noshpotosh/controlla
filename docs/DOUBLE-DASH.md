@@ -510,3 +510,24 @@ binding offsets, not a GPU uniform readback. It retains last matched draws
 across startup and race, so non-course pipeline values may belong to menus.
 Next inspect the race's later blend draws and framebuffer copy/present chain
 before altering fog or forcing output colors.
+
+### Race draw-order trace (2026-10-05)
+
+The isolated diagnostic retains up to 600 draws per presented frame, recording
+framebuffer, pipeline, index/vertex count, texture-group ID and matched pixel
+constants. The generation-1 Luigi Circuit capture has 465 draws and no
+renderer errors. Local evidence:
+`work/double-dash-race-draw-order.json` and the matching PNG.
+
+In that capture draw 293 is a six-index depth-independent alpha-blended EFB
+quad (pipeline 576 / fragment 575), followed by draws into framebuffer 71
+and 47. Its pixel constants include color register 1 `[0,0,255,0]`. The
+trace alone does not establish its coverage or whether it darkens the world.
+A separate ignored overlay-bisection server can skip this fragment ID; IDs
+must be verified after reboot before interpreting its result. This is a local
+diagnostic only and must not become a shipped rendering fix.
+
+The initial ID-based probe was inconclusive: the reboot had no fragment 575,
+so the skip condition never targeted that shader. A source-text match has
+replaced the ephemeral ID in the ignored probe; it still needs a fresh
+verified run. Do not interpret the initial probe image as an overlay test.
