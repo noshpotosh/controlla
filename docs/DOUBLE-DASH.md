@@ -1194,3 +1194,14 @@ menu rendered at core/presented frames 13,003/12,955, still generation 0.
 This verifies fresh-boot Start and Confirm transitions, not race completion
 or physical phone controls. Evidence: `work/double-dash-sync-start-input.json`
 and `work/double-dash-sync-fresh-menu.json` / `.png`.
+
+The same generation-0 synchronized dual-core boot completed the original
+one-player → Grand Prix → 50cc → Mario/Luigi → default kart → Mushroom Cup
+menu flow and entered Luigi Circuit. A 300-frame acceleration probe moved the
+kart from the grid onto the grass near the barrier; the live HUD showed lap
+1/3 and 19.942 seconds. Presented frames advanced 20,025 → 21,412 over
+41.934 seconds (33.08 fps), including countdown, input and subsequent idle.
+This verifies initial fresh-start driving without a restored checkpoint;
+it does not qualify full-race completion, sustained full speed or phone motion.
+Evidence: `work/double-dash-sync-fresh-race-{a,b}.json` and
+`work/double-dash-sync-fresh-race-driving.png`.
