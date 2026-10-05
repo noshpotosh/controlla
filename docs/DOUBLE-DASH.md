@@ -1455,3 +1455,12 @@ it does not establish a repeatable patch effect. Both remain below full speed.
 Baseline core SHA starts `77487fd1`; candidate starts `40171cdf`. Paused the
 baseline without overwriting the save. Evidence:
 `work/double-dash-sum-baseline-{a,b}.json` and `-paused.png`.
+
+Repeated the paired-sum candidate after reloading and restoring the same save:
+presented frames 1,803 → 3,265 in 44.135565s (33.13 fps), speed 58% → 59%.
+This agrees closely with the first 33.26 fps candidate interval. The matching
+baseline has only one 29.18 fps interval, so repeatability of the patch's
+relative effect remains unproven. Both candidate runs are primarily idle-race
+observations, not sustained driving or full-track fidelity qualification.
+Paused without changing the save. Evidence:
+`work/double-dash-sum-repeat-{a,b}.json` and `-paused.png`.
