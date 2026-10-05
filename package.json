@@ -10,6 +10,7 @@
     "dev:phone": "tsx scripts/phone-development.ts",
     "dev:lan": "tsx scripts/phone-development.ts --lan",
     "dev:mario-kart": "node scripts/mario-kart/dev.mjs",
+    "dev:mario-kart:candidate": "node scripts/mario-kart/dev.mjs --candidate",
     "dev:mario-kart:phone": "node scripts/mario-kart/dev.mjs --phone",
     "build": "vinext build && node --import tsx scripts/assert-production-bundle.ts",
     "lint": "oxlint",

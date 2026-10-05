@@ -25,3 +25,40 @@ test('rebuilt mode requires matching binary and loader evidence', async () => {
     assert.throws(() => selectRuntime(repo, 'unknown'), /must be/);
   } finally { await rm(repo, { recursive: true, force: true }); }
 });
+
+test('candidate mode checks arithmetic verification, patch provenance and exact binary integrity', async () => {
+  const repo = await mkdtemp(join(tmpdir(), 'controlla-candidate-'));
+  try {
+    const core = join(repo, 'work/candidate');
+    const patches = join(repo, 'scripts/mario-kart/patches');
+    await mkdir(core, { recursive: true });
+    await mkdir(patches, { recursive: true });
+    const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+    const wasm = Buffer.from('candidate wasm'), loader = Buffer.from('candidate loader');
+    await writeFile(join(core, 'dolphin-core-upstream.wasm'), wasm);
+    await writeFile(join(core, 'dolphin-core-upstream.js'), loader);
+    const manifest = { wasmSha256: hash(wasm), loaderSha256: hash(loader),
+      nativeInputAbiChecked: true, referencePairedArithmetic: true,
+      directReferenceDispatch: true, pairedDifferentialRegression: true,
+      pairedArithmeticVerification: { wasmSha256: hash(wasm), differentialCases: 3744 } };
+    for (const [name, field] of [
+      ['0021-reference-paired-arithmetic.patch', 'referencePairedArithmeticPatchSha256'],
+      ['0023-direct-reference-paired-dispatch.patch', 'directReferenceDispatchPatchSha256'],
+      ['0024-differential-paired-arithmetic.patch', 'pairedDifferentialRegressionPatchSha256'],
+    ]) {
+      await writeFile(join(patches, name), name);
+      manifest[field] = hash(name);
+    }
+    const save = () => writeFile(join(core, 'controlla-core-build.json'), JSON.stringify(manifest));
+    await save();
+    assert.equal(selectRuntime(repo, 'candidate', core).coreDirectory, core);
+    manifest.pairedArithmeticVerification.wasmSha256 = 'stale'; await save();
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /requires verified/);
+    manifest.pairedArithmeticVerification.wasmSha256 = hash(wasm); await save();
+    await writeFile(join(patches, '0023-direct-reference-paired-dispatch.patch'), 'changed');
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /provenance/);
+    await writeFile(join(patches, '0023-direct-reference-paired-dispatch.patch'), '0023-direct-reference-paired-dispatch.patch');
+    await writeFile(join(core, 'dolphin-core-upstream.js'), 'changed');
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /integrity/);
+  } finally { await rm(repo, { recursive: true, force: true }); }
+});

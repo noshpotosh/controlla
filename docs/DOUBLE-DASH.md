@@ -1777,3 +1777,27 @@ record qualifies the tested native comparison cases, not original hardware
 equivalence, exception-enable behavior, all possible operand combinations,
 or browser gameplay/performance. The new binary has not yet been browser
 validated; the paused baseline server/browser remain available.
+
+### Verified candidate in the ordinary game stage
+
+Run `npm run dev:mario-kart:candidate`, then select Double Dash from the shared
+Controlla game picker. This uses the isolated paired differential core and WebGPU
+inside the ordinary stage. Candidate selection checks the native input ABI, the
+3,744-case arithmetic verification, patch provenance, and loader/WASM hashes.
+The default core output is `work/double-dash-paired-differential-core`; override
+with `DOUBLE_DASH_CORE_OUTPUT_DIR`. These local build outputs remain ignored.
+
+Embedded boot previously waited indefinitely for a suspended AudioContext to
+resume before starting the core. Embedded mode now starts muted and uses the
+existing Enable sound button for a user gesture. Browser testing of the official
+candidate server reached the attract sequence with emulator controls hidden;
+clicking Enable sound completed and removed the button. Audible sound quality
+was not assessed. Screenshots are in `work/double-dash-embedded-candidate.png`
+and `work/double-dash-embedded-candidate-sound.png`.
+
+The complete candidate room launch was prevented by an existing vinext dev
+server in this checkout; that server was preserved. The shared picker/stage
+was verified earlier with the default runtime. Candidate runtime selection and
+embedded four-port input tests pass, as do TypeScript and renderer tests. This
+is a testing checkpoint, not a claim of original-speed gameplay or physical
+phone motion qualification.

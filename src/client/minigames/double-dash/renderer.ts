@@ -16,8 +16,9 @@ export class DoubleDashRenderer implements GameRenderer<DoubleDashState> {
       if (!parent) return;
       const frame = document.createElement('iframe');
       frame.title = 'Mario Kart: Double Dash!! game screen';
-      frame.src =
-        '/__double-dash/?embed=1&core=upstream&video=software&cpu=single&fastsw=0&wasmjit=1&presenter=2d';
+      frame.src = import.meta.env?.VITE_DOUBLE_DASH_RENDERER === 'wgpu'
+        ? '/__double-dash/?embed=1&core=upstream&video=wgpu&cpu=dual&wasmjit=1&jitwarmup=700'
+        : '/__double-dash/?embed=1&core=upstream&video=software&cpu=single&fastsw=0&wasmjit=1&presenter=2d';
       frame.allow = 'autoplay; fullscreen';
       Object.assign(frame.style, {
         position: 'absolute',

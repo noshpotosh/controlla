@@ -173,8 +173,11 @@ const handleRequest = async (request, response) => {
     }
     const isDisc = pathname === '/local-disc';
     const relative = pathname === '/' ? 'index.html' : pathname.slice(1);
-    const path = isDisc ? disc : resolve(runtime, relative);
-    if (!isDisc && (!path.startsWith(runtime + sep) || relative.split('/').some(part => part.startsWith('.')))) {
+    const candidateCore = runtimeSelection.coreDirectory &&
+      ['cores/dolphin/dolphin-core-upstream.js', 'cores/dolphin/dolphin-core-upstream.wasm'].includes(relative);
+    const assetRoot = candidateCore ? runtimeSelection.coreDirectory : runtime;
+    const path = isDisc ? disc : resolve(assetRoot, candidateCore ? relative.slice('cores/dolphin/'.length) : relative);
+    if (!isDisc && (!path.startsWith(assetRoot + sep) || relative.split('/').some(part => part.startsWith('.')))) {
       response.writeHead(404).end(); return;
     }
     if (!isDisc && !['index.html', 'icon.png'].includes(relative) && !['src/', 'cores/'].some(prefix => relative.startsWith(prefix))) {
@@ -193,7 +196,9 @@ const handleRequest = async (request, response) => {
     if (relative === 'src/app.js') {
       const app = readFileSync(path, 'utf8').replace(
         'host.setInputState(inputStateFromPressed(combinedPressed, gamepadInputState));',
-        'if (new URLSearchParams(location.search).get("embed") !== "1") host.setInputState(controllaPhone.state?.connected && performance.now() - controllaPhone.at <= 250 ? controllaPhone.state : inputStateFromPressed(combinedPressed, gamepadInputState));');
+        'if (new URLSearchParams(location.search).get("embed") !== "1") host.setInputState(controllaPhone.state?.connected && performance.now() - controllaPhone.at <= 250 ? controllaPhone.state : inputStateFromPressed(combinedPressed, gamepadInputState));').replace(
+        'if (audio.muted) {',
+        'if (audio.muted && new URLSearchParams(location.search).get("embed") !== "1") {');
       response.end('import { installGameShell, finishGameShell } from "../game-shell.mjs";\nimport { installProgressControls } from "../progress.mjs";\nimport { installEmbeddedGame } from "../embedded.mjs";\nimport { installRendererDiagnostics } from "../renderer-diagnostics.mjs";\nconst controllaPhone = { state: null, at: 0 };\n' + app + boot); return;
     }
     if (relative === 'index.html') {
