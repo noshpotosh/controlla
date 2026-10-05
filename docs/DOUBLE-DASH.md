@@ -1164,3 +1164,13 @@ delivering 689 frames in 31.981 seconds (21.54 fps). Initial speed was
 20%, later 43%; this does not establish a performance gain or reliable restoration.
 The course, kart and HUD rendered. Fresh boot, driving and repeated restores
 remain pending. Evidence: `work/double-dash-sync-{a,b}.json` and PNGs.
+
+The bounded-distance candidate's 300-frame acceleration probe moved the kart
+onto the grass near the course barrier (core/presented 3,244/3,246). A second
+restore reported checkpoint generation 2 and continued rendering from presented
+frame 4,448 to 5,453: 1005 frames in 31.765 seconds (31.64 fps).
+Finish delivery counters continued advancing. No stall occurred in this
+initial driving and repeated-restore check, but fresh boot, a complete race,
+phone motion and full fidelity remain unverified. Keep the candidate isolated.
+Evidence: `work/double-dash-sync-driving.json` / `.png` and
+`work/double-dash-sync-repeat-{a,b}.json` / final PNG.
