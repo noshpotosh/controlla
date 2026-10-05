@@ -1184,3 +1184,13 @@ exceeds the earlier combined candidate's fresh-boot stall at presented frame
 mode did not visibly reach the menu; fresh-start interactive input remains
 unverified. No candidate save was made, and shipping defaults remain unchanged.
 Evidence: `work/double-dash-sync-fresh-{a,b,c}.json` and final `c.png`.
+
+Follow-up fresh-boot input check reached the title screen after another Start
+probe, then accepted Start to open the memory-card creation prompt and Confirm
+to reach the original Start Game / Records / Options menu. The earlier absence
+of a menu was insufficient evidence of an input failure. Native telemetry
+recorded four host/worker updates by the second Start observation; the final
+menu rendered at core/presented frames 13,003/12,955, still generation 0.
+This verifies fresh-boot Start and Confirm transitions, not race completion
+or physical phone controls. Evidence: `work/double-dash-sync-start-input.json`
+and `work/double-dash-sync-fresh-menu.json` / `.png`.
