@@ -18,6 +18,14 @@ if (fifoIdleSleep) {
     resolve(repo, 'scripts/mario-kart/patches/0011-sleep-empty-wasm-fifo.patch')], { encoding: 'utf8' });
   if (check.status !== 0) throw new Error('FIFO sleep source does not match patch 0011: ' + check.stderr);
 }
+const nativePixelEngine = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/PixelEngine.cpp');
+const pixelEngineDiagnostics = readFileSync(nativePixelEngine, 'utf8').includes('pefinish:v=1');
+if (pixelEngineDiagnostics) {
+  if (output === defaultOutput) throw new Error('Pixel engine diagnostic requires an isolated DOLPHIN_WASM_OUTPUT_DIR.');
+  const check = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0012-observe-pixel-engine-finish.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('Pixel engine diagnostic does not match patch 0012: ' + check.stderr);
+}
 const fifoGateDiagnostics = readFileSync(nativeCpu, 'utf8').includes('fifogate:v=1');
 if (fifoGateDiagnostics) {
   if (output === defaultOutput) throw new Error('FIFO diagnostic source requires an isolated DOLPHIN_WASM_OUTPUT_DIR.');
@@ -62,12 +70,14 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   platform: manifest.platform, wasmSha256: hash(wasm), loaderSha256: hash(js),
   toolchainSha256: hash(resolve(stage, 'controlla-macos-toolchain.json')),
   wasmExportCount: WebAssembly.Module.exports(module).length,
-  patches: ['0001-four-controller-state.patch', '0002-controller-worker-transport.patch', '0003-four-controller-devices.patch', '0007-restore-console-depth-conversion.patch', ...(destinationAlphaPrototype ? ['0008-emulate-destination-alpha.patch'] : []), ...(fifoGateDiagnostics ? ['0009-observe-fifo-drain-gates.patch'] : []), ...(fifoIdleSleep ? ['0011-sleep-empty-wasm-fifo.patch'] : [])].map(name => ({ name, sha256: hash(resolve(repo, 'scripts/mario-kart/patches', name)) })),
+  patches: ['0001-four-controller-state.patch', '0002-controller-worker-transport.patch', '0003-four-controller-devices.patch', '0007-restore-console-depth-conversion.patch', ...(destinationAlphaPrototype ? ['0008-emulate-destination-alpha.patch'] : []), ...(fifoGateDiagnostics ? ['0009-observe-fifo-drain-gates.patch'] : []), ...(fifoIdleSleep ? ['0011-sleep-empty-wasm-fifo.patch'] : []), ...(pixelEngineDiagnostics ? ['0012-observe-pixel-engine-finish.patch'] : [])].map(name => ({ name, sha256: hash(resolve(repo, 'scripts/mario-kart/patches', name)) })),
   fifoIdleSleep,
   nativeFifoSha256: hash(nativeFifo),
   nativeBackendSha256: hash(nativeBackend),
   nativeCpuSha256: hash(nativeCpu),
   fifoGateDiagnostics,
+  pixelEngineDiagnostics,
+  nativePixelEngineSha256: hash(nativePixelEngine),
   destinationAlphaPrototype,
   validatedGameplay: false,
 }, null, 2) + '\n');

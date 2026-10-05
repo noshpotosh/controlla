@@ -1,16 +1,17 @@
 --- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
 +++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
-@@ -52,6 +52,9 @@
+@@ -52,6 +52,10 @@
  #include "Core/PowerPC/PPCTables.h"
  #include "Core/PowerPC/PowerPC.h"
  #include "Core/System.h"
 +#ifdef __EMSCRIPTEN__
 +#include "VideoCommon/CommandProcessor.h"
++#include "VideoCommon/PixelEngine.h"
 +#endif
  
  #if DOLPHIN_WEB_STATIC_EXIT_LINKS && DOLPHIN_WEB_STATIC_EXIT_LINK_STATS
  namespace
-@@ -11354,6 +11357,59 @@
+@@ -11354,6 +11358,59 @@
  #endif
  #line 11280
    static std::string stats;
@@ -64,13 +65,13 @@
 +           << ",sp=" << read_ram(thread + 4);
 +      thread = read_ram(thread + 0x2fc);
 +    }
-+    reported_stats = stats + gate.str();
++    reported_stats = stats + gate.str() + PixelEngine::GetWasmFinishDiagnostics();
 +    return reported_stats.c_str();
 +  };
    static int last_refresh_policy = -1;
    const int applied_policy = s_applied_wasm_policy.load(std::memory_order_acquire);
    static u32 last_refresh_block_run_count = 0;
-@@ -11394,7 +11450,7 @@
+@@ -11394,7 +11451,7 @@
  #endif
  #line 11305
    {
@@ -79,7 +80,7 @@
    }
    last_refresh_policy = applied_policy;
    last_refresh_block_run_count = s_wasm_block_run_count;
-@@ -11873,7 +11929,7 @@
+@@ -11873,7 +11930,7 @@
  #endif
  #line 11779
    stats = out.str();

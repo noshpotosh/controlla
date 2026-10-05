@@ -1,0 +1,115 @@
+--- a/Source/Core/VideoCommon/PixelEngine.h
++++ b/Source/Core/VideoCommon/PixelEngine.h
+@@ -4,6 +4,9 @@
+ #pragma once
+ 
+ #include <mutex>
++#ifdef __EMSCRIPTEN__
++#include <string>
++#endif
+ 
+ #include "Common/BitField.h"
+ #include "Common/CommonTypes.h"
+@@ -25,6 +28,9 @@
+ 
+ namespace PixelEngine
+ {
++#ifdef __EMSCRIPTEN__
++std::string GetWasmFinishDiagnostics();
++#endif
+ // internal hardware addresses
+ enum
+ {
+--- a/Source/Core/VideoCommon/PixelEngine.cpp
++++ b/Source/Core/VideoCommon/PixelEngine.cpp
+@@ -4,6 +4,10 @@
+ #include "VideoCommon/PixelEngine.h"
+ 
+ #include <mutex>
++#ifdef __EMSCRIPTEN__
++#include <atomic>
++#include <sstream>
++#endif
+ 
+ #include "Common/BitField.h"
+ #include "Common/ChunkFile.h"
+@@ -24,6 +28,27 @@
+ 
+ namespace PixelEngine
+ {
++#ifdef __EMSCRIPTEN__
++namespace
++{
++std::atomic<u64> s_finish_requests{0}, s_finish_deliveries{0}, s_finish_acks{0};
++std::atomic<u64> s_token_finish_schedules{0};
++std::atomic<u32> s_finish_active{0}, s_last_control{0};
++}
++// Independent observations, lifetime counters; not a coherent hardware snapshot.
++std::string GetWasmFinishDiagnostics()
++{
++  std::ostringstream out;
++  out << " | pefinish:v=1,requests=" << s_finish_requests.load(std::memory_order_relaxed)
++      << ",schedules=" << s_token_finish_schedules.load(std::memory_order_relaxed)
++      << ",deliveries=" << s_finish_deliveries.load(std::memory_order_relaxed)
++      << ",acks=" << s_finish_acks.load(std::memory_order_relaxed)
++      << ",active=" << s_finish_active.load(std::memory_order_relaxed)
++      << ",control=" << s_last_control.load(std::memory_order_relaxed);
++  return out.str();
++}
++#endif
++
+ enum
+ {
+   INT_CAUSE_PE_TOKEN = 0x200,   // GP Token
+@@ -127,6 +152,11 @@
+                    auto& pe = system.GetPixelEngine();
+ 
+                    UPECtrlReg tmpCtrl{.hex = val};
++#ifdef __EMSCRIPTEN__
++                   s_last_control.store(val, std::memory_order_relaxed);
++                   if (tmpCtrl.pe_finish)
++                     s_finish_acks.fetch_add(1, std::memory_order_relaxed);
++#endif
+ 
+                    if (tmpCtrl.pe_token)
+                      pe.m_signal_token_interrupt = false;
+@@ -166,6 +196,10 @@
+   processor_interface.SetInterrupt(INT_CAUSE_PE_TOKEN,
+                                    m_signal_token_interrupt && m_control.pe_token_enable);
+ 
++#ifdef __EMSCRIPTEN__
++  s_finish_active.store(m_signal_finish_interrupt && m_control.pe_finish_enable,
++                        std::memory_order_relaxed);
++#endif
+   // check if there is a finish-interrupt
+   processor_interface.SetInterrupt(INT_CAUSE_PE_FINISH,
+                                    m_signal_finish_interrupt && m_control.pe_finish_enable);
+@@ -193,6 +227,9 @@
+ 
+   if (m_finish_interrupt_pending)
+   {
++#ifdef __EMSCRIPTEN__
++    s_finish_deliveries.fetch_add(1, std::memory_order_relaxed);
++#endif
+     m_finish_interrupt_pending = false;
+     m_signal_finish_interrupt = true;
+     UpdateInterrupts();
+@@ -210,6 +247,9 @@
+     return;
+ 
+   m_event_raised = true;
++#ifdef __EMSCRIPTEN__
++  s_token_finish_schedules.fetch_add(1, std::memory_order_relaxed);
++#endif
+ 
+   CoreTiming::FromThread from = CoreTiming::FromThread::NON_CPU;
+   s64 cycles = 0;  // we don't care about timings for dual core mode.
+@@ -243,5 +283,8 @@
+ void PixelEngineManager::SetFinish(int cycles_into_future)
+ {
+   DEBUG_LOG_FMT(PIXELENGINE, "VIDEO Set Finish");
++#ifdef __EMSCRIPTEN__
++  s_finish_requests.fetch_add(1, std::memory_order_relaxed);
++#endif
+ 
+   std::lock_guard lk(m_token_finish_mutex);
