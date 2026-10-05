@@ -156,14 +156,3 @@ distance zero. New GP bursts and async requests retain their Wakeup path.
 The builder requires isolated output, verifies the reverse patch, and records
 the FIFO source hash and candidate flag. A host-side 10,000-wakeup stress
 check passed; native WASM compilation and browser validation remain pending.
-
-
-### 0014: upload tracing requires deep diagnostics
-
-The periodic `[webgpu-DIAG-ub]` console trace now requires the existing
-`wgpuDeepReplayDiagnostics` flag, matching adjacent shader/uniform diagnostic
-snapshots. Ordinary rendering avoids formatting upload contents every 4,000
-records. GPU writes and metrics are unchanged. Forward application, reverse
-application recognition, and worker JavaScript syntax passed on both the pinned
-runtime and rebuilt runtime trees. This is a logging cleanup; no browser speed
-improvement has been measured yet.
