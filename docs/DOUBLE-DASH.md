@@ -1925,3 +1925,27 @@ denied by OS permissions; no broader access was attempted. Export status now
 says download requested, reflecting what the page can actually prove.
 Screenshot `work/double-dash-saved-checkpoint-export.png` captures the prior
 status wording. Temporary tabs were closed; paused tabs 14 and 18 preserved.
+
+### Standalone muted boot and fresh FP attribution
+
+The standalone candidate profiling tab also stalled before loaded state.
+Official serve now suppresses the upstream auto-unmute block in every mode,
+so boot does not await a suspended AudioContext. Standalone retains its Sound
+button; embedded retains Enable sound. A fresh browser run with the change
+reached Game loaded, animated the attract sequence, and accepted the explicit
+Sound gesture (Muted changed to Audio). Audible quality was not assessed.
+Server session 96236 replaces the task-owned 8082 server; paused tabs were
+not navigated or reloaded. Temporary profiling tab was closed after capture.
+
+Fresh e65f32b6 CPU-profiling report is in
+`work/double-dash-fp-attribution-cpu-profile.json`. It contains 3,354,578 FP
+imports, with fp4/21 (paired add) at 1,149,498 and fp4/20 (paired subtract) at
+926,532: approximately 62% combined. The earlier profiling-off attract report
+contains no FP opcode attribution entries. This establishes collection off/on
+in separate browser runs, not a same-run toggle or per-operation time cost.
+The helper report's sampled block profile fields remain zero; they do not
+provide useful block timing attribution here.
+
+Evidence screenshot: `work/double-dash-muted-profile-boot.png`. JavaScript
+syntax passed. This fixes an observed startup wait; no speed gain, complete
+race, or original fidelity claim follows from it.

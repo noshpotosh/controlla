@@ -198,7 +198,7 @@ const handleRequest = async (request, response) => {
         'host.setInputState(inputStateFromPressed(combinedPressed, gamepadInputState));',
         'if (new URLSearchParams(location.search).get("embed") !== "1") host.setInputState(controllaPhone.state?.connected && performance.now() - controllaPhone.at <= 250 ? controllaPhone.state : inputStateFromPressed(combinedPressed, gamepadInputState));').replace(
         'if (audio.muted) {',
-        'if (audio.muted && new URLSearchParams(location.search).get("embed") !== "1") {');
+        'if (false && audio.muted) {'); // Sound activation must follow its own user gesture.
       response.end('import { installGameShell, finishGameShell } from "../game-shell.mjs";\nimport { installProgressControls } from "../progress.mjs";\nimport { installEmbeddedGame } from "../embedded.mjs";\nimport { installRendererDiagnostics } from "../renderer-diagnostics.mjs";\nconst controllaPhone = { state: null, at: 0 };\n' + app + boot); return;
     }
     if (relative === 'index.html') {
