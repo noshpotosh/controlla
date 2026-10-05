@@ -1576,3 +1576,32 @@ running under exec session 24970, logging to
 failed the output guard; reconfiguration used an absolute path. Browser and
 performance validation remain pending. Existing candidate binaries and the
 shipping core are preserved.
+
+### Reference arithmetic build and browser validation (2026-10-05)
+
+Build session 24970 completed successfully. Isolated WASM SHA-256 is
+`56a9c321d43d069485aa748c4151887d47121b91fcb357862bf8f232b59ba0cc`,
+loader SHA-256 is `d70a9ce5c7137636d755306daf723e87b2e92b58efefe663a4155ce7b1e05627`.
+The module has 179 exports; all four controller ports accept connection and
+disconnection, and invalid ports are rejected. The manifest records patch 0021
+and `referencePairedArithmetic: true`.
+
+The local server now runs `work/double-dash-reference-paired-serve.mjs` in
+session 10756 on port 8081; previous sum-helper server 44087 exited 130. It
+verifies the new patch hash in addition to existing candidate provenance.
+Browser-reported active SHA matches the new WASM, without fallback. The same
+saved race restored successfully. Profile and classifier are disabled.
+Captured reports `work/double-dash-reference-paired-{a,b}.json` span presented
+frames 942–2033, 1091 frames over 44.29864 monotonic seconds: 24.6283 fps.
+Game speed reports 46% then 36%; no renderer errors or texture fallbacks were
+reported. This single interval is slower than the earlier paired-sum samples
+near 33 fps; it does not qualify sustained racing performance.
+
+Acceleration targeted frame 2924 and released at 2931. The final driving
+report and screenshot are `work/double-dash-reference-paired-drive.{json,png}`.
+The kart reaches the flower/grass edge, confirming coarse driving behavior.
+The distant animated regions appear cyan in this capture, but the race clock
+differs from previous pink captures, so this is not evidence of a color fix.
+The emulator is paused; baseline progress is preserved. Native semantic
+regression coverage, repeat throughput measurements, full-race behavior,
+audio, physical motion controls, and original-frame equivalence remain open.
