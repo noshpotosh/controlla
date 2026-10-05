@@ -1464,3 +1464,13 @@ relative effect remains unproven. Both candidate runs are primarily idle-race
 observations, not sustained driving or full-track fidelity qualification.
 Paused without changing the save. Evidence:
 `work/double-dash-sum-repeat-{a,b}.json` and `-paused.png`.
+
+Repeated the matching baseline after reload/restore: presented frames
+1,827 → 3,079 in 39.900165s (31.38 fps), speed 51% → 63%. The second candidate
+interval (33.13 fps) exceeds this by approximately 5.57%; the first pair's
+difference was 13.99%. Thus both measured comparisons favor admission, but
+baseline variation prevents a precise gain claim. Two intervals per core
+remain a limited screen of idle-race performance, not statistical qualification
+or full-speed driving. Retain patch 0019 as an isolated candidate for further
+behavior tests. Evidence: `work/double-dash-sum-baseline-repeat-{a,b}.json`
+and `-paused.png`. The normal runtime remains unchanged.
