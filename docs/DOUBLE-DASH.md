@@ -31,10 +31,16 @@ It downloads the pinned open-source wasm-dolphin runtime into ignored
 initial setup. The runtime includes a compiled core; no Emscripten installation
 is needed. The disc image remains local and is excluded from Git.
 
-Open the printed URL in desktop Chrome and click **Play your Double Dash image**.
+Open the printed URL in desktop Chrome and click **Play Double Dash**.
 Controlla's home screen also has a **Double Dash (local)** launcher for the
 default port. The emulator server binds only to `127.0.0.1`; it is a local
 prototype and is not part of the deployed frontend.
+
+The feature branch presents a Controlla host screen with a plain game stage,
+lime play button, phone-pairing menu, sound, pause, fullscreen, and progress
+controls. Emulator settings, performance overlays, disc pickers, and the console
+bezel are hidden from the player interface. The underlying engine is still
+experimental; this presentation change does not resolve rendering or speed.
 
 After starting the game, **Save progress** stores a full emulator snapshot in
 this browser's IndexedDB. On a later visit, start the same image and choose

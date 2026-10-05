@@ -62,7 +62,12 @@ setInterval(() => {
 }, 50);
 `).join('\n');
 const boot = `
-installProgressControls({ getAdapter: () => host.adapter, setStatus,
+installGameShell();
+const partyStatus = (message, type) => {
+  document.getElementById('party-feedback').textContent = message;
+  setStatus(message, type);
+};
+installProgressControls({ getAdapter: () => host.adapter, setStatus: partyStatus,
   key: ${JSON.stringify(`${discInfo.gameId}:${runtimeSelection.coreHash || 'd7395b3a94080f5b7d08a0522f59096007419d117b7b0eb868246429adee6f5c'}`)} });
 ${extraPhoneBoot}
 const phoneLink = document.createElement('a');
@@ -86,21 +91,23 @@ setInterval(() => {
 
 const localButton = document.createElement('button');
 localButton.type = 'button';
-localButton.textContent = 'Play your Double Dash image';
-localButton.className = 'file-button';
+localButton.textContent = 'Play Double Dash';
+localButton.className = 'party-play';
 document.querySelector('.topbar-actions').prepend(localButton);
 localButton.addEventListener('click', async () => {
   localButton.disabled = true;
   try {
     if (!globalThis.crossOriginIsolated || !navigator.gpu) throw new Error('Use desktop Chrome with WebGPU enabled.');
-    setStatus('Loading your local Double Dash image…');
+    partyStatus('Getting the race ready…');
     const response = await fetch('/local-disc');
     if (!response.ok) throw new Error('Could not read your local game image.');
     const file = new File([await response.blob()], ${JSON.stringify(disc.split(sep).at(-1))});
     await mountFile(file);
-  } catch (error) { setStatus(error.message, 'error'); }
+    partyStatus(host.adapter?.loaded ? 'Game loaded. Press Enter or Start on your phone.' : 'Could not start the game. Please try again.', host.adapter?.loaded ? undefined : 'error');
+  } catch (error) { partyStatus(error.message, 'error'); }
   finally { localButton.disabled = false; }
 });
+finishGameShell();
 `;
 
 const handleRequest = async (request, response) => {
@@ -137,9 +144,9 @@ const handleRequest = async (request, response) => {
       response.writeHead(405).end(); return;
     }
     if (!['GET', 'HEAD'].includes(request.method)) { response.writeHead(405).end(); return; }
-    if (pathname === '/progress.mjs') {
-      response.setHeader('Content-Type', 'text/javascript');
-      response.end(request.method === 'HEAD' ? undefined : readFileSync(resolve(repo, 'scripts/mario-kart/progress.mjs')));
+    if (['/progress.mjs', '/game-shell.mjs', '/game-shell.css'].includes(pathname)) {
+      response.setHeader('Content-Type', extensionTypes[extname(pathname)]);
+      response.end(request.method === 'HEAD' ? undefined : readFileSync(resolve(repo, 'scripts/mario-kart', pathname.slice(1))));
       return;
     }
     if (phoneAssets[pathname]) {
@@ -176,10 +183,10 @@ const handleRequest = async (request, response) => {
       const app = readFileSync(path, 'utf8').replace(
         'host.setInputState(inputStateFromPressed(combinedPressed, gamepadInputState));',
         'host.setInputState(controllaPhone.state?.connected && performance.now() - controllaPhone.at <= 250 ? controllaPhone.state : inputStateFromPressed(combinedPressed, gamepadInputState));');
-      response.end('import { installProgressControls } from "/progress.mjs";\nconst controllaPhone = { state: null, at: 0 };\n' + app + boot); return;
+      response.end('import { installGameShell, finishGameShell } from "/game-shell.mjs";\nimport { installProgressControls } from "/progress.mjs";\nconst controllaPhone = { state: null, at: 0 };\n' + app + boot); return;
     }
     if (relative === 'index.html') {
-      response.end(readFileSync(path, 'utf8').replaceAll('<title>wasm-dolphin</title>', '<title>Controlla · Double Dash</title>').replace('<h1>wasm-dolphin</h1>', '<h1>Controlla · Double Dash</h1>'));
+      response.end(readFileSync(path, 'utf8').replaceAll('<title>wasm-dolphin</title>', '<title>Controlla · Double Dash</title>').replace('<h1>wasm-dolphin</h1>', '<h1>controlla</h1>').replace('</head>', '<link rel="stylesheet" href="/game-shell.css"></head>'));
       return;
     }
     response.setHeader('Content-Length', stats.size);
@@ -209,6 +216,6 @@ if (phoneCert) {
 }
 server.listen(Number(process.env.DOUBLE_DASH_PORT || 8080), '127.0.0.1', () => {
   console.log(`Controlla Double Dash: http://127.0.0.1:${server.address().port}/?core=upstream&video=wgpu&cpu=dual&wasmjit=1`);
-  console.log('Open in desktop Chrome, then click “Play your Double Dash image”. Game data stays on this computer.');
+  console.log('Open in desktop Chrome, then click “Play Double Dash”. Game data stays on this computer.');
 });
 server.on('error', error => { console.error(error.message); process.exitCode = 1; });
