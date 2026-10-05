@@ -1,0 +1,30 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { saveProgress, resumeProgress } from './progress.mjs';
+
+test('progress survives a new adapter and is isolated by game/core key', async () => {
+  const records = new Map();
+  const store = { write: async (key, record) => records.set(key, structuredClone(record)), read: async key => records.get(key) };
+  await saveProgress({ loaded: true, saveStateFile: async () => ({ saved: true, bytes: new Uint8Array([1, 2, 3]) }) }, store, 'GM4E01:core-a');
+  let restored;
+  const adapter = { loaded: true, loadStateFile: async bytes => { restored = bytes; return { loaded: true }; } };
+  await assert.rejects(resumeProgress(adapter, store, 'GM4E01:core-b'), /No progress/);
+  assert.equal(restored, undefined);
+  await resumeProgress(adapter, store, 'GM4E01:core-a');
+  assert.deepEqual(restored, new Uint8Array([1, 2, 3]));
+});
+
+test('failed or empty emulator saves preserve previous progress', async () => {
+  let writes = 0;
+  const store = { write: async () => { writes++; } };
+  for (const result of [{ saved: false, bytes: new Uint8Array([1]) }, { saved: true, bytes: new Uint8Array() }]) {
+    await assert.rejects(saveProgress({ loaded: true, saveStateFile: async () => result }, store, 'key'));
+  }
+  await assert.rejects(saveProgress({ loaded: false }, store, 'key'), /Start Double Dash/);
+  assert.equal(writes, 0);
+});
+
+test('storage and native restore failures are reported', async () => {
+  await assert.rejects(saveProgress({ loaded: true, saveStateFile: async () => ({ saved: true, bytes: new Uint8Array([1]) }) }, { write: async () => { throw new Error('Quota exceeded'); } }, 'key'), /Quota exceeded/);
+  await assert.rejects(resumeProgress({ loaded: true, loadStateFile: async () => ({ loaded: false, error: 'Invalid state' }) }, { read: async () => ({ bytes: new Uint8Array([1]) }) }, 'key'), /Invalid state/);
+});

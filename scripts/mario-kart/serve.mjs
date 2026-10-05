@@ -62,6 +62,8 @@ setInterval(() => {
 }, 50);
 `).join('\n');
 const boot = `
+installProgressControls({ getAdapter: () => host.adapter, setStatus,
+  key: ${JSON.stringify(`${discInfo.gameId}:${runtimeSelection.coreHash || 'd7395b3a94080f5b7d08a0522f59096007419d117b7b0eb868246429adee6f5c'}`)} });
 ${extraPhoneBoot}
 const phoneLink = document.createElement('a');
 phoneLink.href = ${JSON.stringify(phoneOrigin)} + '/controller?token=${phoneRelay.token}';
@@ -135,6 +137,11 @@ const handleRequest = async (request, response) => {
       response.writeHead(405).end(); return;
     }
     if (!['GET', 'HEAD'].includes(request.method)) { response.writeHead(405).end(); return; }
+    if (pathname === '/progress.mjs') {
+      response.setHeader('Content-Type', 'text/javascript');
+      response.end(request.method === 'HEAD' ? undefined : readFileSync(resolve(repo, 'scripts/mario-kart/progress.mjs')));
+      return;
+    }
     if (phoneAssets[pathname]) {
       const asset = resolve(repo, 'scripts/mario-kart', phoneAssets[pathname]);
       response.setHeader('Content-Type', extensionTypes[extname(asset)] || 'text/javascript');
@@ -169,7 +176,7 @@ const handleRequest = async (request, response) => {
       const app = readFileSync(path, 'utf8').replace(
         'host.setInputState(inputStateFromPressed(combinedPressed, gamepadInputState));',
         'host.setInputState(controllaPhone.state?.connected && performance.now() - controllaPhone.at <= 250 ? controllaPhone.state : inputStateFromPressed(combinedPressed, gamepadInputState));');
-      response.end('const controllaPhone = { state: null, at: 0 };\n' + app + boot); return;
+      response.end('import { installProgressControls } from "/progress.mjs";\nconst controllaPhone = { state: null, at: 0 };\n' + app + boot); return;
     }
     if (relative === 'index.html') {
       response.end(readFileSync(path, 'utf8').replaceAll('<title>wasm-dolphin</title>', '<title>Controlla · Double Dash</title>').replace('<h1>wasm-dolphin</h1>', '<h1>Controlla · Double Dash</h1>'));
