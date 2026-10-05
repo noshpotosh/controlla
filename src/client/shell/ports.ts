@@ -25,6 +25,7 @@ export interface GameChoice {
   readonly name: string;
   readonly players: Readonly<{ min: number; max: number }>;
   readonly durationMs: number;
+  readonly durationLabel?: string;
   readonly modes: readonly Readonly<{ id: string; name: string }>[];
   readonly defaultMode: string;
   readonly instructions?: readonly string[];

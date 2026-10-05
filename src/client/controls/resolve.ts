@@ -82,6 +82,7 @@ export function resolveConfig(
     }
     widgets.push({
       ...widget,
+      ...(input.held && widget.type === 'button' ? { held: true } : {}),
       space: input.prefer === 'pointer' ? 'normalized' : 'signed',
     });
   }

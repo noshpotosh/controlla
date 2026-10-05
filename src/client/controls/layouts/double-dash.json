@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 2,
+  "id": "double-dash",
+  "name": "Double Dash",
+  "orientation": "landscape",
+  "grid": {
+    "cols": 24,
+    "rows": 16
+  },
+  "menu": "top-right",
+  "motion": {
+    "pointer": false,
+    "tilt": true,
+    "shake": false,
+    "chop": false
+  },
+  "items": [
+    {
+      "name": "steer",
+      "type": "stick",
+      "label": "Steer",
+      "rect": {
+        "x": 0,
+        "y": 2,
+        "w": 6,
+        "h": 7
+      },
+      "rotation": 0
+    },
+    {
+      "name": "navigate",
+      "type": "dpad",
+      "label": "Menus",
+      "rect": {
+        "x": 6,
+        "y": 2,
+        "w": 5,
+        "h": 5
+      },
+      "rotation": 0
+    },
+    {
+      "name": "options",
+      "type": "dpad",
+      "label": "Start / Swap",
+      "rect": {
+        "x": 11,
+        "y": 2,
+        "w": 5,
+        "h": 5
+      },
+      "rotation": 0,
+      "props": {
+        "hint": "↑ Start / Pause · ↓ Swap riders"
+      }
+    },
+    {
+      "name": "accelerate",
+      "type": "button",
+      "label": "Accelerate / Confirm",
+      "rect": {
+        "x": 16,
+        "y": 6,
+        "w": 4,
+        "h": 5
+      },
+      "rotation": 0
+    },
+    {
+      "name": "brake",
+      "type": "button",
+      "label": "Brake / Back",
+      "rect": {
+        "x": 20,
+        "y": 6,
+        "w": 4,
+        "h": 5
+      },
+      "rotation": 0
+    },
+    {
+      "name": "drift",
+      "type": "button",
+      "label": "Drift",
+      "rect": {
+        "x": 16,
+        "y": 11,
+        "w": 4,
+        "h": 5
+      },
+      "rotation": 0
+    },
+    {
+      "name": "item",
+      "type": "button",
+      "label": "Item",
+      "rect": {
+        "x": 20,
+        "y": 11,
+        "w": 4,
+        "h": 5
+      },
+      "rotation": 0
+    }
+  ]
+}

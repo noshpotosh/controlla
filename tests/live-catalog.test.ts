@@ -134,6 +134,7 @@ function room(t: TestContext) {
 
 /** Each shipped game's statistics keys, sorted. */
 const statKeys: Record<string, string[]> = {
+  'double-dash': [],
   'neon-harvest': ['bestChain', 'collected', 'mineHits'],
   'whack-a-mole': ['bestStreak', 'bombs', 'golden', 'hits', 'misses'],
 };

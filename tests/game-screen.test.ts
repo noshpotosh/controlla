@@ -146,6 +146,46 @@ function context() {
   return { ctx, labels };
 }
 
+void test('terminal snapshots dispose embedded renderer resources once before another game is selected', async () => {
+  const state = await snapshot();
+  let disposed = 0;
+  const descriptor: GameDescriptor = {
+    ...findGame(state.gameId)!,
+    createRenderer: () => ({
+      render() {},
+      dispose() {
+        disposed++;
+      },
+    }),
+  };
+  const presenter = createPresenter([descriptor]);
+  const frame: ScreenFrame = {
+    snapshot: state,
+    presentationTime: state.startAt + 10,
+    delay: 0,
+    localCursors: {},
+    status: 'ready',
+    message: null,
+  };
+  const { ctx } = context();
+  presenter.render(ctx, frame, 1600, 900);
+  presenter.render(
+    ctx,
+    { ...frame, snapshot: { ...state, phase: 'aborted' } },
+    1600,
+    900,
+  );
+  assert.equal(disposed, 1);
+  presenter.render(
+    ctx,
+    { ...frame, snapshot: { ...state, phase: 'aborted' } },
+    1600,
+    900,
+  );
+  presenter.dispose();
+  assert.equal(disposed, 1);
+});
+
 void test('screen port samples one immutable snapshot and retains valid state across malformed wires with one resync request', async (t) => {
   const { runtime, receive, sent } = display(t);
   receive('snapshot', wire(await snapshot()));

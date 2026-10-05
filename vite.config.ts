@@ -9,6 +9,7 @@ import nextConfig from './next.config.ts';
 import { isMotionTrace } from './src/client/controls/motion/trace.ts';
 import { developmentEntry } from './scripts/development-entry.ts';
 import { productionBundleBoundary } from './scripts/production-boundary.ts';
+import { doubleDashRuntime } from './scripts/mario-kart/vite-plugin.ts';
 import { renderLayoutIndex } from './src/client/controls/layout/index-file.ts';
 import {
   isControllerLayout,
@@ -241,6 +242,7 @@ export default defineConfig(({ command }) => {
         : {}),
     },
     plugins: [
+      doubleDashRuntime(),
       motionTraceUpload(),
       controllerLayouts(),
       ...(useHttps ? [basicSsl()] : []),

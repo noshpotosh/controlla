@@ -13,11 +13,24 @@ Run from the Controlla checkout:
 npm run dev:mario-kart
 ```
 
-This development command selects the locally rebuilt four-controller candidate
-and prints its browser URL. The candidate and build manifest must already exist
-in `work/double-dash-build`; this checkout has them. `npm run mario-kart` continues
-to launch the original prebuilt runtime. Both commands use the supplied local
-CISO and support the same port and HTTPS phone configuration.
+This command starts the ordinary Controlla frontend and room signaling service.
+Open `http://localhost:3000`, start a room, connect phones using the usual room
+link or codes, select **Mario Kart: Double Dash!!** alongside Neon Harvest and
+Whack-a-Mole, and click **Start round**. **End game** releases the runtime and
+allows another game to be selected. Free play has a one-hour session limit.
+
+The rebuilt four-controller runtime starts lazily inside the room's stage.
+Its candidate and build manifest must already exist in `work/double-dash-build`;
+this checkout has them. The separate home-page launcher has been removed.
+`npm run mario-kart` remains a standalone diagnostic launcher.
+
+For physical phone motion, use `npm run dev:mario-kart:phone`. It wraps the
+existing trusted HTTPS phone-development workflow. Open the printed localhost
+address on the host computer and the printed HTTPS address on phones, then
+join the same room. Enable motion and recenter through the normal controller
+menu. The tunnel exposes the ordinary room app; the local game proxy rejects
+tunnel requests. The basic `dev:mario-kart` command is useful for local desktop
+testing but plain LAN HTTP cannot grant phone motion permission.
 
 The launcher uses the root-level `Mario Kart - Double Dash!! (USA).ciso` by
 default. For another location:
@@ -31,16 +44,36 @@ It downloads the pinned open-source wasm-dolphin runtime into ignored
 initial setup. The runtime includes a compiled core; no Emscripten installation
 is needed. The disc image remains local and is excluded from Git.
 
-Open the printed URL in desktop Chrome and click **Play Double Dash**.
-Controlla's home screen also has a **Double Dash (local)** launcher for the
-default port. The emulator server binds only to `127.0.0.1`; it is a local
-prototype and is not part of the deployed frontend.
+The embedded game uses the room's existing phone inputs, motion permission and
+recentering, with touch steering when motion is unavailable. Four stable room
+seats map to four GameCube ports. The phone's menu arrows navigate game menus;
+on Start / Swap, up means Start/Pause and down means swap riders. Held buttons
+expire after 250 ms of missing phone frames; the embedded bridge additionally
+neutralizes every port if its parent stops sending room snapshots for 500 ms.
 
-The feature branch presents a Controlla host screen with a plain game stage,
+Game bytes are proxied only for requests from a loopback socket and a localhost
+host name. LAN and tunnel phone origins cannot fetch the CISO or native runtime.
+Phones continue using normal Controlla room transport. This is a local host
+prototype; remote screens do not receive synchronized game video, and production
+hosting does not serve the local runtime. Rendering remains slow in the verified
+software/Canvas 2D path; hardware rendering and physical phone racing remain
+unverified. Race results remain in the original game and do not award session
+points. The standalone diagnostic screen retains the progress tools below.
+
+The standalone diagnostic presents a Controlla host screen with a plain game stage,
 lime play button, phone-pairing menu, sound, pause, fullscreen, and progress
 controls. Emulator settings, performance overlays, disc pickers, and the console
 bezel are hidden from the player interface. The underlying engine is still
 experimental; this presentation change does not resolve rendering or speed.
+
+Room integration was checked in the browser: ordinary room-code phone join,
+Double Dash selection, Start round, native Nintendo/Dolby boot rendering inside
+the existing stage, phone controller replacement, and End game unlocking the
+picker and removing the iframe. Screenshot: `work/double-dash-room-picker.png`.
+Typecheck, production build/bundle audit, targeted lint and all 18 runtime tests
+pass. The full repository suite has 379 passes and one pre-existing failure:
+the controller-boundary audit rejects the computed native core import in
+`scripts/mario-kart/check-native-abi.mjs`; that loader and audit are unchanged.
 
 After starting the game, **Save progress** stores a full emulator snapshot in
 this browser's IndexedDB. On a later visit, start the same image and choose

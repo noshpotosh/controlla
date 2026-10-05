@@ -61,7 +61,7 @@ setInterval(() => {
   }
 }, 50);
 `).join('\n');
-const boot = `
+const standaloneBoot = `
 installGameShell();
 const partyStatus = (message, type) => {
   document.getElementById('party-feedback').textContent = message;
@@ -99,7 +99,7 @@ localButton.addEventListener('click', async () => {
   try {
     if (!globalThis.crossOriginIsolated || !navigator.gpu) throw new Error('Use desktop Chrome with WebGPU enabled.');
     partyStatus('Getting the race ready…');
-    const response = await fetch('/local-disc');
+    const response = await fetch('./local-disc');
     if (!response.ok) throw new Error('Could not read your local game image.');
     const file = new File([await response.blob()], ${JSON.stringify(disc.split(sep).at(-1))});
     await mountFile(file);
@@ -108,6 +108,15 @@ localButton.addEventListener('click', async () => {
   finally { localButton.disabled = false; }
 });
 finishGameShell();
+`;
+const boot = `
+if (new URLSearchParams(location.search).get('embed') === '1') {
+  installGameShell();
+  void installEmbeddedGame({ getAdapter: () => host.adapter, mount: mountFile,
+    start: () => host.start(), sound: () => audio.setMuted(false) });
+} else {
+${standaloneBoot}
+}
 `;
 
 const handleRequest = async (request, response) => {
@@ -144,7 +153,7 @@ const handleRequest = async (request, response) => {
       response.writeHead(405).end(); return;
     }
     if (!['GET', 'HEAD'].includes(request.method)) { response.writeHead(405).end(); return; }
-    if (['/progress.mjs', '/game-shell.mjs', '/game-shell.css'].includes(pathname)) {
+    if (['/progress.mjs', '/game-shell.mjs', '/game-shell.css', '/embedded.mjs', '/embedded.css'].includes(pathname)) {
       response.setHeader('Content-Type', extensionTypes[extname(pathname)]);
       response.end(request.method === 'HEAD' ? undefined : readFileSync(resolve(repo, 'scripts/mario-kart', pathname.slice(1))));
       return;
@@ -182,11 +191,12 @@ const handleRequest = async (request, response) => {
     if (relative === 'src/app.js') {
       const app = readFileSync(path, 'utf8').replace(
         'host.setInputState(inputStateFromPressed(combinedPressed, gamepadInputState));',
-        'host.setInputState(controllaPhone.state?.connected && performance.now() - controllaPhone.at <= 250 ? controllaPhone.state : inputStateFromPressed(combinedPressed, gamepadInputState));');
-      response.end('import { installGameShell, finishGameShell } from "/game-shell.mjs";\nimport { installProgressControls } from "/progress.mjs";\nconst controllaPhone = { state: null, at: 0 };\n' + app + boot); return;
+        'if (new URLSearchParams(location.search).get("embed") !== "1") host.setInputState(controllaPhone.state?.connected && performance.now() - controllaPhone.at <= 250 ? controllaPhone.state : inputStateFromPressed(combinedPressed, gamepadInputState));');
+      response.end('import { installGameShell, finishGameShell } from "../game-shell.mjs";\nimport { installProgressControls } from "../progress.mjs";\nimport { installEmbeddedGame } from "../embedded.mjs";\nconst controllaPhone = { state: null, at: 0 };\n' + app + boot); return;
     }
     if (relative === 'index.html') {
-      response.end(readFileSync(path, 'utf8').replaceAll('<title>wasm-dolphin</title>', '<title>Controlla · Double Dash</title>').replace('<h1>wasm-dolphin</h1>', '<h1>controlla</h1>').replace('</head>', '<link rel="stylesheet" href="/game-shell.css"></head>'));
+      const html = readFileSync(path, 'utf8').replaceAll('<title>wasm-dolphin</title>', '<title>Controlla · Double Dash</title>').replace('<h1>wasm-dolphin</h1>', '<h1>controlla</h1>').replace('</head>', '<link rel="stylesheet" href="./game-shell.css"><link rel="stylesheet" href="./embedded.css"></head>');
+      response.end(url.searchParams.get('embed') === '1' ? html.replace('<body>', '<body class="embedded-game">') : html);
       return;
     }
     response.setHeader('Content-Length', stats.size);

@@ -17,6 +17,12 @@ export function freezeSnapshot<T>(value: T): ReadonlyDeep<T> {
 export function createScreen<S extends object>(descriptor: GameDescriptor<S>) {
   const renderer = descriptor.createRenderer();
   let disposed = false;
+  let rendererDisposed = false;
+  const disposeRenderer = () => {
+    if (rendererDisposed) return;
+    rendererDisposed = true;
+    renderer.dispose();
+  };
   return {
     render(
       context: CanvasRenderingContext2D,
@@ -86,6 +92,7 @@ export function createScreen<S extends object>(descriptor: GameDescriptor<S>) {
             '#b6ff65',
           );
         } else if (snapshot.phase === 'results') {
+          disposeRenderer();
           label('Round results', height * 0.16, 42, '#b6ff65');
           [...snapshot.outcomes]
             .sort((a, b) => a.placement - b.placement)
@@ -101,6 +108,7 @@ export function createScreen<S extends object>(descriptor: GameDescriptor<S>) {
               );
             });
         } else if (snapshot.phase === 'aborted' || snapshot.phase === 'error') {
+          disposeRenderer();
           label(
             snapshot.phase === 'aborted'
               ? 'Round aborted · no points awarded'
@@ -111,17 +119,19 @@ export function createScreen<S extends object>(descriptor: GameDescriptor<S>) {
           context.save();
           try {
             markers =
-              renderer.render({
-                context,
-                snapshot: readonly,
-                time: Math.min(time, snapshot.endAt),
-                width,
-                height,
-                delay,
-                localCursors: readonlyLocalCursors,
-                localPressing: readonlyLocalPressing,
-                reducedMotion,
-              }) ?? [];
+              (rendererDisposed
+                ? undefined
+                : renderer.render({
+                    context,
+                    snapshot: readonly,
+                    time: Math.min(time, snapshot.endAt),
+                    width,
+                    height,
+                    delay,
+                    localCursors: readonlyLocalCursors,
+                    localPressing: readonlyLocalPressing,
+                    reducedMotion,
+                  })) ?? [];
           } finally {
             context.restore();
           }
@@ -163,7 +173,7 @@ export function createScreen<S extends object>(descriptor: GameDescriptor<S>) {
     dispose() {
       if (disposed) return;
       disposed = true;
-      renderer.dispose();
+      disposeRenderer();
     },
   };
 }

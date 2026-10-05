@@ -15,11 +15,21 @@ import type {
 
 // Selection needs metadata only; factories stay at the composition boundary.
 const choices: readonly GameChoice[] = games.map(
-  ({ id, name, players, durationMs, modes, defaultMode, instructions }) => ({
+  ({
     id,
     name,
     players,
     durationMs,
+    durationLabel,
+    modes,
+    defaultMode,
+    instructions,
+  }) => ({
+    id,
+    name,
+    players,
+    durationMs,
+    durationLabel,
     modes,
     defaultMode,
     instructions,

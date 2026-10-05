@@ -209,7 +209,8 @@ export function RoomScreen({
                   <br />
                   <small>
                     {descriptor.players.min}–{descriptor.players.max} players ·{' '}
-                    {descriptor.durationMs / 1000} seconds
+                    {descriptor.durationLabel ??
+                      `${descriptor.durationMs / 1000} seconds`}
                   </small>
                 </span>
               </Button>
@@ -260,11 +261,15 @@ export function RoomScreen({
             </Button>
             {playing && (
               <Button variant="outline" onClick={() => host?.abortGame()}>
-                Abort round
+                {selected.durationLabel === 'Free play'
+                  ? 'End game'
+                  : 'Abort round'}
               </Button>
             )}
             <span className="note">
-              {selected.durationMs / 1000} seconds · {selected.name}
+              {selected.durationLabel ??
+                `${selected.durationMs / 1000} seconds`}{' '}
+              · {selected.name}
             </span>
           </div>
         </>

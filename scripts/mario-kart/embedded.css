@@ -1,0 +1,8 @@
+html,body.embedded-game,.embedded-game .app-shell{width:100%;height:100%;margin:0;padding:0;overflow:hidden;background:#030503}
+.embedded-game .topbar,.embedded-game .party-head,.embedded-game .party-note{display:none!important}
+.embedded-game .workspace,.embedded-game .play-area,.embedded-game .crt-set,.embedded-game .crt-bezel,.embedded-game .screen-viewport{width:100%;height:100%;max-height:none;max-width:none;padding:0;margin:0;border:0;border-radius:0;display:block;aspect-ratio:auto}
+.embedded-game #screen{width:100%;height:100%;max-height:none;max-width:none;object-fit:contain}
+.embedded-status{position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:24px;background:#111416;color:#c8ff61;font:600 18px system-ui;text-align:center}
+.embedded-status[hidden]{display:none}
+.embedded-game .tip::before,.embedded-game .tip::after{content:none!important;display:none!important}
+.embedded-sound{position:absolute;bottom:12px;right:12px;background:#c8ff61;color:#111416;border:0;border-radius:8px;padding:10px 14px;font:600 14px system-ui;cursor:pointer}

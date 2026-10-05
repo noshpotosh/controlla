@@ -32,6 +32,8 @@ export interface Widget {
   type: WidgetType;
   label: string;
   action: string;
+  /** Also deliver a button's current held state as a boolean value sample. */
+  held?: boolean;
   /** Placement on the controller: normalized [x, y, w, h]. Motion inputs
    *  with no touch fallback have none and aren't drawn. */
   rect?: [number, number, number, number];
@@ -71,6 +73,8 @@ export interface ControllerConfig {
 }
 export interface InputRequirement {
   required: boolean;
+  /** Opt a button into continuous held-state samples alongside press actions. */
+  held?: boolean;
   prefer: WidgetType;
   fallback?: WidgetType | null;
   /** Caption shown on the phone; defaults to the action name. */

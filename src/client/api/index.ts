@@ -77,6 +77,7 @@ export interface GameInput {
   time: number;
   dt: number;
   presentationDelay: number;
+  /** Button samples are booleans for the current held state; actions remain press edges. */
   values: Readonly<Record<string, Readonly<Record<string, ValueSample>>>>;
   actions: readonly Action[];
 }
@@ -156,6 +157,7 @@ export interface GameDescriptor<S extends object = object> {
   name: string;
   players: { min: number; max: number };
   durationMs: number;
+  durationLabel?: string;
   modes: readonly { id: string; name: string }[];
   defaultMode: string;
   instructions?: readonly string[];

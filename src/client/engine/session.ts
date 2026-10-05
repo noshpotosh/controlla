@@ -558,6 +558,24 @@ export class SessionAuthority {
       const widgets = this.configs.get(player.id)?.widgets ?? [];
       const samples = this.widgetValues.get(player.id) ?? {};
       const active: Record<string, ValueSample> = {};
+      // Held buttons are continuous state, separate from timestamped press
+      // actions. Retire them promptly when a phone stops sending frames.
+      const pressWidgets = widgets.filter((widget) =>
+        usesPressSlot(widget.type),
+      );
+      for (let slot = 0; slot < pressWidgets.length; slot++) {
+        const widget = pressWidgets[slot];
+        if (!widget.held || channelOf(widget.type).channel !== 'press')
+          continue;
+        active[widget.action] = {
+          value: !!(
+            frame &&
+            time - frame.time < 250 &&
+            frame.buttons & (1 << slot)
+          ),
+          time: frame?.time ?? time,
+        };
+      }
       for (const widget of widgets) {
         const sample = samples[widget.action];
         if (
