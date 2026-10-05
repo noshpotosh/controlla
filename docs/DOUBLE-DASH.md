@@ -545,3 +545,25 @@ its PNG. The non-skipping diagnostic server was restored afterward.
 
 Next trace the XFB/EFB copy and presentation path, capturing color before
 and after the copy rather than removing additional game draws speculatively.
+
+### GPU color readbacks around presentation (2026-10-05)
+
+The isolated color-pair server uses GPU texture-to-buffer copies and maps
+them only after submission through the existing deferred readback queue.
+The served worker passed syntax validation. Generation-1 captures have no
+reported renderer errors. EFB samples at 640x528 include substantial color
+(e.g. sky cells RGB 70/107/135 and 77/117/156). Cached presenter-source IDs
+initially read empty, so this measurement was strengthened to use the
+current group-1 binding-0 record at the end of the backbuffer pass.
+
+The first two current-source samples after restore are empty 608x448
+textures. The third (texture 88 in this run) contains the actual dark image:
+its upper cells include RGB 43/27/53, 0/0/27, and 9/8/29; alpha is 255.
+Evidence: `work/double-dash-race-color-pairs.json` and
+`work/double-dash-race-actual-source-color.json`. These observations narrow
+the investigation toward copying/composition but do not prove which
+operation changes the color: the EFB is reused, source buffers rotate, and
+the samples are not yet adjacent to the same specific copy pass. Next sample
+the EFB and copy destination immediately at that pass boundary. Existing
+legacy copy diagnostics only match 608x456 destinations, whereas these
+actual presented source textures are 608x448; do not rely on that filter.
