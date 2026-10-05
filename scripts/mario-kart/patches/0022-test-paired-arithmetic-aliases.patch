@@ -1,0 +1,33 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -12164,7 +12164,29 @@
+     return 51;
+   }
+ 
+-  return state.npc == 0x80003214 ? 1 : 60;
++  // WASM paired arithmetic regression: execute scalar-source aliases.
++  const std::array<u32, 4> paired_ops = {12, 13, 14, 15};
++  const std::array<std::array<double, 2>, 4> expected = {
++      std::array<double, 2>{10.0, 15.0}, {14.0, 21.0}, {11.0, 19.0}, {15.0, 25.0}};
++  for (u32 test = 0; test < paired_ops.size(); ++test)
++  {
++    state.ps[2].SetBoth(2.0, 3.0);
++    state.ps[3].SetBoth(1.0, 4.0);
++    state.ps[4].SetBoth(5.0, 7.0);
++    state.UpdateFPRFSingle(static_cast<float>(expected[test][0]));
++    const u32 expected_fprf = state.fpscr.Hex & FPRF_MASK;
++    state.fpscr.Hex = 0;
++    const u32 address = 0x80003214 + test * 4;
++    if (run_op(EncodeAFormForWasmBlockTest(4, 4, 2, 3, 4, paired_ops[test]),
++               address, address + 4) != 0)
++      return 70 + test * 3;
++    if (state.ps[4].PS0AsDouble() != expected[test][0] ||
++        state.ps[4].PS1AsDouble() != expected[test][1])
++      return 71 + test * 3;
++    if ((state.fpscr.Hex & FPRF_MASK) != expected_fprf)
++      return 72 + test * 3;
++  }
++  return state.npc == 0x80003224 ? 1 : 90;
+ }
+ 
+ extern "C" int RunPpcWasmDoublePrecisionArithmeticSmoke()

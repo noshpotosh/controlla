@@ -166,3 +166,7 @@ It is a JS-only preparation patch; scene attribution requires counter deltas.
 It routes paired arithmetic through the reference interpreter to preserve scalar
 aliasing, FPSCR/FPRF, operand rounding, and fused operations. It retains existing
 sign/merge paths and is excluded from preparation. Performance is unverified.
+
+`0022-test-paired-arithmetic-aliases.patch` extends the native generated-WASM
+arithmetic smoke with four scalar-source alias cases and FPRF checks. It is
+experimental and excluded from preparation; executing it requires a fresh build.

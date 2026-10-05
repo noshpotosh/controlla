@@ -1605,3 +1605,22 @@ differs from previous pink captures, so this is not evidence of a color fix.
 The emulator is paused; baseline progress is preserved. Native semantic
 regression coverage, repeat throughput measurements, full-race behavior,
 audio, physical motion controls, and original-frame equivalence remain open.
+
+### Generated-WASM scalar alias regression (2026-10-05)
+
+Experimental patch 0022 extends the existing exported
+`RunPpcWasmSinglePrecisionArithmeticSmoke` with four generated-WASM cases:
+`ps_muls0`, `ps_muls1`, `ps_madds0`, and `ps_madds1`, each with FD=FC.
+A=[2,3], C=[5,7], B=[1,4] yields expected pairs [10,15], [14,21], [11,19],
+and [15,25]. The smoke checks exact integer-valued results, FPRF updates,
+and final next-PC. It invokes the actual block compiler and imported native
+FP handler. The original arithmetic smoke cases remain. These cases cover
+scalar aliasing and classification only, not full exception/rounding semantics.
+
+The builder records the regression patch hash and rejects default output.
+JS syntax and reverse patch applicability passed. Build session 82230 is
+linking, logging to `/tmp/controlla-reference-paired-regression-build.log`.
+The earlier 56a9c321 candidate binaries/manifest are preserved at
+`work/double-dash-reference-paired-before-regression`; the regression build
+uses `work/double-dash-reference-paired-core`. Executing the new smoke remains
+pending until compilation completes. The already-loaded browser stays paused.
