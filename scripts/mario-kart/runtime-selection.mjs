@@ -23,6 +23,9 @@ export function selectRuntime(repo, mode = 'prebuilt', candidateOutput = process
       if (manifest[field] !== hash(resolve(repo, 'scripts/mario-kart/patches', name)))
         throw new Error('Candidate patch provenance mismatch: ' + name);
     }
+    if (manifest.optInFpAttribution && manifest.optInFpAttributionPatchSha256 !==
+        hash(resolve(repo, 'scripts/mario-kart/patches/0025-opt-in-fp-opcode-attribution.patch')))
+      throw new Error('Candidate FP attribution patch provenance mismatch.');
     for (const [name, expected] of [['dolphin-core-upstream.wasm', manifest.wasmSha256], ['dolphin-core-upstream.js', manifest.loaderSha256]]) {
       if (!/^[0-9a-f]{64}$/.test(expected || '') || hash(resolve(coreDirectory, name)) !== expected)
         throw new Error('Candidate binary integrity mismatch: ' + name);

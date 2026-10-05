@@ -1,0 +1,13 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -2131,7 +2131,9 @@
+     return 1;
+ 
+   const UGeckoInstruction inst{inst_hex};
+-  ++s_wasm_fp_key_counts[(inst.OPCD << 10) | inst.SUBOP10];
++  // WASM opt-in FP opcode attribution candidate: no arithmetic changes.
++  if (s_ppc_block_profile_enabled)
++    ++s_wasm_fp_key_counts[(inst.OPCD << 10) | inst.SUBOP10];
+   if (inst.OPCD == 56 || inst.OPCD == 57 || inst.OPCD == 60 || inst.OPCD == 61)
+   {
+     auto reason = PsqFallbackReason::ShouldHaveInlined;

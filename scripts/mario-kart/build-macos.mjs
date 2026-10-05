@@ -11,6 +11,13 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
 const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
 const nativeCpu = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp');
 const nativeFifo = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/Fifo.cpp');
+const optInFpAttribution = readFileSync(nativeCpu, 'utf8').includes('WASM opt-in FP opcode attribution candidate');
+if (optInFpAttribution) {
+  if (output === defaultOutput) throw new Error('FP attribution candidate requires isolated output.');
+  const check = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0025-opt-in-fp-opcode-attribution.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('FP attribution patch mismatch: ' + check.stderr);
+}
 const pairedDifferentialRegression = readFileSync(nativeCpu, 'utf8').includes('WASM paired differential regression');
 if (pairedDifferentialRegression) {
   if (output === defaultOutput) throw new Error('Paired differential regression requires isolated output.');
@@ -146,6 +153,8 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   pairedSignOperations,
   preciseSampledProfile,
   pairedSumHelpers,
+  optInFpAttribution,
+  optInFpAttributionPatchSha256: optInFpAttribution ? hash(resolve(repo, 'scripts/mario-kart/patches/0025-opt-in-fp-opcode-attribution.patch')) : null,
   pairedDifferentialRegression,
   pairedDifferentialRegressionPatchSha256: pairedDifferentialRegression ? hash(resolve(repo, 'scripts/mario-kart/patches/0024-differential-paired-arithmetic.patch')) : null,
   directReferenceDispatch,

@@ -1825,3 +1825,20 @@ Temporary test tabs and the isolated frontend/signaling servers were stopped.
 The test worktree is retained for recovery. Original-speed gameplay, audio
 quality, physical phone motion, multiplayer, and complete race qualification
 remain open.
+
+### Opt-in floating-point opcode attribution candidate
+
+Patch 0025 gates the detailed 65,536-entry FP opcode attribution counter on
+`s_ppc_block_profile_enabled`. The aggregate FP import count remains available
+in ordinary runs; detailed opcode counts require CPU profiling. Arithmetic,
+FPU checks, dispatch, and program/DSI checks are unchanged. Previously the
+detailed table was updated on every imported FP operation even with profiling
+disabled. This is a performance hypothesis, not a measured speed improvement.
+
+The candidate uses isolated output `work/double-dash-fp-attribution-core`.
+Build provenance checks patch 0025 and candidate selection verifies its hash
+when enabled. Configuration succeeded; native build and arithmetic/browser
+qualification are pending. The earlier verified candidate is preserved at
+`work/double-dash-paired-differential-core`. Logs:
+`/tmp/controlla-fp-attribution-configure.log` and
+`/tmp/controlla-fp-attribution-build.log`.

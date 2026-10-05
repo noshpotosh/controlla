@@ -58,6 +58,14 @@ test('candidate mode checks arithmetic verification, patch provenance and exact 
     await writeFile(join(patches, '0023-direct-reference-paired-dispatch.patch'), 'changed');
     assert.throws(() => selectRuntime(repo, 'candidate', core), /provenance/);
     await writeFile(join(patches, '0023-direct-reference-paired-dispatch.patch'), '0023-direct-reference-paired-dispatch.patch');
+    const attributionPatch = '0025-opt-in-fp-opcode-attribution.patch';
+    await writeFile(join(patches, attributionPatch), attributionPatch);
+    manifest.optInFpAttribution = true;
+    manifest.optInFpAttributionPatchSha256 = hash(attributionPatch); await save();
+    assert.equal(selectRuntime(repo, 'candidate', core).coreDirectory, core);
+    await writeFile(join(patches, attributionPatch), 'changed');
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /FP attribution patch provenance/);
+    await writeFile(join(patches, attributionPatch), attributionPatch);
     await writeFile(join(core, 'dolphin-core-upstream.js'), 'changed');
     assert.throws(() => selectRuntime(repo, 'candidate', core), /integrity/);
   } finally { await rm(repo, { recursive: true, force: true }); }
