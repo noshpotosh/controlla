@@ -19,6 +19,21 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
     } finally { pending = false; }
   }, 2000);
   window.addEventListener('pagehide', () => clearInterval(timer), { once: true });
+  if (new URLSearchParams(location.search).get('ppcprof') === '1') {
+    const reset = document.createElement('button');
+    reset.textContent = 'Reset CPU profile';
+    reset.type = 'button';
+    document.querySelector('.topbar-actions').append(reset);
+    reset.addEventListener('click', async () => {
+      reset.disabled = true;
+      try {
+        const result = await getAdapter()?.request('controllaResetCpuProfile');
+        if (!result?.enabled) throw new Error(result?.error || 'Load the game before resetting its CPU profile.');
+        reset.textContent = 'CPU profile restarted';
+      } catch (error) { reset.textContent = error.message; }
+      finally { reset.disabled = false; }
+    });
+  }
   if (new URLSearchParams(location.search).get('probeinputs') !== '1') return;
   const controls = document.createElement('details');
   controls.innerHTML = '<summary>Input probe</summary>';

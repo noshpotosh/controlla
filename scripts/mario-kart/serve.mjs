@@ -1,4 +1,5 @@
 import { selectRuntime } from './runtime-selection.mjs';
+import { installProfileResetRequest } from './profile-worker.mjs';
 import { createPhoneRelay } from './phone-relay.mjs';
 import { inspectDoubleDash } from './disc.mjs';
 import { spawnSync } from 'node:child_process';
@@ -191,6 +192,10 @@ const handleRequest = async (request, response) => {
       response.end(readFileSync(path, 'utf8').replace(
         /export const DEFAULT_UPSTREAM_CORE_SHA256 = "[a-f0-9]{64}";/,
         `export const DEFAULT_UPSTREAM_CORE_SHA256 = "${runtimeSelection.coreHash}";`));
+      return;
+    }
+    if (relative === 'src/upstream-discio-worker.js') {
+      response.end(installProfileResetRequest(readFileSync(path, 'utf8')));
       return;
     }
     if (relative === 'src/app.js') {
