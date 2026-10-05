@@ -26,6 +26,8 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
   const probes = [
     ['Start', 16], ['Confirm', 1], ['Back', 2], ['Up', 256], ['Down', 512], ['Left', 1024], ['Right', 2048],
     ['Accelerate', 1, 300], ['Steer left + gas', 1, 90, 64], ['Steer right + gas', 1, 90, 192],
+    ['Brake', 2, 90], ['Item', 4], ['Swap riders', 128],
+    ['Drift left + gas', 65, 90, 64], ['Drift right + gas', 65, 90, 192],
   ];
   for (const [name, mask, frames = 30, stickX = 128] of probes) {
     const button = document.createElement('button');
@@ -34,7 +36,7 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
       if (!getAdapter()?.loaded) return;
       targetFrame = (getFrame()?.frame ?? 0) + frames;
       held = { connected: true, mask, stickX, stickY: 128, cStickX: 128, cStickY: 128,
-        triggerLeft: 0, triggerRight: 0, analogA: mask === 1 ? 255 : 0, analogB: mask === 2 ? 255 : 0 };
+        triggerLeft: 0, triggerRight: mask & 64 ? 255 : 0, analogA: mask & 1 ? 255 : 0, analogB: mask & 2 ? 255 : 0 };
       setProbeInput(held);
     };
     controls.append(button);

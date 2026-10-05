@@ -1118,3 +1118,17 @@ stationary smoke and the fresh queue sample are not a controlled A/B comparison;
 there is no demonstrated end-to-end speed gain. Keep mapped staging opt-in.
 No saved progress was overwritten. Evidence: `work/double-dash-single-steady-
 {a,b}.json`, `work/double-dash-single-mapped-{a,b}.json` and associated PNGs.
+
+
+### Expanded racing control probes
+
+The opt-in input panel now includes Brake, Item, Swap riders, and directional
+Drift + gas probes. Combined button masks preserve analog gas/brake pressure;
+drift also sets the right trigger like the ordinary room controller. Five focused
+diagnostic tests passed, including combined drift pressure and timed release.
+On the single-core mapped candidate, the native swap probe visibly changed the
+rear rider from Luigi to Mario and the minimap portrait changed accordingly.
+Evidence: `work/double-dash-rider-swap.json` and `.png`. This verifies native
+rider swapping through the diagnostic bridge, not physical phone motion or
+multiplayer. Drift, items and braking still require behavioral qualification.
+The diagnostics remain opt-in and are absent from the normal room stage.
