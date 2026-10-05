@@ -1044,3 +1044,18 @@ therefore remains insufficient to establish reliable restoration. Reports are
 `work/double-dash-upload-trace-off-stall.png`. An unfamiliar existing immediate
 upload scratch-buffer change was also found in the ignored runtime tree and was
 preserved, not absorbed into a tracked checkpoint.
+
+
+The logging-reverted comparison remained live through core frame 2,442 / presented
+frame 2,431. Between two samples it delivered 1,015 frames in 31.848 seconds
+(31.87 fps). The right-steering-plus-gas probe changed the kart direction and
+position; the screenshot showed Lakitu's wrong-way indicator on the starting
+straight. Finish requests/schedules/deliveries advanced together from 2,828 to
+4,858. This is one successful repeat, not proof of restore reliability or of a
+logging causal effect. In the prior stalled sample, requests/schedules were 755,
+deliveries 754, and all guest threads eventually waited with current thread zero.
+Restore can replace pending events while lifetime diagnostic counters persist,
+so the one-count difference alone does not establish a lost interrupt. FIFO
+read/write positions also differed in that stalled run despite zero reported
+distance; these independently read fields warrant investigation. New evidence:
+`work/double-dash-upload-trace-reverted-{a,b}.json` and the driving PNG.
