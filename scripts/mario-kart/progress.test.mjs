@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { saveProgress, resumeProgress } from './progress.mjs';
+import { saveProgress, resumeProgress, loadProgressFile } from './progress.mjs';
 
 test('progress survives a new adapter and is isolated by game/core key', async () => {
   const records = new Map();
@@ -27,4 +27,14 @@ test('failed or empty emulator saves preserve previous progress', async () => {
 test('storage and native restore failures are reported', async () => {
   await assert.rejects(saveProgress({ loaded: true, saveStateFile: async () => ({ saved: true, bytes: new Uint8Array([1]) }) }, { write: async () => { throw new Error('Quota exceeded'); } }, 'key'), /Quota exceeded/);
   await assert.rejects(resumeProgress({ loaded: true, loadStateFile: async () => ({ loaded: false, error: 'Invalid state' }) }, { read: async () => ({ bytes: new Uint8Array([1]) }) }, 'key'), /Invalid state/);
+});
+
+test('explicit checkpoint import delegates compatibility and reports native rejection', async () => {
+  let received;
+  const bytes = new Uint8Array([9, 8, 7]);
+  await loadProgressFile({ loaded: true, loadStateFile: async data => { received = data; return { loaded: true }; } }, bytes);
+  assert.equal(received, bytes);
+  await assert.rejects(loadProgressFile({ loaded: false }, bytes), /Start Double Dash/);
+  await assert.rejects(loadProgressFile({ loaded: true, loadStateFile() {} }, new Uint8Array()), /nonempty/);
+  await assert.rejects(loadProgressFile({ loaded: true, loadStateFile: async () => ({ loaded: false, error: 'Incompatible checkpoint' }) }, bytes), /Incompatible checkpoint/);
 });

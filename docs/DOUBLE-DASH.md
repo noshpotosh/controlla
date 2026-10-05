@@ -1891,3 +1891,20 @@ attract demonstration; compilation and scene costs were not isolated. No
 performance gain or regression versus the earlier candidate is established.
 Full speed remains unmet. Candidate tab 18 is paused and retained, along with
 the paused baseline tab 14 and its existing server.
+
+### Explicit checkpoint transfer for controlled comparisons
+
+`checkpointfiles=1` adds diagnostic-only Export checkpoint and Import checkpoint
+buttons. Export downloads native state bytes locally; import delegates native
+compatibility checking and does not overwrite browser saved progress. The
+ordinary game UI does not enable this option. Four progress tests pass,
+including explicit import success, empty input, unloaded adapter, and native
+compatibility rejection. Transfer end-to-end remains unverified.
+
+Automatic approval review rejected navigating paused baseline tab 14 because
+it could discard unsaved race state. That tab was preserved. Separate tab 19
+showed the transfer controls but did not finish engine startup during the
+bounded observation; Resume progress reported an unloaded adapter. No state
+was exported/imported. Temporary tab 19 was closed; paused tabs 14 and 18
+remain. Screenshot: `work/double-dash-checkpoint-transfer-controls.png`.
+A matched-checkpoint speed comparison remains pending.
