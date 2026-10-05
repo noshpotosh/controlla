@@ -1,0 +1,12 @@
+--- a/Source/Core/VideoCommon/Fifo.cpp
++++ b/Source/Core/VideoCommon/Fifo.cpp
+@@ -64,5 +64,9 @@
+   m_config_sync_gpu = Config::Get(Config::MAIN_SYNC_GPU);
++#ifdef __EMSCRIPTEN__
++  // WASM bounded CPU GPU distance candidate: use upstream synchronization.
++  m_config_sync_gpu = true;
++#endif
+   m_config_sync_gpu_max_distance = Config::Get(Config::MAIN_SYNC_GPU_MAX_DISTANCE);
+   m_config_sync_gpu_min_distance = Config::Get(Config::MAIN_SYNC_GPU_MIN_DISTANCE);
+   m_config_sync_gpu_overclock = Config::Get(Config::MAIN_SYNC_GPU_OVERCLOCK);
+ }

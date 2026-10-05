@@ -1141,3 +1141,17 @@ hold for 300 game frames so the two-second diagnostics interval can observe a
 held state. Timed automatic release remains tested. Do not count these attempts
 as verified drifting or braking. Captures: `work/double-dash-drift-live.json`,
 `work/double-dash-drift-right.json` and associated PNGs.
+
+
+### Bounded CPU/GPU distance candidate
+
+Patch 0014 enables Dolphin's existing MAIN_SYNC_GPU policy in the browser FIFO
+configuration. The experiment keeps original distance thresholds and wake/wait
+logic; it does not synthesize guest interrupts or adjust guest FIFO pointers.
+Its purpose is to test whether bounding CPU lead prevents the observed dual-core
+stall. The build wrapper rejects the ordinary output directory, verifies reverse
+patch applicability, and records a boundedGpuDistance manifest flag and patch
+hash. Forward/reverse patch checks, wrapper syntax, and isolated configuration
+passed. The native build is started with output `work/double-dash-sync-core`;
+browser reliability and performance are unverified. Default room runtime remains
+unchanged. Do not promote until fresh boot, race driving and repeat restore pass.
