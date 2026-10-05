@@ -1,0 +1,36 @@
+--- a/src/upstream-discio-worker.js
++++ b/src/upstream-discio-worker.js
+@@ -1267,14 +1267,29 @@
+       api?.setWebGpuUboPackEnabled?.(webGpuUboPackMode());
+       api?.setWebGpuGeometryPackEnabled?.(wgpuGeometryPackEnabled ? 1 : 0);
+       api?.setWebGpuGeometryRangeEnabled?.(wgpuGeometryRangeEnabled ? 1 : 0);
++      if (!api.getLastLoadedCheckpointGeneration) {
++        return { loaded: false, error: "Core cannot confirm save-state restoration." };
++      }
++      const generationBeforeLoad = api.getLastLoadedCheckpointGeneration() >>> 0;
+       let rc = 0;
+       ppcWasmJitTimingSuspensions += 1;
+       try {
+         rc = api.loadStateFile(path) | 0;
+-        // LoadAs runs on the autonomous CPU pthread (RunFrame doesn't
+-        // step the core) — wait real wall-clock time so the restore
+-        // actually takes effect before we sample/screenshot.
+-        await new Promise((r) => setTimeout(r, 1200));
++        // Acceptance only queues the load. The after-load callback publishes
++        // a new generation after deserialization has actually completed.
++        let restored = false;
++        if (rc === 1) {
++          for (let i = 0; i < 80; i++) {
++            await new Promise((r) => setTimeout(r, 100));
++            api.pumpHostJobs?.();
++            if ((api.getLastLoadedCheckpointGeneration() >>> 0) !== generationBeforeLoad) {
++              restored = true;
++              break;
++            }
++          }
++        }
++        if (!restored) rc = 0;
++        else await new Promise((r) => setTimeout(r, 1200));
+       } finally {
+         resetPpcWasmJitTiming(rc === 1);
+         ppcWasmJitTimingSuspensions -= 1;

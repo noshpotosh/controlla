@@ -26,7 +26,8 @@
     "mario-kart:configure": "node scripts/mario-kart/configure-macos.mjs",
     "mario-kart:test": "node --test scripts/mario-kart/*.test.mjs",
     "mario-kart:build": "node scripts/mario-kart/build-macos.mjs",
-    "mario-kart:check-abi": "node scripts/mario-kart/check-native-abi.mjs"
+    "mario-kart:check-abi": "node scripts/mario-kart/check-native-abi.mjs",
+    "mario-kart:check-state": "node scripts/mario-kart/check-state.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
