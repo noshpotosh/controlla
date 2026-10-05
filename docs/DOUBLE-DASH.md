@@ -800,3 +800,19 @@ executes GPU FIFO work on the CPU in single-core mode, as well as DSP and
 other events. No named slow-event logs were available from the browser log
 capture, so the worst timing callback is not yet identified. Compare dual-core
 scheduling and/or expand the event categories before attributing that spike.
+
+### Dual-core restore failure (2026-10-05)
+
+The alpha candidate with `cpu=dual`, PPC profiling and state caching off,
+restored the existing single-core race checkpoint. It reported 105-110 percent
+CPU game speed, but visual cadence stopped at zero and the stage was black.
+Captures `work/double-dash-alpha-dual-a.json` and `...dual-b.json` span 2,153
+core frames over 35.965 seconds while presented frame stays 632 and command
+count stays 87,724. Shader/pipeline errors, missing resources, and producer
+ring waits remain zero. Native FIFO decode call count also stays 236,445;
+tail-flush calls continue increasing. Thus the speed counter reflects CPU
+progress without fresh GPU production, not playable performance. Acceleration
+reaches native pad generation 2, but no visible driving result is verified.
+Screenshot `work/double-dash-alpha-dual-driving.png` records the black output.
+Dual-core is not promoted. Next check is a fresh boot without the checkpoint
+to distinguish cross-mode restore failure from dual-core rendering failure.
