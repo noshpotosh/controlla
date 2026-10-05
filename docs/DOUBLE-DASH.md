@@ -2117,3 +2117,24 @@ compilation acceptance, performance and fidelity still require browser evidence.
 Next experiment: restore the same checkpoint with profiling disabled and
 shortprefix=1, inspect rejection/compile counters and measure native throughput.
 No compiler policy or production default has been changed on this evidence.
+
+### Short-prefix policy browser experiment
+
+Using the exact status-core binary, profiling disabled and `shortprefix=1`,
+the saved e65 checkpoint restored successfully (generation 1). Initial
+helper telemetry reported 19277 compiled blocks and 1608 short rejections,
+versus 10464/7896 in the earlier default-threshold sample. Thus the policy
+materially changes compilation acceptance, but these counters cover different
+runtime windows and are not a controlled count comparison.
+
+The short-prefix sample presented 722 frames over 39.964270 seconds: 18.0661
+FPS. Native time advanced 12.045590683 seconds, 30.1409% of wall time. No
+captured browser console errors occurred. Local ignored evidence:
+`work/double-dash-short-prefix-{a,b}.json` and `.png`. The sampled native scene
+window was 3.7368–15.7824 seconds after restoration, versus 5.3552–20.8569 for
+the earlier default sample (21.202 FPS, 35.3405% speed). These nonmatching
+windows preclude attributing a regression to the threshold. More accepted
+blocks did not establish a speed benefit. Keep the production default at four;
+future comparisons should bound the same native scene interval and repeat
+both policies before promotion. The experimental scene is paused, and its
+saved source record remains unchanged.
