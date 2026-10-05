@@ -1380,3 +1380,16 @@ passed module syntax validation. WASM SHA-256:
 Native input ABI validation passed connection/disconnection on four ports and
 invalid-port rejection (179 exports). This check does not boot the game or
 validate profiling coverage. Browser testing remains pending.
+
+Browser restoration and two broad-attribution captures subsequently passed.
+Both windows reported zero collisions and exact attributed time equal to
+sampled total time: 55,015,424ns across 98,604 samples / 9,178 unique blocks,
+then 51,328,768ns across 98,860 samples / 9,291 unique blocks. The displayed
+32 blocks cover 11.39% and 12.86% respectively. This resolves the previous
+table's missing attribution but still shows distributed execution cost.
+The second ranking is led by `0x80055e98` with seven samples and a single
+940,288ns maximum, illustrating why occasional long samples should not alone
+drive specialization. Frequent leaders remain rlwinm, stwu and psq_l blocks.
+Profiling overhead and disabled redispatch still prevent normal-play speed
+claims. Paused after capture without saving over the baseline race. Evidence:
+`work/double-dash-broad-profile-{a,b}.json` and `-paused.png`.
