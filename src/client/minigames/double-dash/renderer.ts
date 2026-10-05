@@ -8,7 +8,6 @@ export class DoubleDashRenderer implements GameRenderer<DoubleDashState> {
   render({
     context,
     snapshot,
-    time,
     width,
     height,
   }: Presentation<DoubleDashState>) {
@@ -34,7 +33,8 @@ export class DoubleDashRenderer implements GameRenderer<DoubleDashState> {
     context.fillStyle = '#030503';
     context.fillRect(0, 0, width, height);
     // Re-send while the runtime starts, then keep held inputs and releases fresh.
-    if (time - this.lastSent >= 30) {
+    const now = performance.now();
+    if (now - this.lastSent >= 30) {
       this.frame.contentWindow?.postMessage(
         {
           type: 'controlla:kart-input',
@@ -42,11 +42,12 @@ export class DoubleDashRenderer implements GameRenderer<DoubleDashState> {
         },
         location.origin,
       );
-      this.lastSent = time;
+      this.lastSent = now;
     }
   }
   dispose() {
     this.frame?.remove();
     this.frame = null;
+    this.lastSent = -Infinity;
   }
 }
