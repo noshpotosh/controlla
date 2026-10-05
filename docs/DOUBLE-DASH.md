@@ -655,3 +655,22 @@ alpha for color blending while independently writing destination alpha.
 It does not yet prove this is the only rendering defect. Next implement
 and test a faithful two-pass destination-alpha path or supported equivalent,
 not a shader skip or replacement color.
+
+### Native destination-alpha prototype (2026-10-05)
+
+Experimental patch 0008 contains a two-pass native prototype. A specialized
+fragment shader whose GLSL writes `ocol0.a = float(alphaRef.a >> 2) / 63.0`
+gets a second translated variant that writes real TEV alpha for RGB blending.
+Affected blended RGBA pipelines use that variant with alpha writes disabled,
+then repeat the same geometry with an alpha-only original shader. The alpha
+pass disables depth writes and uses equal testing when the RGB pass writes
+depth. Both indexed and non-indexed native draw paths are covered.
+
+The Apple Silicon Emscripten build compiled the changed backend and reached
+final linking in the isolated `work/double-dash-alpha-core` output. Logs:
+`/tmp/controlla-alpha-configure.log`, `/tmp/controlla-alpha-build.log`.
+This remains an unverified experiment: patch 0008 is not automatically applied
+by prepare-core, not in the default core, and not claimed to solve fidelity.
+Runtime verification, ubershader coverage, failure behavior, and build manifest
+integration remain before promotion. Source backups live in ignored
+`work/double-dash-alpha-source-backup/`.

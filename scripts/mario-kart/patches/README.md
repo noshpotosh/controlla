@@ -120,3 +120,12 @@ absolute directory for both `configure-macos.mjs` and `build-macos.mjs`. The
 builder checks the configured directory and writes its build manifest beside
 the candidate core. Default builds retain the existing output and manifest
 locations. This preserves the current core during renderer experiments.
+
+Experimental patch `0008-emulate-destination-alpha.patch` is not yet included
+in `prepare-core.mjs`. It creates a real-alpha fragment variant for specialized
+shaders that write `alphaRef.a`, then uses separate RGB and destination-alpha
+pipelines for blended RGBA draws. Both indexed and non-indexed draw paths
+repeat the same geometry; the alpha pass disables depth writes and uses equal
+testing when the first pass writes depth. This prototype needs runtime/fidelity
+validation, handling audit for ubershaders and shader/pipeline failures, and
+manifest integration before becoming part of the prepared runtime.

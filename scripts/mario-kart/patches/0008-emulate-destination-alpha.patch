@@ -1,0 +1,133 @@
+--- a/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp
++++ b/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp
+@@ -740,12 +740,15 @@
+   ~WebGPUShader() override = default;
+ 
+   u32 GetBridgeId() const { return m_bridge_id; }
++  u32 GetBlendShaderId() const { return m_blend_shader_id; }
++  void SetBlendShaderId(u32 id) { m_blend_shader_id = id; }
+   const std::string& GetWgsl() const { return m_wgsl; }
+   BinaryData GetBinary() const override { return {}; }
+ 
+ private:
+   u32 m_bridge_id = 0;
+   std::string m_wgsl;
++  u32 m_blend_shader_id = 0;
+ };
+ 
+ std::unique_ptr<AbstractShader>
+@@ -806,7 +809,19 @@
+         LastShaderTranslateError().c_str());
+   }
+ 
+-  return std::make_unique<WebGPUShader>(stage, bridge_id, std::move(wgsl_text));
++  auto shader = std::make_unique<WebGPUShader>(stage, bridge_id, std::move(wgsl_text));
++  // Destination alpha is a separate framebuffer write, never the RGB blend factor.
++  constexpr std::string_view override_alpha = "ocol0.a = float(alphaRef.a >> 2) / 63.0;";
++  if (stage == ShaderStage::Pixel && source.find(override_alpha) != std::string_view::npos)
++  {
++    std::string blend_source(source);
++    blend_source.replace(blend_source.find(override_alpha), override_alpha.size(),
++                         "ocol0.a = float(prev.a) / 255.0;");
++    if (auto blend_wgsl = GlslToWgsl(stage, blend_source))
++      shader->SetBlendShaderId(m_cmd_stream.PushCreateShader(
++          blend_wgsl->data(), blend_wgsl->size(), static_cast<u32>(stage)));
++  }
++  return shader;
+ }
+ 
+ std::unique_ptr<AbstractShader> WebGPUGfx::CreateShaderFromBinary(ShaderStage stage,
+@@ -827,14 +842,16 @@
+ class WebGPUPipeline final : public AbstractPipeline
+ {
+ public:
+-  WebGPUPipeline(const AbstractPipelineConfig& config, u32 bridge_id)
+-      : AbstractPipeline(config), m_bridge_id(bridge_id)
++  WebGPUPipeline(const AbstractPipelineConfig& config, u32 bridge_id, u32 alpha_id = 0)
++      : AbstractPipeline(config), m_bridge_id(bridge_id), m_alpha_id(alpha_id)
+   {
+   }
+   u32 GetBridgeId() const { return m_bridge_id; }
++  u32 GetAlphaId() const { return m_alpha_id; }
+ 
+ private:
+   u32 m_bridge_id = 0;
++  u32 m_alpha_id = 0;
+ };
+ 
+ // ---- Day-33 A2: AbstractPipelineConfig → WebGPU pipeline blob -----
+@@ -1116,7 +1133,29 @@
+     }
+   }
+ 
+-  return std::make_unique<WebGPUPipeline>(config, bridge_id);
++  u32 alpha_id = 0;
++  if (bridge_id && fs && fs->GetBlendShaderId() && config.blending_state.blend_enable &&
++      config.blending_state.color_update && config.blending_state.alpha_update)
++  {
++    auto color_config = config;
++    color_config.blending_state.alpha_update = false;
++    auto alpha_config = config;
++    alpha_config.blending_state.hex = 0;
++    alpha_config.blending_state.alpha_update = true;
++    if (config.depth_state.update_enable)
++    {
++      alpha_config.depth_state.test_enable = true;
++      alpha_config.depth_state.func = CompareMode::Equal;
++    }
++    alpha_config.depth_state.update_enable = false;
++    const auto color_blob = SerializePipelineConfig(color_config, vs_id, fs->GetBlendShaderId());
++    const auto alpha_blob = SerializePipelineConfig(alpha_config, vs_id, fs_id);
++    const u32 color_id = m_cmd_stream.PushCreatePipelineCfg(color_blob.data(), color_blob.size());
++    alpha_id = m_cmd_stream.PushCreatePipelineCfg(alpha_blob.data(), alpha_blob.size());
++    if (color_id && alpha_id) bridge_id = color_id;
++    else alpha_id = 0;
++  }
++  return std::make_unique<WebGPUPipeline>(config, bridge_id, alpha_id);
+ }
+ 
+ std::unique_ptr<NativeVertexFormat>
+@@ -2248,6 +2287,7 @@
+ {
+   m_cur_pipeline_id =
+       pipeline ? static_cast<const WebGPUPipeline*>(pipeline)->GetBridgeId() : 0;
++  m_cur_alpha_pipeline_id = pipeline ? static_cast<const WebGPUPipeline*>(pipeline)->GetAlphaId() : 0;
+   m_pipeline_uses_utility_uniforms =
+       pipeline && pipeline->m_config.usage == AbstractPipelineUsage::Utility;
+ }
+@@ -2584,6 +2624,12 @@
+     AbortRecordedPass();
+     return;
+   }
++  if (m_cur_alpha_pipeline_id &&
++      (!SetRecordedPipeline(m_cur_alpha_pipeline_id) || !m_cmd_stream.PushDraw(num_vertices, 1, base_vertex)))
++  {
++    AbortRecordedPass();
++    return;
++  }
+ }
+ 
+ void WebGPUGfx::DrawIndexed(u32 base_index, u32 num_indices, u32 base_vertex)
+@@ -2624,6 +2670,12 @@
+     return;
+   }
+   if (!m_cmd_stream.PushDrawIndexed(num_indices, 1, base_index, base_vertex))
++  {
++    AbortRecordedPass();
++    return;
++  }
++  if (m_cur_alpha_pipeline_id &&
++      (!SetRecordedPipeline(m_cur_alpha_pipeline_id) || !m_cmd_stream.PushDrawIndexed(num_indices, 1, base_index, base_vertex)))
+   {
+     AbortRecordedPass();
+     return;
+--- a/Source/Core/VideoBackends/WebGPU/WebGPUGfx.h
++++ b/Source/Core/VideoBackends/WebGPU/WebGPUGfx.h
+@@ -209,6 +209,7 @@
+   float m_clear_col[4] = {0.f, 0.f, 0.f, 1.f};
+ 
+   u32 m_cur_pipeline_id = 0;
++  u32 m_cur_alpha_pipeline_id = 0;
+   u32 m_last_set_pipeline_id = 0;
+   u32 m_last_bind_group_id[3] = {};
+   u32 m_last_bind_group_dynamic_count[3] = {};
