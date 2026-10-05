@@ -470,3 +470,23 @@ Cup. At approximately 884 seconds it rendered the original Luigi Circuit race
 intro (Grand Prix 1/4, three laps). This proves those selection stages and course
 loading in the software-renderer diagnostic. The bounded run ends before proving
 responsive driving, a complete race, or browser hardware-renderer fidelity.
+
+### Generated race shader capture (2026-10-05)
+
+An isolated localhost server (`work/double-dash-shader-snapshot-serve.mjs`)
+adds a diagnostic-only snapshot of generated WGSL and pipeline descriptors to
+the existing renderer report. It serves the candidate core without changing
+shader execution. Restoring the same Luigi Circuit checkpoint on port 8081
+produced generation 1, 96 captured shader sources, 86 pipeline descriptors,
+and no reported renderer errors. The ignored evidence is
+`work/double-dash-race-shader-snapshot.json`, the extracted
+`work/double-dash-race-shaders/`, and the matching screenshot.
+
+Shader 314 contains console depth conversion `(1 - fragmentPosition.z) *
+16777216`, clamps to 24-bit depth, and computes exponential fog before mixing
+the fog color into the TEV output. This verifies that the candidate conversion
+reaches an actual generated course shader; it does not prove its bound values
+or the resulting fog are correct. The course remains dark. The next diagnostic
+is to associate actual pixel-constant uploads and draw calls with these
+shader/pipeline IDs rather than relying on shader text or aggregate counters.
+The diagnostic server and shader artifacts remain ignored and local.
