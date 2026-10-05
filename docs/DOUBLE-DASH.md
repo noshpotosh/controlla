@@ -2051,3 +2051,26 @@ enabled together. Browser behavior/performance of this exact new binary has
 not been tested; the earlier finite-path 215574b1 core remains preserved with
 its browser sample. Full-speed fidelity, complete races, matched-state speed,
 audio quality, and physical motion/multiplayer remain open.
+
+### Explicit cross-core checkpoint restore and status-core browser sample
+
+Diagnostic `checkpointfiles=1&checkpointsource=<64-character WASM hash>` now
+provides an explicit same-game restore from the same origin's saved record.
+It delegates compatibility to the native loader and never writes progress.
+Six progress tests pass, including invalid source/game and native rejection.
+The normal room interface does not expose these diagnostic controls.
+
+Baseline e65f32b6 and status-core 4630560c both restored the e65 checkpoint
+saved at 2026-10-05 18:17:04 local time. Native loadedCheckpointGeneration was
+1 for both. Reported restored ticks were 137437180845 and 137437179978,
+respectively: a difference of 867 ticks (about 1.8 microseconds). Thus this
+establishes cross-core loading, not deterministic replay equivalence.
+
+Status-core 4630560c subsequently presented 930 frames over 43.863715 seconds,
+21.202 FPS, with no captured browser console errors. Evidence is local ignored
+`work/double-dash-status-comparison-{a,b}.json` and `.png`; baseline restore
+report is `work/double-dash-comparison-baseline-restored.json`. The prior
+baseline restore has no corresponding sustained interval, so this sample
+cannot establish a speed improvement. A matched scene interval comparison is
+still required. The native-verified status core now also has browser boot and
+checkpoint-load evidence, but full-speed gameplay remains unqualified.
