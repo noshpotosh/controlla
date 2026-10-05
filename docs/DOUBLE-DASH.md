@@ -101,7 +101,7 @@ emulator snapshot; the rebuilt worker confirms its native after-load generation
 before reporting success. Evidence: `work/double-dash-browser-resume.png`.
 This was an in-session restore, not a browser-restart emulator restore.
 
-The current default WebGPU path rendered black despite advancing core frames.
+An earlier default WebGPU test rendered black despite advancing core frames.
 Direct-worker OpenGL also failed to present game frames in the Codex in-app
 browser. Software with Canvas 2D rendered the intro, but measured only about
 6–16% game speed, with JIT engaging and subsequently disabling itself on a
@@ -109,6 +109,27 @@ performance guard. Full racing remains unverified. These are unresolved
 rendering/performance failures; the build is experimental, not ready for normal
 racing. Browser testing also found and fixed settings silently replacing an
 explicit Software selection with the automatic WebGPU game profile.
+
+A later browser comparison with `cpu=single`, `wasmjit=1`, and
+`jitwarmup=700` rendered the original intro and title with WebGPU. The title
+briefly measured 103% game speed, but a subsequent attract-mode scene remained
+dark. At frame 2941 the worker reported 23,227 draws, 114 successful shaders,
+122 successful pipelines, no missing resources or skipped draws, and no GPU
+errors. Successful command submission therefore does not establish rendering
+fidelity. The dark scene was initially mistaken for a main menu; restoring its
+saved progress with Software revealed the original attract-mode race.
+
+The same-origin page restart and cross-renderer restore confirmed native
+after-load generation 1 and displayed that race. Start then returned to the
+title and reached the memory-card creation prompt. Software measured roughly
+1–13% speed during this comparison. This verifies scene restoration and those
+input transitions, not interactive driving or playable performance. Confirm
+created the game data, and another Confirm dismissed its notice to display
+the original START GAME / RECORDS / OPTIONS menu. Later menu samples reached
+16% speed. `work/double-dash-browser-main-menu.png` records that browser result.
+Evidence is retained locally in `work/double-dash-hardware-menu-report.json`,
+`work/double-dash-software-restored-report.json`, and
+`work/double-dash-software-restored-scene.png` (all ignored).
 
 Keyboard controls follow the emulator's bindings:
 
