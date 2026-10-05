@@ -1174,3 +1174,13 @@ initial driving and repeated-restore check, but fresh boot, a complete race,
 phone motion and full fidelity remain unverified. Keep the candidate isolated.
 Evidence: `work/double-dash-sync-driving.json` / `.png` and
 `work/double-dash-sync-repeat-{a,b}.json` / final PNG.
+
+Fresh boot of the same isolated bounded-distance candidate (generation 0)
+continued through two-player and four-player Luigi Circuit attract sequences.
+Presented frames advanced from 7,158 to 9,045 in 47.647 seconds (39.60 fps),
+with finish requests, schedules and deliveries advancing to 18,091. This
+exceeds the earlier combined candidate's fresh-boot stall at presented frame
+3,723, but does not establish long-run reliability. A Start probe during attract
+mode did not visibly reach the menu; fresh-start interactive input remains
+unverified. No candidate save was made, and shipping defaults remain unchanged.
+Evidence: `work/double-dash-sync-fresh-{a,b,c}.json` and final `c.png`.
