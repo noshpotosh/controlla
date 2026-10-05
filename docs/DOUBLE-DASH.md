@@ -1214,3 +1214,13 @@ interval and screenshots do not prove sustained drift or mini-turbo. Keep
 drift qualification pending rather than treating combined movement as proof.
 Evidence: `work/double-dash-sync-fresh-swap.png` and
 `work/double-dash-sync-drift-{held,held-b,immediate}.json`.
+
+Retained probe telemetry was browser-verified after reloading the diagnostic
+module and restoring the known baseline race. The right-drift probe requested
+mask 65, stick X 192, full analog A and right trigger. Observations from core
+frames 1,083–1,380 recorded `input:41`, `buttons:120`, `stick:192,128`;
+the native formatter emits masks in hexadecimal. The probe released at frame
+1,380 against target 1,376. Thus combined input reached native polling across
+the held interval; sustained drift/mini-turbo remains unqualified because this
+attempt ended against a barrier. Evidence:
+`work/double-dash-sync-retained-drift.json` / `.png`.
