@@ -674,3 +674,14 @@ by prepare-core, not in the default core, and not claimed to solve fidelity.
 Runtime verification, ubershader coverage, failure behavior, and build manifest
 integration remain before promotion. Source backups live in ignored
 `work/double-dash-alpha-source-backup/`.
+
+The prototype build remains confirmed live in exec session 74611 after
+compiling the modified backend; final WASM linking has not yet returned.
+The producer's SetRecordedPipeline changes only the pipeline ID and leaves
+geometry/uniform bindings intact for the second draw. Runtime helper tests
+pass 22/22. The builder now rejects default-core output when the experimental
+backend is present and records its source hash, prototype marker and patch
+0008 in isolated manifests. The default-output rejection was executed and
+verified before starting any compilation. Because the running build loaded
+the earlier builder script, rerun the updated isolated builder after it exits
+to refresh metadata; do not start a second build while the linker is live.

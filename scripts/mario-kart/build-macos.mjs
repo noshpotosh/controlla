@@ -8,6 +8,11 @@ const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const stage = resolve(repo, 'work/double-dash-build');
 const defaultOutput = resolve(stage, 'cores/dolphin');
 const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
+const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
+const destinationAlphaPrototype = readFileSync(nativeBackend, 'utf8').includes('GetBlendShaderId()');
+if (destinationAlphaPrototype && output === defaultOutput) {
+  throw new Error('Experimental destination-alpha source requires an isolated DOLPHIN_WASM_OUTPUT_DIR.');
+}
 const cache = readFileSync(resolve(stage, 'build/dolphin-wasm/CMakeCache.txt'), 'utf8');
 const configuredOutput = cache.match(/^DOLPHIN_WASM_OUTPUT_DIR:[^=]+=(.*)$/m)?.[1];
 if (!configuredOutput || resolve(configuredOutput) !== output) {
@@ -36,7 +41,9 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   platform: manifest.platform, wasmSha256: hash(wasm), loaderSha256: hash(js),
   toolchainSha256: hash(resolve(stage, 'controlla-macos-toolchain.json')),
   wasmExportCount: WebAssembly.Module.exports(module).length,
-  patches: ['0001-four-controller-state.patch', '0002-controller-worker-transport.patch', '0003-four-controller-devices.patch', '0007-restore-console-depth-conversion.patch'].map(name => ({ name, sha256: hash(resolve(repo, 'scripts/mario-kart/patches', name)) })),
+  patches: ['0001-four-controller-state.patch', '0002-controller-worker-transport.patch', '0003-four-controller-devices.patch', '0007-restore-console-depth-conversion.patch', ...(destinationAlphaPrototype ? ['0008-emulate-destination-alpha.patch'] : [])].map(name => ({ name, sha256: hash(resolve(repo, 'scripts/mario-kart/patches', name)) })),
+  nativeBackendSha256: hash(nativeBackend),
+  destinationAlphaPrototype,
   validatedGameplay: false,
 }, null, 2) + '\n');
 console.log('Four-controller WASM built and module syntax validated. Browser gameplay remains unverified.');
