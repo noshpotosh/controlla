@@ -857,3 +857,17 @@ pointers both 4,259,392 and no renderer errors. Evidence:
 indicate an empty CP FIFO rather than a disabled read gate or pending
 interrupt at this sample. A second sample and CPU producer/PI pointer
 inspection are needed before attributing the stall's cause.
+
+The second FIFO diagnostic sample contradicts the initial stall assumption:
+core frame advances 842 to 1,445 and presented frame advances 749 to 1,352.
+The race visibly renders a later timer, with 17 changing frames/second,
+29 percent CPU speed, and no renderer errors. CP read/write pointers change
+from 4,259,392 to 4,177,248 while queue distance is again zero. An empty FIFO
+at a sample is normal when the consumer catches up; it does not establish
+missing production. Evidence: `work/double-dash-fifo-gate-second.json` and
+`work/double-dash-fifo-dual-race.png`.
+
+This diagnostic-core run omitted `wgpuclassify=1`, unlike the earlier dual-core
+stall runs. Both native source and runtime options changed, so no cause is
+proven. Compare this same core with classification on before inferring that
+patch 0009 fixed execution or that the classifier caused the stall.
