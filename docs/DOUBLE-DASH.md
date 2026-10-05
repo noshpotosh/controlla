@@ -1234,3 +1234,13 @@ profiling did not produce near-full-speed execution in this sample. This is
 not a paired controlled estimate of profiling overhead; startup and workload
 differences preclude comparing it directly with earlier driving samples.
 Evidence: `work/double-dash-sync-profile-off-{a,b}.json` and final `b.png`.
+
+Periodic upload trace gating is retried as experimental JS patch
+`0015-opt-in-upload-trace.patch` on the synchronized native candidate. It
+requires deep replay diagnostics before formatting/logging the periodic UBO
+trace. This preserves the prior attempt as a separate numbered experiment;
+that attempt was reverted after a dual-core stall, before bounded GPU-distance
+synchronization was added. Automatic preparation and shipping output are
+unchanged. Forward/reverse application and worker syntax checks passed on the
+active runtime tree, preserving the pre-existing immediate-upload scratch
+implementation. A browser reload and performance/reliability check are pending.
