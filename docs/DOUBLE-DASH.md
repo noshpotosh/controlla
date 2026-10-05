@@ -2159,3 +2159,27 @@ prefix tuning. Scene timing, not startup-inclusive profile, must guide the
 next optimization. Paired add/sub remains the most frequent recorded FP
 helper keys (counts describe frequency, not execution cost). Reset does not
 change instruction semantics, saved progress or production compilation policy.
+
+### Fresh one-player Grand Prix and acceleration verified
+
+A fresh status-core 4630560c browser session (ppcprof=0, probeinputs=1) used
+bounded native input probes to leave the attract demo, create local game save
+data, and enter Start Game -> 1 Player -> Grand Prix -> 50cc. Mario and Luigi,
+the default red kart, and Mushroom Cup were selected with separate confirmed
+inputs. Luigi Circuit loaded into actual player gameplay: lap 1/3, eighth
+place, player marker and 0 mph were visible before acceleration.
+
+A 300-frame held acceleration probe registered native buttons:100, then
+released at frame 12650. The kart moved from the start line to grass beside
+the course. The post-release screenshot shows 0 mph, so it is not a captured
+peak-speed measurement. No captured console errors occurred. Local ignored
+evidence: `work/double-dash-luigi-circuit-acceleration.{json,png}`. This tests
+an actual selected race and native input delivery, not physical phone motion,
+complete laps, items, steering, drift, brake or full-speed fidelity.
+
+The race was paused and Save progress succeeded at 2026-10-05 18:58:43 local,
+under GM4E01 and the status-core 4630560c hash on origin 127.0.0.1:8082. The
+earlier e65 attract checkpoint remains separate. Local paused evidence:
+`work/double-dash-luigi-circuit-checkpoint.{json,png}`. Browser tab 31 is
+preserved for controlled driving checks and this new gameplay checkpoint can
+support more relevant performance comparisons after verifying restoration.
