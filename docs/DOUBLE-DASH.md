@@ -1842,3 +1842,11 @@ qualification are pending. The earlier verified candidate is preserved at
 `work/double-dash-paired-differential-core`. Logs:
 `/tmp/controlla-fp-attribution-configure.log` and
 `/tmp/controlla-fp-attribution-build.log`.
+
+The arithmetic verifier now exercises patch 0025 with CPU profiling disabled,
+enabled, then disabled again. It requires arithmetic comparisons to pass each
+time and checks detailed FP opcode counts remain empty initially, become
+nonempty with profiling enabled, and stop updating after profiling is disabled.
+JavaScript syntax passed. The exact native build remains live in session 52709
+(linker PID 22921 observed active); these new runtime assertions have not yet
+executed against its output. No speed improvement is claimed.
