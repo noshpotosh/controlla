@@ -2032,3 +2032,22 @@ equivalence or every possible operand/control combination.
 Configuration succeeded. Build session 60739 is pending; output `work/double-dash-paired-status-core`, logs
 `/tmp/controlla-paired-status-{configure,build}.log`. Runtime assertions and
 browser behavior remain unverified; earlier candidate cores are preserved.
+
+### Paired status comparisons passed
+
+Native build session 60739 completed successfully. Exact WASM:
+`4630560cfc830e2e2133fe6468dfef5645dac49edc8d25a15e3b4bd767699538`.
+Arithmetic verification passed the existing 3,744 differential cases and new
+1,536 Rc/status/exception cases, with profiling off/on/off. The verification
+manifest records the exact WASM hash, patch 0026 hash and case counts. Native
+controller ABI checks subsequently accepted connection/disconnection on all
+four ports and rejected invalid ports. Production candidate selection admits
+this verified output. Log: `/tmp/controlla-paired-status-check.log`.
+
+These results qualify comparisons against the unchanged interpreter, not
+independent hardware behavior or an exhaustive set of operands, MSR/FPSCR
+combinations or FPU-unavailable scenarios. Both FE bits are either disabled or
+enabled together. Browser behavior/performance of this exact new binary has
+not been tested; the earlier finite-path 215574b1 core remains preserved with
+its browser sample. Full-speed fidelity, complete races, matched-state speed,
+audio quality, and physical motion/multiplayer remain open.
