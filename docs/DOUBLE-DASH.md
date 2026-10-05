@@ -2138,3 +2138,24 @@ blocks did not establish a speed benefit. Keep the production default at four;
 future comparisons should bound the same native scene interval and repeat
 both policies before promotion. The experimental scene is paused, and its
 saved source record remains unchanged.
+
+### Browser-verified post-restore CPU profile reset
+
+Server with checkpoint 63f5c44 served the exact status-core 4630560c. A fresh
+profile-enabled browser booted, restored the saved e65 record, and reported
+`CPU profile restarted` after the diagnostic reset request. Native evidence
+also confirms reset: before reset, 100283766 blocks/97933 samples; afterward,
+417749 blocks/407 samples. A later refreshed report contained 302059282
+blocks/294979 samples and a 97868-sample window. Thus the result is not merely
+a UI acknowledgement or startup telemetry cached before the reset.
+
+Local ignored reports are `work/double-dash-profile-{before,after}-reset.json`
+and `work/double-dash-scene-cpu-profile.json`; paused screenshot is
+`work/double-dash-scene-cpu-profile.png`. This fresh window's displayed leaders
+include 800bf6e4 (one 1.43 ms outlier), 800a9774, 8005b5fc and 800a9740.
+The earlier startup/decompression-style 800f6c/800f6f blocks are not prominent
+in this window. That weakens using those blocks to justify production short
+prefix tuning. Scene timing, not startup-inclusive profile, must guide the
+next optimization. Paired add/sub remains the most frequent recorded FP
+helper keys (counts describe frequency, not execution cost). Reset does not
+change instruction semantics, saved progress or production compilation policy.
