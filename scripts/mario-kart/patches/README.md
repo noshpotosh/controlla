@@ -156,3 +156,8 @@ distance zero. New GP bursts and async requests retain their Wakeup path.
 The builder requires isolated output, verifies the reverse patch, and records
 the FIFO source hash and candidate flag. A host-side 10,000-wakeup stress
 check passed; native WASM compilation and browser validation remain pending.
+
+`0020-report-texture-fallbacks.patch` exposes worker-lifetime missing-texture
+and unsupported-format dummy substitutions in `commandReplay.textureFallbacks`.
+It copies the ID/format sets into the report and leaves replay behavior unchanged.
+It is a JS-only preparation patch; scene attribution requires counter deltas.

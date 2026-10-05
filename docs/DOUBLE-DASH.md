@@ -1510,3 +1510,25 @@ or error entries; absence of those logs does not prove correct resources or
 pixels. Do not hide the artifact by replacing magenta with another color.
 Further classification at the affected draw/texture is needed before a
 rendering fix can be selected.
+
+### Frame-chain readbacks and texture fallback reporting (2026-10-05)
+
+The isolated paired-sum candidate was booted with `wgpuclassify=1` and
+`wgpuclassifyreadback=1`, then restored from the same saved race. The capture
+`work/double-dash-artifact-classifier.json` reports `FIRST_EFB_PASS_MUTATED`,
+zero missing resources, no split passes, and nonzero color readbacks from
+EFB, XFB, and backbuffer. These establish a working presentation chain, not
+correct per-draw texture/color semantics. Acceleration was observed at native
+frames 969–1251 and released at 1266 (target 1264). The final screenshot faces
+a close track wall; it does not reproduce or resolve the earlier distant
+magenta strip. Readbacks describe early post-restore frames, not this final
+wall view.
+
+Patch `0020-report-texture-fallbacks.patch` adds worker-lifetime missing texture
+and unsupported-format substitution counts and copied ID/format arrays to
+`commandReplay.textureFallbacks`. Unlike the classifier's missing-resource
+count, this also exposes the format substitution path; counters are cumulative
+and need before/after snapshots to attribute a scene. Preparation applies the
+JS-only patch. It changes no texture or draw behavior. Worker and preparation
+syntax checks and reverse patch applicability passed. Browser inspection of
+the new payload remains pending until the worker reloads.

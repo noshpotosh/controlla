@@ -1,0 +1,16 @@
+--- a/src/upstream-discio-worker.js
++++ b/src/upstream-discio-worker.js
+@@ -722,6 +722,13 @@
+       shaderOk: webGpuObjects.shaderOk,
+       shaderFail: webGpuObjects.shaderFail,
+       pipelines: { ...webGpuPcfg },
++      textureFallbacks: {
++        scope: "worker-lifetime",
++        missingCount: self._wgDummyMissing || 0,
++        missingIds: [...(self._wgDummyMissingIds || [])],
++        unsupportedFormatCount: self._wgDummyFormat || 0,
++        unsupportedFormats: [...(self._wgDummyFormats || [])],
++      },
+     },
+     metrics: metricsDiagnosticsPayload(),
+     errors: rendererDiagnostics.errors.map((entry) => ({ ...entry })),
