@@ -1254,3 +1254,13 @@ experimental and excluded from automatic preparation, and its active runtime
 application was reversed after measurement (forward applicability and worker
 syntax rechecked). The browser retains the tested loaded worker until reload.
 Evidence: `work/double-dash-sync-trace-off-{a,b}.json` and final `b.png`.
+
+The existing mixed JIT tier (`wasmjit=2`) was screened with the synchronized
+core, baseline restore, producer profiling/classification off, and the upload
+trace experiment unapplied. Native stats confirmed `tier:mixed` and
+19,079/32,768 compiled mixed blocks by the final sample. Presented frames
+advanced 1,106 → 2,320 in 40.099 seconds (30.28 fps), speed 48–50%, with the
+race and HUD continuing to render. This small single-run difference versus
+the 28.39 fps guarded-tier screen does not establish an optimization or full
+fidelity. Mixed remains experimental; driving, fresh boot and long-run checks
+are pending. Evidence: `work/double-dash-sync-mixed-{a,b}.json` and final PNG.
