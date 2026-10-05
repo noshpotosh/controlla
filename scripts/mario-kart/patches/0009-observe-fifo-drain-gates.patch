@@ -10,7 +10,7 @@
  
  #if DOLPHIN_WEB_STATIC_EXIT_LINKS && DOLPHIN_WEB_STATIC_EXIT_LINK_STATS
  namespace
-@@ -11354,6 +11357,55 @@
+@@ -11354,6 +11357,59 @@
  #endif
  #line 11280
    static std::string stats;
@@ -37,7 +37,11 @@
 +    const auto read_ram = [&](u32 address) -> u32 {
 +      if ((address & 0xfe000000u) != 0x80000000u)
 +        return 0;
-+      const u8* ptr = system.GetMemory().GetPointerForRange(address & 0x01ffffffu, 4);
++      const u32 physical = address & 0x01ffffffu;
++      const u32 ram_size = system.GetMemory().GetRamSizeReal();
++      if (ram_size < 4 || physical > ram_size - 4)
++        return 0;
++      const u8* ptr = system.GetMemory().GetPointerForRange(physical, 4);
 +      if (!ptr)
 +        return 0;
 +      return (u32(ptr[0]) << 24) | (u32(ptr[1]) << 16) | (u32(ptr[2]) << 8) | ptr[3];
@@ -66,7 +70,7 @@
    static int last_refresh_policy = -1;
    const int applied_policy = s_applied_wasm_policy.load(std::memory_order_acquire);
    static u32 last_refresh_block_run_count = 0;
-@@ -11394,7 +11446,7 @@
+@@ -11394,7 +11450,7 @@
  #endif
  #line 11305
    {
@@ -75,7 +79,7 @@
    }
    last_refresh_policy = applied_policy;
    last_refresh_block_run_count = s_wasm_block_run_count;
-@@ -11873,7 +11925,7 @@
+@@ -11873,7 +11929,7 @@
  #endif
  #line 11779
    stats = out.str();
