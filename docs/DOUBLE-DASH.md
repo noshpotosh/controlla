@@ -1759,3 +1759,21 @@ is running to `work/double-dash-paired-differential-core`, logging to
 `/tmp/controlla-paired-differential-build.log`. Prior candidate binaries remain
 preserved, and browser baseline stays paused. Differential execution is
 pending compilation.
+
+### Expanded arithmetic comparisons passed (2026-10-05)
+
+Build session 61226 completed successfully. Isolated WASM SHA-256 is
+`8de36c9c9a73fff3a3427a98c8a81bae54d2b9fe468929dd19264fedf174ac3c`,
+with 179 exports. The integrity-checking runner executed all 3744 differential
+cases successfully: bit-identical result lanes, complete FPSCR and next-PC
+matched the native interpreter. Existing single-precision and scalar-alias
+cases passed as well. The four-port input ABI also passed. Check output is
+`/tmp/controlla-paired-differential-check.log`. No game was booted by the tests.
+
+The runner now records the successful check's timestamp, tested WASM hash,
+scalar-alias count and differential count in the isolated build manifest.
+A fresh build replaces the manifest, requiring fresh verification. This
+record qualifies the tested native comparison cases, not original hardware
+equivalence, exception-enable behavior, all possible operand combinations,
+or browser gameplay/performance. The new binary has not yet been browser
+validated; the paused baseline server/browser remain available.

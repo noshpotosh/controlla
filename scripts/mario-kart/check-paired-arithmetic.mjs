@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -25,6 +25,14 @@ try {
   assert.equal(result, 1, `Generated-WASM arithmetic regression failed with code ${result}`);
   console.log('Generated WASM scalar alias results, FPRF updates and next-PC passed. No game was booted.');
   if (manifest.pairedDifferentialRegression) console.log('All 3744 paired differential cases passed.');
+  manifest.pairedArithmeticVerification = {
+    checkedAt: new Date().toISOString(),
+    wasmSha256: manifest.wasmSha256,
+    scalarAliasCases: 4,
+    differentialCases: manifest.pairedDifferentialRegression ? 3744 : 0,
+    reference: 'native-interpreter',
+  };
+  writeFileSync(resolve(output, 'controlla-core-build.json'), JSON.stringify(manifest, null, 2) + '\n');
   process.exit(0);
 } catch (error) {
   console.error(error.message);
