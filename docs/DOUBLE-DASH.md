@@ -1132,3 +1132,12 @@ Evidence: `work/double-dash-rider-swap.json` and `.png`. This verifies native
 rider swapping through the diagnostic bridge, not physical phone motion or
 multiplayer. Drift, items and braking still require behavioral qualification.
 The diagnostics remain opt-in and are absent from the normal room stage.
+
+
+The initial 90-frame drift attempts turned the kart but were not behaviorally
+qualified: native telemetry sampled after release reported neutral controls,
+and snapshots did not establish sustained tire slip/sparks. Drift probes now
+hold for 300 game frames so the two-second diagnostics interval can observe a
+held state. Timed automatic release remains tested. Do not count these attempts
+as verified drifting or braking. Captures: `work/double-dash-drift-live.json`,
+`work/double-dash-drift-right.json` and associated PNGs.

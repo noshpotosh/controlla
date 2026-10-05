@@ -27,7 +27,7 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
     ['Start', 16], ['Confirm', 1], ['Back', 2], ['Up', 256], ['Down', 512], ['Left', 1024], ['Right', 2048],
     ['Accelerate', 1, 300], ['Steer left + gas', 1, 90, 64], ['Steer right + gas', 1, 90, 192],
     ['Brake', 2, 90], ['Item', 4], ['Swap riders', 128],
-    ['Drift left + gas', 65, 90, 64], ['Drift right + gas', 65, 90, 192],
+    ['Drift left + gas', 65, 300, 64], ['Drift right + gas', 65, 300, 192],
   ];
   for (const [name, mask, frames = 30, stickX = 128] of probes) {
     const button = document.createElement('button');

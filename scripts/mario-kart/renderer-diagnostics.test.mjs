@@ -76,12 +76,12 @@ test('combined drift probes preserve gas pressure and release every held control
   const inputs = [];
   installRendererDiagnostics({ getAdapter: () => ({ loaded: true }), getFrame: () => ({ frame }),
     setProbeInput: state => inputs.push(state) });
-  env.elements.find(element => element.textContent === 'Drift right + gas (90 frames)').onclick();
+  env.elements.find(element => element.textContent === 'Drift right + gas (300 frames)').onclick();
   assert.equal(inputs.at(-1).mask, 65);
   assert.equal(inputs.at(-1).analogA, 255);
   assert.equal(inputs.at(-1).triggerRight, 255);
   assert.equal(inputs.at(-1).stickX, 192);
-  frame = 190; env.intervals[1](); assert.equal(inputs.at(-1), null);
+  frame = 400; env.intervals[1](); assert.equal(inputs.at(-1), null);
   env.elements.find(element => element.textContent === 'Brake (90 frames)').onclick();
   assert.equal(inputs.at(-1).analogB, 255);
   assert.equal(inputs.at(-1).analogA, 0);
@@ -89,5 +89,5 @@ test('combined drift probes preserve gas pressure and release every held control
   env.elements.find(element => element.textContent === 'Swap riders (30 frames)').onclick();
   assert.equal(inputs.at(-1).mask, 128);
   assert.equal(inputs.at(-1).analogB, 0);
-  frame = 220; env.intervals[1](); assert.equal(inputs.at(-1), null);
+  frame = 430; env.intervals[1](); assert.equal(inputs.at(-1), null);
 });
