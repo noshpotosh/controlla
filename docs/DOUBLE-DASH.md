@@ -2097,3 +2097,23 @@ cost attribution or a profiling-off speed measurement. Saved screenshot:
 `work/double-dash-status-cpu-profile.png`. The profiled scene is paused for
 further inspection; optimizing these blocks requires inspecting their entire
 instruction sequences and compilation paths before changing semantics.
+
+### Inspecting the sampled integer blocks
+
+Read-only extraction of the local GM4E01 DOL mapped four sampled PCs back to
+instruction sequences, stopping at their first branch. Local ignored evidence:
+`work/double-dash-hot-block-opcodes.json` (game instructions stay local).
+800f6c68 contains addi/cmpwi/rlwnm/conditional branch; 800f6f0c contains
+cntlzw/subfic/cmp/conditional branch; 800f6eb4 contains andi./srawi/conditional
+branch; 800f6c78 contains two lbzx, cmpwi and a conditional branch. Their costs
+cannot therefore be attributed to paired FP from the first opcode label.
+
+The emitter implements these rotations/shifts directly, including i32.clz for
+cntlzw. Its minimum prefix is four instructions by default. The existing
+`shortprefix=1` diagnostic policy lowers it to two without changing instruction
+semantics. The three-instruction 800f6eb4 sequence is a concrete candidate for
+avoiding interpretation under that policy; actual analyst block boundaries,
+compilation acceptance, performance and fidelity still require browser evidence.
+Next experiment: restore the same checkpoint with profiling disabled and
+shortprefix=1, inspect rejection/compile counters and measure native throughput.
+No compiler policy or production default has been changed on this evidence.
