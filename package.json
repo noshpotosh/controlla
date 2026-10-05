@@ -9,7 +9,6 @@
     "dev": "vinext dev",
     "dev:phone": "tsx scripts/phone-development.ts",
     "dev:lan": "tsx scripts/phone-development.ts --lan",
-    "dev:mario-kart": "node scripts/mario-kart/dev.mjs",
     "build": "vinext build && node --import tsx scripts/assert-production-bundle.ts",
     "lint": "oxlint",
     "format": "oxfmt",
@@ -20,14 +19,7 @@
     "replay": "tsx tests/replay.ts",
     "control:new": "tsx scripts/new-control.ts",
     "game:dev": "vinext dev",
-    "game:test": "tsx --test tests/architecture-*.test.ts",
-    "mario-kart": "node scripts/mario-kart/serve.mjs",
-    "mario-kart:prepare": "node scripts/mario-kart/prepare-core.mjs",
-    "mario-kart:configure": "node scripts/mario-kart/configure-macos.mjs",
-    "mario-kart:test": "node --test scripts/mario-kart/*.test.mjs",
-    "mario-kart:build": "node scripts/mario-kart/build-macos.mjs",
-    "mario-kart:check-abi": "node scripts/mario-kart/check-native-abi.mjs",
-    "mario-kart:check-state": "node scripts/mario-kart/check-state.mjs"
+    "game:test": "tsx --test tests/architecture-*.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

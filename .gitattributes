@@ -1,2 +1,0 @@
-# Unified patches use a single-space prefix for empty context lines.
-scripts/mario-kart/patches/*.patch whitespace=-blank-at-eol

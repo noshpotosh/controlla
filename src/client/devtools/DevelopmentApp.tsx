@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Gamepad2, LayoutGrid, Trophy } from 'lucide-react';
+import { Gamepad2, LayoutGrid } from 'lucide-react';
 import App from '../shell/App.tsx';
 import { MotionLab } from './motion-lab/MotionLab.tsx';
 import { Designer } from './designer/Designer.tsx';
@@ -23,12 +23,6 @@ export default function DevelopmentApp() {
       extensions={{
         homeNavigation: (
           <nav className="tool-links" aria-label="Controller tools">
-            <button
-              type="button"
-              onClick={() => location.assign('http://127.0.0.1:8080/?core=upstream&video=wgpu&cpu=dual&wasmjit=1')}
-            >
-              <Trophy /> Double Dash (local)
-            </button>
             <button
               type="button"
               onClick={() => location.assign('/?role=designer')}
