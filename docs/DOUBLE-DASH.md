@@ -1499,3 +1499,14 @@ not attributed to patch 0019 by these checks. No lap, item use, moving brake
 response, sustained drift or physical phone was qualified. Paused without
 changing the save. Evidence:
 `work/double-dash-sum-drive-{accel,steer,swap}.{json,png}`.
+
+Initial magenta-strip source audit: the active worker has
+`S28AX_FS_CONST=false` and `DIAG_DUMMY_TINT=false`; its missing-resource dummy
+is not initialized to magenta. Native magenta invalid textures exist in
+VideoCommon/Resources/InvalidTextures.cpp, but the color texture is referenced
+by custom material resource fallback, not established as the strip's path.
+The captured browser log query returned no `dummytex` entries and no warning
+or error entries; absence of those logs does not prove correct resources or
+pixels. Do not hide the artifact by replacing magenta with another color.
+Further classification at the affected draw/texture is needed before a
+rendering fix can be selected.
