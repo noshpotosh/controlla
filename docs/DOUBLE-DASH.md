@@ -1029,3 +1029,18 @@ visible; visual equivalence and complete-race correctness remain unverified.
 Keep uniform caching default-off. Local evidence:
 `work/double-dash-combined-ubo-{a,b}.json` and
 `work/double-dash-combined-ubo-driving.png`. Baseline progress remains preserved.
+
+
+### Upload trace cleanup rejected after restored-race stall
+
+The browser verification of the opt-in upload-trace cleanup reached core frame
+1,238 with only 381 presented frames. A second observation reached core frame
+2,559 with presentation still fixed at 381. No periodic upload trace was captured.
+This invalidates promotion of that cleanup; its checkpoint was reverted additively,
+and the local runtime patch was reversed. The timing correlation does not prove
+that logging is the root cause. Initial cached-code invalidation driving evidence
+therefore remains insufficient to establish reliable restoration. Reports are
+`work/double-dash-upload-trace-off-{a,b}.json`; screenshot is
+`work/double-dash-upload-trace-off-stall.png`. An unfamiliar existing immediate
+upload scratch-buffer change was also found in the ignored runtime tree and was
+preserved, not absorbed into a tracked checkpoint.
