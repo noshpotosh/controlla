@@ -55,6 +55,22 @@ snapshot and verified every byte. This proves IndexedDB persistence in that
 browser, not the combined emulator/WebGPU restore or desktop Chrome behavior.
 Local evidence: `work/double-dash-storage-proof.png` (ignored).
 
+The approved emulator browser test reached the original Nintendo screen and
+animated intro using explicit `video=software`, `cpu=single`, `fastsw=0`, and
+`presenter=2d`. Save progress and Resume progress completed with an actual
+emulator snapshot; the rebuilt worker confirms its native after-load generation
+before reporting success. Evidence: `work/double-dash-browser-resume.png`.
+This was an in-session restore, not a browser-restart emulator restore.
+
+The current default WebGPU path rendered black despite advancing core frames.
+Direct-worker OpenGL also failed to present game frames in the Codex in-app
+browser. Software with Canvas 2D rendered the intro, but measured only about
+6–16% game speed, with JIT engaging and subsequently disabling itself on a
+performance guard. Full racing remains unverified. These are unresolved
+rendering/performance failures; the build is experimental, not ready for normal
+racing. Browser testing also found and fixed settings silently replacing an
+explicit Software selection with the automatic WebGPU game profile.
+
 Keyboard controls follow the emulator's bindings:
 
 | Input | Key |
