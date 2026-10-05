@@ -816,3 +816,17 @@ reaches native pad generation 2, but no visible driving result is verified.
 Screenshot `work/double-dash-alpha-dual-driving.png` records the black output.
 Dual-core is not promoted. Next check is a fresh boot without the checkpoint
 to distinguish cross-mode restore failure from dual-core rendering failure.
+
+### Fresh dual-core stall (2026-10-05)
+
+Fresh boot without restoring state initially renders the title at frame 1,772
+with 61 changing frames/second and 103 percent CPU speed. After Start,
+the scene freezes before mode selection. Reports
+`work/double-dash-alpha-dual-fresh.json` and `...dual-fresh-confirm.json`
+advance core frame 3,535 to 7,846 while presented frame stays 1,877,
+checkpoint generation stays 0, and visual cadence is zero. The screenshot
+`work/double-dash-alpha-dual-fresh-stall.png` shows the unchanged intro scene.
+This contradicts a restore-only explanation: dual-core loses FIFO production
+even without loading a state. The initial title speed is not evidence of
+playable full-speed races. Investigate CPU/CP FIFO delivery and GPU drain
+gates with bounded diagnostics; retain the working single-core path.
