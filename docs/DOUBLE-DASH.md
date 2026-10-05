@@ -984,3 +984,30 @@ Reports: `work/double-dash-invalidation-a.json` and `-b.json`; screenshot
 not proof of root cause or full-speed/fidelity qualification. Longer runs,
 fresh boot, repeat restoration, physical phone motion, complete races,
 other tracks and multiplayer remain unverified before promotion.
+
+
+## Combined invalidation and FIFO sleep comparison (2026-10-05)
+
+The isolated combined candidate preserves cached-code invalidation (patch 0013)
+and allows the empty FIFO loop to sleep (patch 0011). Its WASM SHA-256 is
+`33120978ada83a689aea65547c6eb67d0df168479bde13a268f0908fbf936ed9`.
+The native export and four-port ABI checks passed. This candidate has not replaced
+the ordinary room runtime.
+
+With state caching disabled, two consecutive restored-race samples delivered
+805 frames in 24.215 seconds (33.24 fps). Browser GPU replay averaged 8.231 ms
+per delivered frame; sampled FIFO tail work fell to approximately 0.212 ms per
+frame. Producer estimates overlap CPU/GPU execution and must not be summed as
+elapsed frame time. Acceleration moved the kart onto the grass. These observations
+qualify initial driving and continued rendering, not fresh boot, a complete race,
+physical phone input, multiplayer, or stable full-speed operation.
+
+The same candidate with `wgpustatecache=1` delivered 5,730 frames in 181.789
+seconds (31.52 fps), with browser replay averaging 8.874 ms per frame. The report
+confirmed producer state caching enabled. Acceleration again moved the kart;
+the subsequent screenshot showed the kart against the course wall with collision
+effects. The unequal sample durations and warmup prevent a controlled speed
+comparison, but this run provides no demonstrated improvement from enabling the
+cache. Keep it opt-in. Evidence is retained locally in ignored
+`work/double-dash-combined-cache-{a,b,driving}.json` and the driving PNG.
+The saved baseline progress was not overwritten.
