@@ -1,0 +1,80 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -12155,8 +12155,77 @@
+   return state.npc == 0x80003108 ? 1 : 70;
+ }
+ 
++// WASM paired status regression: Rc, preserved flags and enabled exceptions.
++int RunPairedStatusRegression()
++{
++  auto& system = Core::System::GetInstance();
++  auto& state = system.GetPPCState();
++  std::array<u8, 64> ram{};
++  const WasmStateLayout layout = MakeWasmBlockTestLayout(state, ram.data(), ram.size());
++  const std::array<u64, 8> values = {0, 0x8000000000000000ULL, 0x3ff0000000000000ULL,
++      0x47efffffe0000000ULL, 0x36a0000000000000ULL, 0x7ff0000000000000ULL,
++      0x7ff8000000001234ULL, 0x7ff0000000000001ULL};
++  const std::array<u32, 8> modes = {0, 1, 2, 3, 4, 0x00060000,
++      FPSCR_ANY_E, FPSCR_ANY_E | 0xf0000000};
++  for (u32 subop : {20u, 21u})
++    for (u32 destination : {2u, 3u, 4u})
++      for (u32 rc : {0u, 1u})
++        for (u32 mode : modes)
++          for (u32 vector = 0; vector < values.size(); ++vector)
++            for (u32 exceptions_enabled : {0u, 1u})
++            {
++              UGeckoInstruction inst = EncodeAFormForWasmBlockTest(4, destination, 2, 3, 4, subop);
++              inst.Rc = rc;
++              const auto reset = [&] {
++                state.pc = 0x80003400;
++                state.npc = 0x80003404;
++                state.downcount = 100;
++                state.msr.Hex = 1u << 13;
++                state.msr.FE0 = exceptions_enabled;
++                state.msr.FE1 = exceptions_enabled;
++                state.Exceptions = 0;
++                state.fpscr.Hex = mode;
++                for (u32 field = 0; field < 8; ++field)
++                  state.cr.SetField(field, (field + 3) & 15);
++                for (u32 reg = 2; reg <= 4; ++reg)
++                  state.ps[reg].SetBoth(values[(vector + reg - 2) % values.size()],
++                                       values[(vector + reg + 1) % values.size()]);
++              };
++              reset();
++              Interpreter::GetInterpreterOp(inst)(system.GetInterpreter(), inst);
++              const int expected_halt = DolphinWeb_CachedInterpreterCheckProgramOrDsi(
++                  state, 0x80003400, 0) ? 1 : 0;
++              const u64 expected0 = state.ps[destination].PS0AsU64();
++              const u64 expected1 = state.ps[destination].PS1AsU64();
++              const u32 expected_fpscr = state.fpscr.Hex;
++              const u32 expected_exceptions = state.Exceptions;
++              const u32 expected_npc = state.npc;
++              std::array<u32, 8> expected_cr{};
++              for (u32 field = 0; field < 8; ++field)
++                expected_cr[field] = state.cr.GetField(field);
++              reset();
++              const std::array<PPCAnalyst::CodeOp, 1> ops = {MakeWasmBlockTestOp(inst, 0x80003400)};
++              const auto bytes = BuildWasmCachedInterpreterBlock(ops, layout, 0x80003404, true);
++              if (bytes.empty()) return 501;
++              const int handle = CompileWasmCachedInterpreterBlockForTest(bytes);
++              if (handle <= 0) return 502;
++              const int halt = DolphinWeb_CachedInterpreterRunWasmBlockForTest(handle,
++                  static_cast<int>(reinterpret_cast<std::uintptr_t>(&state)));
++              if (halt != expected_halt) return 503;
++              if (state.ps[destination].PS0AsU64() != expected0 ||
++                  state.ps[destination].PS1AsU64() != expected1) return 504;
++              if (state.fpscr.Hex != expected_fpscr) return 505;
++              if (state.Exceptions != expected_exceptions || state.npc != expected_npc) return 506;
++              for (u32 field = 0; field < 8; ++field)
++                if (state.cr.GetField(field) != expected_cr[field]) return 507;
++            }
++  return 1;
++}
++
+ extern "C" int RunPpcWasmSinglePrecisionArithmeticSmoke()
+ {
++  const int status_result = RunPairedStatusRegression();
++  if (status_result != 1) return status_result;
+   auto& state = Core::System::GetInstance().GetPPCState();
+   std::array<u8, 64> ram{};
+   state.npc = 0;

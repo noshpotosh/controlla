@@ -2010,3 +2010,25 @@ sample, so it does not establish a causal speed gain. Full speed remains unmet.
 Rc/exception-enable coverage, matched-race performance, full races, audio and
 physical motion qualification remain outstanding. Default candidate launcher
 continues using the earlier preserved output rather than promoting this one.
+
+### Paired CR/FPSCR/exception comparison candidate
+
+Patch 0027 adds 1,536 native differential comparisons for paired add/subtract:
+two operations × three destinations × two Rc modes × eight FPSCR seeds ×
+eight operand vectors × two MSR exception-enable modes. FPSCR seeds include
+rounding/NI modes, FI/FR, exception enables and existing status flags. Inputs
+include finite values, signed zero, small values, infinity, quiet/signaling NaN.
+Both result lanes, FPSCR, all eight CR fields, halt return, Exceptions and npc
+are compared to the original interpreter plus the same exception dispatch
+wrapper. The original interpreter remains unchanged as the oracle.
+
+The comparison is added to the existing exported arithmetic smoke without
+changing its ABI. Reference patch 0024 and alias patch 0022 reverse checks
+still pass. Build provenance requires isolated output and patch 0027 evidence;
+candidate selection additionally requires a successful 1,536-case verification
+record before serving such a binary. This does not prove independent hardware
+equivalence or every possible operand/control combination.
+
+Configuration succeeded. Build session 60739 is pending; output `work/double-dash-paired-status-core`, logs
+`/tmp/controlla-paired-status-{configure,build}.log`. Runtime assertions and
+browser behavior remain unverified; earlier candidate cores are preserved.

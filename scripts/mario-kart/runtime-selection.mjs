@@ -23,6 +23,10 @@ export function selectRuntime(repo, mode = 'prebuilt', candidateOutput = process
       if (manifest[field] !== hash(resolve(repo, 'scripts/mario-kart/patches', name)))
         throw new Error('Candidate patch provenance mismatch: ' + name);
     }
+    if (manifest.pairedStatusRegression && (verification.pairedStatusCases !== 1536 ||
+        manifest.pairedStatusRegressionPatchSha256 !==
+        hash(resolve(repo, 'scripts/mario-kart/patches/0027-paired-status-regression.patch'))))
+      throw new Error('Candidate paired status regression evidence mismatch.');
     if (manifest.finitePairedAddSub && manifest.finitePairedAddSubPatchSha256 !==
         hash(resolve(repo, 'scripts/mario-kart/patches/0026-finite-paired-add-sub.patch')))
       throw new Error('Candidate finite paired arithmetic patch provenance mismatch.');

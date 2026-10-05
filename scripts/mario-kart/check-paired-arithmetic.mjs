@@ -14,6 +14,9 @@ assert.equal(manifest.pairedArithmeticRegressionPatchSha256,
 if (manifest.pairedDifferentialRegression)
   assert.equal(manifest.pairedDifferentialRegressionPatchSha256,
     hash(new URL('./patches/0024-differential-paired-arithmetic.patch', import.meta.url)));
+if (manifest.pairedStatusRegression)
+  assert.equal(manifest.pairedStatusRegressionPatchSha256,
+    hash(new URL('./patches/0027-paired-status-regression.patch', import.meta.url)));
 if (manifest.finitePairedAddSub) {
   assert.equal(manifest.pairedDifferentialRegression, true,
     'Finite add/sub candidate requires differential comparisons');
@@ -41,12 +44,14 @@ try {
   }
   console.log('Generated WASM scalar alias results, FPRF updates and next-PC passed. No game was booted.');
   if (manifest.pairedDifferentialRegression) console.log('All 3744 paired differential cases passed.');
+  if (manifest.pairedStatusRegression) console.log('All 1536 paired Rc/status/exception comparisons passed.');
   manifest.pairedArithmeticVerification = {
     checkedAt: new Date().toISOString(),
     wasmSha256: manifest.wasmSha256,
     scalarAliasCases: 4,
     differentialCases: manifest.pairedDifferentialRegression ? 3744 : 0,
     reference: 'native-interpreter',
+    ...(manifest.pairedStatusRegression ? { pairedStatusCases: 1536 } : {}),
     ...(manifest.finitePairedAddSub ? { pairedAddSubCases: 576, finitePairedAddSubPatchSha256: manifest.finitePairedAddSubPatchSha256 } : {}),
   };
   writeFileSync(resolve(output, 'controlla-core-build.json'), JSON.stringify(manifest, null, 2) + '\n');

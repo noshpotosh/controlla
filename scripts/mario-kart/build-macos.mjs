@@ -11,6 +11,13 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
 const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
 const nativeCpu = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp');
 const nativeFifo = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/Fifo.cpp');
+const pairedStatusRegression = readFileSync(nativeCpu, 'utf8').includes('WASM paired status regression');
+if (pairedStatusRegression) {
+  if (output === defaultOutput) throw new Error('Paired status regression requires isolated output.');
+  const check = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0027-paired-status-regression.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('Paired status regression patch mismatch: ' + check.stderr);
+}
 const finitePairedAddSub = readFileSync(nativeCpu, 'utf8').includes('WASM finite paired add/sub candidate');
 if (finitePairedAddSub) {
   if (output === defaultOutput) throw new Error('Finite paired arithmetic candidate requires isolated output.');
@@ -160,6 +167,8 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   pairedSignOperations,
   preciseSampledProfile,
   pairedSumHelpers,
+  pairedStatusRegression,
+  pairedStatusRegressionPatchSha256: pairedStatusRegression ? hash(resolve(repo, 'scripts/mario-kart/patches/0027-paired-status-regression.patch')) : null,
   finitePairedAddSub,
   finitePairedAddSubPatchSha256: finitePairedAddSub ? hash(resolve(repo, 'scripts/mario-kart/patches/0026-finite-paired-add-sub.patch')) : null,
   optInFpAttribution,

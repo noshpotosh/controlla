@@ -74,6 +74,16 @@ test('candidate mode checks arithmetic verification, patch provenance and exact 
     await writeFile(join(patches, finitePatch), 'changed');
     assert.throws(() => selectRuntime(repo, 'candidate', core), /finite paired arithmetic patch provenance/);
     await writeFile(join(patches, finitePatch), finitePatch);
+    const statusPatch = '0027-paired-status-regression.patch';
+    await writeFile(join(patches, statusPatch), statusPatch);
+    manifest.pairedStatusRegression = true;
+    manifest.pairedStatusRegressionPatchSha256 = hash(statusPatch); await save();
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /paired status regression evidence/);
+    manifest.pairedArithmeticVerification.pairedStatusCases = 1536; await save();
+    assert.equal(selectRuntime(repo, 'candidate', core).coreDirectory, core);
+    await writeFile(join(patches, statusPatch), 'changed');
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /paired status regression evidence/);
+    await writeFile(join(patches, statusPatch), statusPatch);
     await writeFile(join(core, 'dolphin-core-upstream.js'), 'changed');
     assert.throws(() => selectRuntime(repo, 'candidate', core), /integrity/);
   } finally { await rm(repo, { recursive: true, force: true }); }
