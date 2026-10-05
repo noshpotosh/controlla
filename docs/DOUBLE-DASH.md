@@ -589,3 +589,26 @@ a conclusion that the final copy is where the darkness first appears. Earlier
 brighter EFB samples were at a different point in the command sequence. Next
 trace EFB pass endings and clears/draws preceding the copy to identify where
 bright scene color changes. No output-color or copy bypass has been promoted.
+
+### EFB pass-end transition (2026-10-05)
+
+The local probe records twelve EFB pass endings, with pipeline ID, frame
+number and pass-end reason. Served-worker syntax passes; restored generation
+1 has no renderer errors. Evidence: `work/double-dash-race-efb-end.json`
+and extracted `work/efbend-460.wgsl` (IDs are run-local).
+
+Frame 423 ends an EFB pass at pipeline 449 with RGB upper cells 59/99/116,
+77/117/155 and 74/106/117. The next pass ends at pipeline 460 with upper
+cells 5/9/38, 7/11/41 and 7/10/38. HUD-related additions follow before
+copying. Later pass 618 restores substantially brighter scene colors,
+explaining the earlier misleading present-time EFB readings.
+
+Pipeline 460 is RGB-only source-alpha blending with depth writes disabled
+and less-equal depth testing (producer convention). Its vertex shader is
+53; fragment shader is 459. Draw-order evidence includes repeated six-index
+draws 163-203. Pixel color register 1 varies alpha (e.g. `[250,250,250,8]`,
+`[250,250,250,79]`); register 2 is blue-tinted (e.g. `[0,20,50,0]`,
+`[10,23,50,0]`). This localizes a measurable brightness collapse to that
+pass, not necessarily its final draw. Next inspect that pass's vertex
+coverage and TEV/blend values, using source identity rather than stable IDs.
+Do not simply remove these draws: their intended contribution is unverified.
