@@ -13,6 +13,11 @@ const destinationAlphaPrototype = readFileSync(nativeBackend, 'utf8').includes('
 if (destinationAlphaPrototype && output === defaultOutput) {
   throw new Error('Experimental destination-alpha source requires an isolated DOLPHIN_WASM_OUTPUT_DIR.');
 }
+if (destinationAlphaPrototype) {
+  const patchCheck = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0008-emulate-destination-alpha.patch')], { encoding: 'utf8' });
+  if (patchCheck.status !== 0) throw new Error('Destination-alpha prototype source does not match patch 0008: ' + patchCheck.stderr);
+}
 const cache = readFileSync(resolve(stage, 'build/dolphin-wasm/CMakeCache.txt'), 'utf8');
 const configuredOutput = cache.match(/^DOLPHIN_WASM_OUTPUT_DIR:[^=]+=(.*)$/m)?.[1];
 if (!configuredOutput || resolve(configuredOutput) !== output) {
