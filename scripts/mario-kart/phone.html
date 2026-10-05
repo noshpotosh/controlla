@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Controlla · Double Dash controller</title>
+<style>
+body{margin:0;background:#111729;color:#fff;font:16px system-ui;padding:16px;overscroll-behavior:none}button,input{font:inherit}button{background:#293555;color:#fff;border:1px solid #63708c;border-radius:16px;padding:18px;touch-action:none;user-select:none}button:active{background:#53679c}.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px}.accelerate{background:#166d52;grid-column:span 2}#status{min-height:2.5em}label{display:flex;gap:12px;margin-top:12px}a{color:#9cf}@media(max-width:500px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(orientation:landscape) and (max-height:500px){body{padding:8px max(8px,env(safe-area-inset-right)) 8px max(8px,env(safe-area-inset-left));font-size:14px}h1{font-size:20px;margin:0}#status{margin:4px 0;min-height:20px}.top{gap:8px}.top button{padding:10px;min-height:44px}label{margin:0;gap:4px;align-items:center}input[type=range]{width:100px}.grid{grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}.grid button{padding:8px;min-height:44px;border-radius:12px}}
+</style>
+<h1>Double Dash</h1><p id="status" role="status">Hold your phone like a steering wheel. Enable motion, then recenter.</p>
+<div class="top"><button id="enable">Enable motion</button><button id="center">Recenter</button>
+<label>Sensitivity <input id="sensitivity" type="range" min="0.5" max="3" step="0.1" value="1.6"></label>
+<label>Steering <input id="fallback" aria-label="Touch steering fallback" type="range" min="0" max="255" value="128"></label>
+</div><small id="connection" role="status">Connecting controller…</small>
+<div class="grid">
+<button class="accelerate" data-mask="1">Accelerate / Confirm</button><button data-mask="2">Brake / Back</button><button data-mask="64">Drift R</button>
+<button data-mask="32">Drift L</button><button data-mask="4">Item X</button><button data-mask="8">Item Y</button><button data-mask="128">Switch riders</button>
+<button data-mask="256">↑</button><button data-mask="1024">←</button><button data-mask="2048">→</button><button data-mask="512">↓</button><button data-mask="16">Start / Pause</button>
+</div>
+<script type="module" src="/phone.js"></script></html>
