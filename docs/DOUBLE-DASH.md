@@ -36,6 +36,15 @@ Controlla's home screen also has a **Double Dash (local)** launcher for the
 default port. The emulator server binds only to `127.0.0.1`; it is a local
 prototype and is not part of the deployed frontend.
 
+After starting the game, **Save progress** stores a full emulator snapshot in
+this browser's IndexedDB. On a later visit, start the same image and choose
+**Resume progress**. Each core build has its own slot; upgrading the emulator
+does not overwrite or attempt to load an incompatible slot. Saving again
+replaces the current build's slot. Browser data clearing removes it. Keep a
+**Download state** backup for progress you want to retain elsewhere.
+This is explicit snapshot persistence; automatic memory-card persistence and
+an actual browser save/reload round trip still need verification.
+
 Keyboard controls follow the emulator's bindings:
 
 | Input | Key |
