@@ -838,3 +838,22 @@ but presented frame stays 692 and FIFO decode call count stays 256,002.
 The next diagnostic candidate, patch 0009, exposes FIFO drain gates in the
 existing helper report without changing execution. It is checked for patch
 application, but is not applied, compiled, or included in the runtime yet.
+
+### Compiled FIFO gate candidate (2026-10-05)
+
+The isolated FIFO diagnostic build completed successfully: WASM
+`4e3ecea59ec0d6d66710681e4ee93833fea22fa9085b851c762eeaee51c78634`,
+179 exports, all four controller connection/disconnection cases accepted and
+invalid ports rejected. Manifest records patch 0009, CPU source hash, and the
+diagnostic flag. Original alpha candidate remains preserved. The candidate
+server now runs on the existing loopback test origin, using the baseline
+saved-state key only for this diagnostic comparison; do not save candidate
+progress into that key.
+
+At restored generation 1, core frame 842/presented frame 749, the native
+report exposes `rwd=0,read=1,link=1,interrupt=0,breakpoint=0`, with read/write
+pointers both 4,259,392 and no renderer errors. Evidence:
+`work/double-dash-fifo-gate-report.json`. These independent atomic reads
+indicate an empty CP FIFO rather than a disabled read gate or pending
+interrupt at this sample. A second sample and CPU producer/PI pointer
+inspection are needed before attributing the stall's cause.

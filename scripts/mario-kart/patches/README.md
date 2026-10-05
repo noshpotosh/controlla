@@ -137,5 +137,6 @@ and read/write pointers. The observations refresh even when JIT counters
 are unchanged, and are explicitly not a coherent snapshot. It does not
 change FIFO behavior. Patch application and reverse checks passed. The builder requires an isolated
 output, records this patch and the native CPU source hash, and rejects the
-default output. Native compilation and browser reporting remain unverified
-until the diagnostic candidate build completes.
+default output. The isolated candidate compiled successfully with 179 exports, and all four
+controller ports passed native ABI checks. Browser gate reporting remains
+unverified until the candidate is booted and its report inspected.
