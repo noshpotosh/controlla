@@ -490,3 +490,23 @@ or the resulting fog are correct. The course remains dark. The next diagnostic
 is to associate actual pixel-constant uploads and draw calls with these
 shader/pipeline IDs rather than relying on shader text or aggregate counters.
 The diagnostic server and shader artifacts remain ignored and local.
+
+### Bound race pixel constants (2026-10-05)
+
+The local diagnostic now matches uniform uploads by buffer ID and destination
+offset to group-0 buffer descriptors plus the dynamic offsets applied at bind
+time. For each EFB pipeline it retains the last matched pixel constant slice.
+The generation-1 race capture contains 64 matched pipelines, normal 1536-byte
+pixel uploads, and no renderer errors. Evidence remains local in
+`work/double-dash-race-bound-constants.json`.
+
+The exponential-fog course shaders (including fragment 180 and 187 in this
+run; IDs change on reboot) match fog color `[150,200,255,0]`, integer fog
+parameters `[0,4194528,0,2]`, and floats
+`[0.000009801238775253296,0.17645263671875,0,1]`. These are pale blue
+rather than black. Thus black fog constants do not explain these course
+draws' dark output. This trace observes the submitted upload payload and
+binding offsets, not a GPU uniform readback. It retains last matched draws
+across startup and race, so non-course pipeline values may belong to menus.
+Next inspect the race's later blend draws and framebuffer copy/present chain
+before altering fog or forcing output colors.
