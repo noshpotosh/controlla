@@ -57,6 +57,21 @@ export function installProgressControls({ getAdapter, key, setStatus }) {
     const input = document.createElement('input');
     input.type = 'file'; input.accept = '.sav,.bin'; input.hidden = true;
     document.body.append(input);
+    const comparisonCore = new URLSearchParams(location.search).get('checkpointsource');
+    if (comparisonCore) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'file-button';
+      button.textContent = 'Resume comparison checkpoint';
+      document.querySelector('.topbar-actions').append(button);
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+          const record = await resumeComparisonProgress(getAdapter(), store, key, comparisonCore);
+          setStatus(`Resumed comparison checkpoint from ${new Date(record.savedAt).toLocaleString()}.`);
+        } catch (error) { setStatus(error.message, 'error'); }
+        finally { button.disabled = false; }
+      });
+    }
     for (const label of ['Export checkpoint', 'Export saved checkpoint', 'Import checkpoint']) {
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'file-button'; button.textContent = label;
@@ -129,4 +144,11 @@ export async function readSavedProgressBytes(store, key) {
   const record = await store.read(key);
   if (!record?.bytes?.byteLength) throw new Error('No saved checkpoint for this game and core build.');
   return new Uint8Array(record.bytes);
+}
+
+export async function resumeComparisonProgress(adapter, store, currentKey, sourceCore) {
+  if (!/^[0-9a-f]{64}$/.test(sourceCore || '')) throw new Error('Choose an exact comparison core hash.');
+  const game = currentKey.split(':')[0];
+  if (!/^[A-Z0-9]{6}$/.test(game)) throw new Error('Invalid comparison game.');
+  return resumeProgress(adapter, store, `${game}:${sourceCore}`);
 }
