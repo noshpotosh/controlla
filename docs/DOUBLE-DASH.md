@@ -1264,3 +1264,15 @@ race and HUD continuing to render. This small single-run difference versus
 the 28.39 fps guarded-tier screen does not establish an optimization or full
 fidelity. Mixed remains experimental; driving, fresh boot and long-run checks
 are pending. Evidence: `work/double-dash-sync-mixed-{a,b}.json` and final PNG.
+
+Scale-zero quantized-store candidate 0016 compiled successfully into isolated
+`work/double-dash-quantized-core`. WASM SHA-256:
+`94cf2b8f00ab30d3123786c91aadda3e0972e85c67bb0cabefd7e68b172e4690`.
+The manifest records 179 exports, the candidate flag, native CPU source hash
+and patch hash. Four-port connection/disconnection and invalid-port ABI checks
+passed; no game was booted by those checks. Generated-WASM conversion screens
+passed for unsigned-byte and signed-halfword boundaries, infinities and
+20,000 seeded values. Native NaNs, unsupported GQR and memory cases retain
+fallback. The candidate server validates core/loader/patch integrity and now
+serves loopback port 8081; the browser must reload to receive the new core.
+Gameplay fidelity, actual helper-call reduction and speed remain unverified.
