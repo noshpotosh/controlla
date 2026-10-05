@@ -1410,3 +1410,13 @@ port neutralization, stale release, reconnect, and rejection of invalid or
 unrelated-window/origin messages without extending input freshness. The
 native setter is simulated; this does not prove delivery into a running WASM
 game or physical phone operation.
+
+Rechecked the current normal room flow after motion changes: started a room
+on localhost:3000, selected Double Dash beside Neon Harvest and Whack-a-Mole,
+joined a browser test controller through the room/screen codes, and started
+the round. The controller received steering, menu, start/swap and four kart
+buttons. Nintendo boot rendering appeared inside the shared room stage with
+only the sound gesture button over it. End game removed the iframe, restored
+the selectable catalog and enabled Start round. This proves the current
+selection/boot/cleanup flow, not physical phone steering, audio output or race
+performance. Screenshot: `work/double-dash-room-current-boot.png`.
