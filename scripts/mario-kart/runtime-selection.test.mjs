@@ -66,6 +66,14 @@ test('candidate mode checks arithmetic verification, patch provenance and exact 
     await writeFile(join(patches, attributionPatch), 'changed');
     assert.throws(() => selectRuntime(repo, 'candidate', core), /FP attribution patch provenance/);
     await writeFile(join(patches, attributionPatch), attributionPatch);
+    const finitePatch = '0026-finite-paired-add-sub.patch';
+    await writeFile(join(patches, finitePatch), finitePatch);
+    manifest.finitePairedAddSub = true;
+    manifest.finitePairedAddSubPatchSha256 = hash(finitePatch); await save();
+    assert.equal(selectRuntime(repo, 'candidate', core).coreDirectory, core);
+    await writeFile(join(patches, finitePatch), 'changed');
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /finite paired arithmetic patch provenance/);
+    await writeFile(join(patches, finitePatch), finitePatch);
     await writeFile(join(core, 'dolphin-core-upstream.js'), 'changed');
     assert.throws(() => selectRuntime(repo, 'candidate', core), /integrity/);
   } finally { await rm(repo, { recursive: true, force: true }); }

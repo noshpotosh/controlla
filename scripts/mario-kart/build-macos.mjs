@@ -11,6 +11,13 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
 const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
 const nativeCpu = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp');
 const nativeFifo = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/Fifo.cpp');
+const finitePairedAddSub = readFileSync(nativeCpu, 'utf8').includes('WASM finite paired add/sub candidate');
+if (finitePairedAddSub) {
+  if (output === defaultOutput) throw new Error('Finite paired arithmetic candidate requires isolated output.');
+  const check = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0026-finite-paired-add-sub.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('Finite paired arithmetic patch mismatch: ' + check.stderr);
+}
 const optInFpAttribution = readFileSync(nativeCpu, 'utf8').includes('WASM opt-in FP opcode attribution candidate');
 if (optInFpAttribution) {
   if (output === defaultOutput) throw new Error('FP attribution candidate requires isolated output.');
@@ -153,6 +160,8 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   pairedSignOperations,
   preciseSampledProfile,
   pairedSumHelpers,
+  finitePairedAddSub,
+  finitePairedAddSubPatchSha256: finitePairedAddSub ? hash(resolve(repo, 'scripts/mario-kart/patches/0026-finite-paired-add-sub.patch')) : null,
   optInFpAttribution,
   optInFpAttributionPatchSha256: optInFpAttribution ? hash(resolve(repo, 'scripts/mario-kart/patches/0025-opt-in-fp-opcode-attribution.patch')) : null,
   pairedDifferentialRegression,

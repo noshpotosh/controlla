@@ -1949,3 +1949,26 @@ provide useful block timing attribution here.
 Evidence screenshot: `work/double-dash-muted-profile-boot.png`. JavaScript
 syntax passed. This fixes an observed startup wait; no speed gain, complete
 race, or original fidelity claim follows from it.
+
+### Finite paired add/subtract candidate
+
+Patch 0026 adds a guarded native fast path for OPCD 4 paired add/subtract.
+All four input lanes must be finite, determined by their double exponent bits.
+The reference NI_add/NI_sub helpers perform no exception mutation for finite
+inputs; the candidate computes double sums/differences and retains reference
+ForceSingle, UpdateFPRFSingle, optional UpdateCR1, FPU availability checks, and
+program/DSI checks. Both lane results are computed before writing FD, preserving
+FA/FB destination aliases. NaNs and infinities use unchanged reference handlers.
+FP total and opt-in opcode counters remain collected on the fast path.
+
+This is an unqualified performance experiment. The original interpreter
+handlers remain unchanged as the differential oracle. Existing 3,744 native
+comparisons cover some finite, exceptional, alias and rounding inputs, but not
+all possible values, Rc paths, or exception-enable scenarios. No fidelity or
+speed claim is made until checks and browser comparisons run.
+
+Configuration passed; native build is live in session 65455, output
+`work/double-dash-finite-paired-core`. Logs:
+`/tmp/controlla-finite-paired-{configure,build}.log`. Patch provenance guards
+require isolated output and verify patch 0026; runtime candidate selection
+rejects stale patch evidence. Prior verified cores remain preserved.

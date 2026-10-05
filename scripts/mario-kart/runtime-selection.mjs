@@ -23,6 +23,9 @@ export function selectRuntime(repo, mode = 'prebuilt', candidateOutput = process
       if (manifest[field] !== hash(resolve(repo, 'scripts/mario-kart/patches', name)))
         throw new Error('Candidate patch provenance mismatch: ' + name);
     }
+    if (manifest.finitePairedAddSub && manifest.finitePairedAddSubPatchSha256 !==
+        hash(resolve(repo, 'scripts/mario-kart/patches/0026-finite-paired-add-sub.patch')))
+      throw new Error('Candidate finite paired arithmetic patch provenance mismatch.');
     if (manifest.optInFpAttribution && manifest.optInFpAttributionPatchSha256 !==
         hash(resolve(repo, 'scripts/mario-kart/patches/0025-opt-in-fp-opcode-attribution.patch')))
       throw new Error('Candidate FP attribution patch provenance mismatch.');

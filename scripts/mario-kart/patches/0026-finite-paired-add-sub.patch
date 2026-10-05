@@ -1,0 +1,51 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -2118,6 +2118,29 @@
+   return true;
+ }
+ 
++// WASM finite paired add/sub candidate: retain reference conversion and status.
++bool TryFinitePairedAddSub(PowerPC::PowerPCState& state, UGeckoInstruction inst)
++{
++  const auto& a = state.ps[inst.FA];
++  const auto& b = state.ps[inst.FB];
++  constexpr u64 exponent = 0x7ff0000000000000ULL;
++  if ((a.PS0AsU64() & exponent) == exponent || (a.PS1AsU64() & exponent) == exponent ||
++      (b.PS0AsU64() & exponent) == exponent || (b.PS1AsU64() & exponent) == exponent)
++    return false;
++  const bool subtract = inst.SUBOP5 == 20;
++  const double result0 = subtract ? a.PS0AsDouble() - b.PS0AsDouble() :
++                                    a.PS0AsDouble() + b.PS0AsDouble();
++  const double result1 = subtract ? a.PS1AsDouble() - b.PS1AsDouble() :
++                                    a.PS1AsDouble() + b.PS1AsDouble();
++  const float ps0 = ForceSingle(state.fpscr, result0);
++  const float ps1 = ForceSingle(state.fpscr, result1);
++  state.ps[inst.FD].SetBoth(ps0, ps1);
++  state.UpdateFPRFSingle(ps0);
++  if (inst.Rc)
++    state.UpdateCR1();
++  return true;
++}
++
+ extern "C" int DolphinWeb_CachedInterpreterFpOp(int state_ptr, u32 inst_hex, u32 current_pc,
+                                                  u32 downcount, u32 unused)
+ {
+@@ -2127,6 +2150,18 @@
+   auto& interpreter = system.GetInterpreter();
+   auto& ppc_state = *reinterpret_cast<PowerPC::PowerPCState*>(
+       static_cast<std::uintptr_t>(state_ptr));
++  const UGeckoInstruction finite_inst{inst_hex};
++  if (finite_inst.OPCD == 4 && (finite_inst.SUBOP5 == 20 || finite_inst.SUBOP5 == 21))
++  {
++    if (DolphinWeb_CachedInterpreterCheckFpu(ppc_state, current_pc, downcount))
++      return 1;
++    if (TryFinitePairedAddSub(ppc_state, finite_inst))
++    {
++      if (s_ppc_block_profile_enabled)
++        ++s_wasm_fp_key_counts[(finite_inst.OPCD << 10) | finite_inst.SUBOP10];
++      return DolphinWeb_CachedInterpreterCheckProgramOrDsi(ppc_state, current_pc, downcount) ? 1 : 0;
++    }
++  }
+   if (DolphinWeb_CachedInterpreterCheckFpu(ppc_state, current_pc, downcount))
+     return 1;
+ 
