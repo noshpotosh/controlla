@@ -1224,3 +1224,13 @@ the native formatter emits masks in hexadecimal. The probe released at frame
 the held interval; sustained drift/mini-turbo remains unqualified because this
 attempt ended against a barrier. Evidence:
 `work/double-dash-sync-retained-drift.json` / `.png`.
+
+Lower-overhead screen of the same synchronized core restored the baseline with
+`wgpuprodprofile=0&wgpuclassify=0` (metrics and report polling retained).
+Native `wgprod:1,0,0,12` confirmed producer profiling disabled. The stationary
+race advanced 1,061 → 2,248 presented frames in 41.815 seconds (28.39 fps),
+reported speed 44–45%, and continued rendering the HUD. Disabling detailed
+profiling did not produce near-full-speed execution in this sample. This is
+not a paired controlled estimate of profiling overhead; startup and workload
+differences preclude comparing it directly with earlier driving samples.
+Evidence: `work/double-dash-sync-profile-off-{a,b}.json` and final `b.png`.
