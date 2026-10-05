@@ -1474,3 +1474,16 @@ remain a limited screen of idle-race performance, not statistical qualification
 or full-speed driving. Retain patch 0019 as an isolated candidate for further
 behavior tests. Evidence: `work/double-dash-sum-baseline-repeat-{a,b}.json`
 and `-paused.png`. The normal runtime remains unchanged.
+
+Further behavior screen on the matching baseline (`77487fd1`): a 300-frame
+acceleration probe moved the kart from the start straight to the course edge.
+Retained native observations showed input mask `1`, native buttons `100`
+(hex A), and centered stick through release at frame 5,443. A subsequent
+90-frame left-steer-plus-gas probe delivered stick `64,128` and changed the
+kart's heading toward the banked road. Swap riders changed the visible rear
+rider from Luigi to Mario and the minimap portrait to Mario. These are
+diagnostic native-input checks, not physical phone tests, a completed lap,
+or validation of patch 0019. Items, moving brake response and sustained drift
+still need direct behavior checks. Evidence:
+`work/double-dash-baseline-drive-{accel,steer,swap}.{json,png}`. Paused without
+overwriting the comparison save.
