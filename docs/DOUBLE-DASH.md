@@ -1011,3 +1011,21 @@ comparison, but this run provides no demonstrated improvement from enabling the
 cache. Keep it opt-in. Evidence is retained locally in ignored
 `work/double-dash-combined-cache-{a,b,driving}.json` and the driving PNG.
 The saved baseline progress was not overwritten.
+
+
+### Exact uniform-content cache screen
+
+On the same combined candidate, replay-op deltas from the state-cache run
+attributed approximately 7.314 ms per delivered frame to UPLOAD_BUFFER
+(periodic timing estimates), with 1,869.3 upload records per frame. This motivated
+an isolated `wgpuubocache=1&wgpuubometrics=1` screen, with state caching disabled.
+The report confirmed the producer UBO cache active. It suppressed 48,309 vertex,
+147,505 pixel, and 93,886 geometry uniform uploads (431,222,992 bytes total).
+The restored race delivered 844 frames in 35.932 seconds (23.49 fps), and browser
+replay averaged 10.266 ms per frame. This short sample includes warmup and driving
+and is not a controlled regression measurement. It does not demonstrate a speed
+gain. Acceleration moved the kart onto the grass and the HUD/course remained
+visible; visual equivalence and complete-race correctness remain unverified.
+Keep uniform caching default-off. Local evidence:
+`work/double-dash-combined-ubo-{a,b}.json` and
+`work/double-dash-combined-ubo-driving.png`. Baseline progress remains preserved.
