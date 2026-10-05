@@ -709,3 +709,24 @@ This remains a candidate, not completed fidelity: driving and menu regressions,
 other tracks, four-player split screen, sound, performance, ubershader coverage,
 and failure handling still need validation. The default core has not been
 replaced, and patch 0008 remains outside automatic prepare-core application.
+
+### Corrected candidate driving and pause evidence (2026-10-05)
+
+Bounded native acceleration on the 6c7107 candidate moves the kart along
+Luigi Circuit and the HUD reaches 50 mph. During the hold, native telemetry
+confirms button 0x100, stick 128/128, input generation 1; renderer errors
+remain empty. Evidence: `work/double-dash-alpha-driving.json`, expanded
+PNG, and `work/double-dash-alpha-driving-compact.png` (the latter shows
+50 mph and course movement). The 90-frame left-plus-gas probe turns the
+kart into the barrier. Its later report confirms neutral release (stick
+128/128, zero buttons, generation 4), not a still-held left input. Evidence:
+`work/double-dash-alpha-left.json` and PNG.
+
+Start opens the game's native pause menu over the race; screenshot:
+`work/double-dash-alpha-pause.png`. This verifies a pause transition, not
+all menu transitions or a full race. Performance reports during driving
+are approximately 26-30 percent game speed. A magenta strip was visible
+in one acceleration screenshot and needs investigation. Physical phone
+motion, sound audibility, full races, four-player performance, other tracks,
+and wider destination-alpha behavior remain unverified. Candidate remains
+isolated from the normal embedded runtime.
