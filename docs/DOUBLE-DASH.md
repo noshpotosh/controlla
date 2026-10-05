@@ -936,7 +936,24 @@ repeatedly calling clean flush paths.
 A host C++ test using the actual BlockingLoop header passed 10,000 producer
 wakeups with idle sleep permission (`/tmp/controlla-fifo-wakeup.cpp`). This
 does not validate Emscripten scheduling or all FIFO behavior. The native
-candidate is applied only in the ignored build checkout and compiling to
+candidate is applied only in the ignored build checkout and built to
 `work/double-dash-sleep-core`; the FIFO diagnostic and prior alpha core
 remain preserved. Browser speed, latency, presentation, and fidelity checks
 remain required before promotion.
+
+
+The compiled idle-sleep WASM hash is
+`733c55a9db62676638d0ee53e20bf47917ed8c2ccdbcfcd2ba6f1931c9018e52`.
+Its 179 exports and four-port native input ABI passed integrity/interface
+checks. Browser testing rejects promotion: restoring the baseline race
+advanced core frames 452 to 815 while presented frames stayed at 110
+(`work/double-dash-sleep-a.json`, `work/double-dash-sleep-b.json`).
+A fresh boot initially delivered images (presented 245 to 688), rendered
+part of the attract sequence, then stalled: core frame 3198, presented
+1696, visual cadence zero, reported speed 99 percent
+(`work/double-dash-sleep-fresh-d.json`). Therefore this failure is not
+exclusive to state restoration, and CPU speed alone cannot qualify it.
+The independently observed FIFO distance was zero with read pointer
+4347552 and write pointer 4125472; these observations are not a coherent
+snapshot and do not establish a root cause. Continue investigating native
+FIFO scheduling/pointer consistency before promoting patch 0011.
