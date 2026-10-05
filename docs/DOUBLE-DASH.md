@@ -910,3 +910,13 @@ The next comparison enables the existing `wgputailgate=1` optimization. Source
 inspection confirms its predicates match the early returns in `Flush()` and
 `RefreshPeekCache()`; the native flag stays default-off. Compare restored-race
 frame deltas, clean/dirty counters, output, and errors before promoting it.
+
+The tail-gate comparison stalls: `work/double-dash-fifo-tail-a.json` to
+`...tail-b.json` advances core frame 2,188 to 2,799 while presented frame
+stays 674. Tail counters show 306,705 clean samples and zero dirty-at-skip
+events in the second report. FIFO queue distance stays 0 with read/link
+enabled, no pending interrupt/breakpoint, and divergent read/write pointers
+(4,283,008 vs. 4,125,472). The option is not promoted. This recurrence under
+a different timing change also cautions against treating the earlier
+classifier/readback association as a fully identified root cause. Repeat
+the same tail-off configuration before further runtime promotion.
