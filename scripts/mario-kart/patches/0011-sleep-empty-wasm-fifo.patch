@@ -1,0 +1,15 @@
+--- a/Source/Core/VideoCommon/Fifo.cpp
++++ b/Source/Core/VideoCommon/Fifo.cpp
+@@ -508,6 +508,12 @@
+             DolphinWeb::WgpuIdleFifoTailGate::RecordDecision(
+                 flush_needed, refresh_needed, dirty_at_skip);
+           }
++#ifdef __EMSCRIPTEN__
++          // WASM idle FIFO sleep candidate: Wakeup preserves work arriving
++          // before the BlockingLoop enters its sleeping state.
++          if (fifo.CPReadWriteDistance.load(std::memory_order_acquire) == 0)
++            m_gpu_mainloop.AllowSleep();
++#endif
+         }
+       },
+       100);

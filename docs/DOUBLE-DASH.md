@@ -920,3 +920,23 @@ enabled, no pending interrupt/breakpoint, and divergent read/write pointers
 a different timing change also cautions against treating the earlier
 classifier/readback association as a fully identified root cause. Repeat
 the same tail-off configuration before further runtime promotion.
+
+### Empty FIFO sleep candidate (2026-10-05)
+
+The repeated tail-off baseline advances 197 core/presented frames over
+6.774 seconds, with 37 percent speed and no renderer errors at the second
+sample (`work/double-dash-fifo-repeat-b.json`). Browser drain cost is
+9.923 ms/frame and sampled native FIFO decode estimate 7.658 ms/frame.
+Sampled idle-tail estimate is 64.319 ms/frame across the parallel GPU thread;
+these overlapping estimates cannot be summed into an elapsed frame budget.
+The extremely frequent idle tail calls motivate patch 0011, which permits
+sleep through Dolphin's BlockingLoop when the FIFO is empty rather than
+repeatedly calling clean flush paths.
+
+A host C++ test using the actual BlockingLoop header passed 10,000 producer
+wakeups with idle sleep permission (`/tmp/controlla-fifo-wakeup.cpp`). This
+does not validate Emscripten scheduling or all FIFO behavior. The native
+candidate is applied only in the ignored build checkout and compiling to
+`work/double-dash-sleep-core`; the FIFO diagnostic and prior alpha core
+remain preserved. Browser speed, latency, presentation, and fidelity checks
+remain required before promotion.

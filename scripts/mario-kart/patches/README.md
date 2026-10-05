@@ -148,3 +148,11 @@ request them. The renderer report exposes `wgpuClassifierReadbacksEnabled`.
 Classification without captures cannot establish pixel/readback evidence.
 Deep and input-latency diagnostic captures retain their separate opt-ins.
 This JS-only patch is included in preparation and requires no native rebuild.
+
+`0011-sleep-empty-wasm-fifo.patch` is an experimental native candidate,
+excluded from automatic preparation. It grants the existing BlockingLoop
+sleep permission after the nondeterministic GPU FIFO payload finds queue
+distance zero. New GP bursts and async requests retain their Wakeup path.
+The builder requires isolated output, verifies the reverse patch, and records
+the FIFO source hash and candidate flag. A host-side 10,000-wakeup stress
+check passed; native WASM compilation and browser validation remain pending.
