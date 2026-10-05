@@ -1908,3 +1908,20 @@ bounded observation; Resume progress reported an unloaded adapter. No state
 was exported/imported. Temporary tab 19 was closed; paused tabs 14 and 18
 remain. Screenshot: `work/double-dash-checkpoint-transfer-controls.png`.
 A matched-checkpoint speed comparison remains pending.
+
+### Exporting saved progress without an engine
+
+Added diagnostic Export saved checkpoint. It reads only the existing browser
+record for the game/core key, copies bytes, and requests a local download; it
+does not boot or mutate an emulator and does not overwrite saved progress.
+Five progress tests pass, including immutable export and missing-record errors.
+
+A fresh baseline tab still did not complete boot after an early sound gesture,
+so audio activation alone is not an established explanation for that stall.
+A separate unloaded tab successfully found the saved browser record and
+triggered the checkpoint download action. The browser download event timed out,
+so saved-file existence and import remain unverified. Access to Downloads was
+denied by OS permissions; no broader access was attempted. Export status now
+says download requested, reflecting what the page can actually prove.
+Screenshot `work/double-dash-saved-checkpoint-export.png` captures the prior
+status wording. Temporary tabs were closed; paused tabs 14 and 18 preserved.

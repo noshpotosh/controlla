@@ -57,7 +57,7 @@ export function installProgressControls({ getAdapter, key, setStatus }) {
     const input = document.createElement('input');
     input.type = 'file'; input.accept = '.sav,.bin'; input.hidden = true;
     document.body.append(input);
-    for (const label of ['Export checkpoint', 'Import checkpoint']) {
+    for (const label of ['Export checkpoint', 'Export saved checkpoint', 'Import checkpoint']) {
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'file-button'; button.textContent = label;
       document.querySelector('.topbar-actions').append(button);
@@ -65,15 +65,21 @@ export function installProgressControls({ getAdapter, key, setStatus }) {
         if (label === 'Import checkpoint') { input.value = ''; input.click(); return; }
         button.disabled = true;
         try {
-          const adapter = getAdapter();
-          if (!adapter?.loaded) throw new Error('Start Double Dash before exporting progress.');
-          const result = await adapter.saveStateFile();
+          let result;
+          if (label === 'Export saved checkpoint') {
+            const bytes = await readSavedProgressBytes(store, key);
+            result = { saved: true, bytes };
+          } else {
+            const adapter = getAdapter();
+            if (!adapter?.loaded) throw new Error('Start Double Dash before exporting progress.');
+            result = await adapter.saveStateFile();
+          }
           if (!result?.saved || !result.bytes?.byteLength) throw new Error(result?.error || 'Could not export progress.');
           const url = URL.createObjectURL(new Blob([new Uint8Array(result.bytes)]));
           const link = document.createElement('a');
           link.href = url; link.download = 'double-dash-checkpoint.sav'; link.click();
           setTimeout(() => URL.revokeObjectURL(url), 1000);
-          setStatus('Exported local checkpoint.');
+          setStatus('Local checkpoint download requested.');
         } catch (error) { setStatus(error.message, 'error'); }
         finally { button.disabled = false; }
       });
@@ -117,4 +123,10 @@ export async function loadProgressFile(adapter, bytes) {
     throw new Error('Choose a nonempty progress file.');
   const result = await adapter.loadStateFile(bytes);
   if (!result?.loaded) throw new Error(result?.error || 'The game could not load this progress file.');
+}
+
+export async function readSavedProgressBytes(store, key) {
+  const record = await store.read(key);
+  if (!record?.bytes?.byteLength) throw new Error('No saved checkpoint for this game and core build.');
+  return new Uint8Array(record.bytes);
 }

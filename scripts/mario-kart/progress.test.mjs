@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { saveProgress, resumeProgress, loadProgressFile } from './progress.mjs';
+import { saveProgress, resumeProgress, loadProgressFile, readSavedProgressBytes } from './progress.mjs';
 
 test('progress survives a new adapter and is isolated by game/core key', async () => {
   const records = new Map();
@@ -37,4 +37,15 @@ test('explicit checkpoint import delegates compatibility and reports native reje
   await assert.rejects(loadProgressFile({ loaded: false }, bytes), /Start Double Dash/);
   await assert.rejects(loadProgressFile({ loaded: true, loadStateFile() {} }, new Uint8Array()), /nonempty/);
   await assert.rejects(loadProgressFile({ loaded: true, loadStateFile: async () => ({ loaded: false, error: 'Incompatible checkpoint' }) }, bytes), /Incompatible checkpoint/);
+});
+
+test('saved checkpoint export is read only and independent of a running engine', async () => {
+  const bytes = new Uint8Array([4, 5, 6]);
+  let readKey;
+  const result = await readSavedProgressBytes({ read: async key => { readKey = key; return { bytes }; } }, 'game:core');
+  assert.equal(readKey, 'game:core');
+  assert.deepEqual(result, bytes);
+  result[0] = 99;
+  assert.equal(bytes[0], 4);
+  await assert.rejects(readSavedProgressBytes({ read: async () => undefined }, 'missing'), /No saved checkpoint/);
 });
