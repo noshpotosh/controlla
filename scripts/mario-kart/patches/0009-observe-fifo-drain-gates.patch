@@ -10,7 +10,7 @@
  
  #if DOLPHIN_WEB_STATIC_EXIT_LINKS && DOLPHIN_WEB_STATIC_EXIT_LINK_STATS
  namespace
-@@ -11354,6 +11357,23 @@
+@@ -11354,6 +11357,55 @@
  #endif
  #line 11280
    static std::string stats;
@@ -27,14 +27,46 @@
 +         << ",interrupt=" << cp.IsInterruptWaiting()
 +         << ",breakpoint=" << fifo.bFF_Breakpoint.load(std::memory_order_relaxed)
 +         << ",rd=" << fifo.CPReadPointer.load(std::memory_order_relaxed)
-+         << ",wr=" << fifo.CPWritePointer.load(std::memory_order_relaxed);
++         << ",wr=" << fifo.CPWritePointer.load(std::memory_order_relaxed)
++         << ",safe=" << fifo.SafeCPReadPointer.load(std::memory_order_relaxed)
++         << ",base=" << fifo.CPBase.load(std::memory_order_relaxed)
++         << ",end=" << fifo.CPEnd.load(std::memory_order_relaxed);
++    // Read-only GameCube OS thread observations. Each field can change while
++    // sampled; this is not a coherent snapshot or a reason to alter guest RAM.
++    auto& system = Core::System::GetInstance();
++    const auto read_ram = [&](u32 address) -> u32 {
++      if ((address & 0xfe000000u) != 0x80000000u)
++        return 0;
++      const u8* ptr = system.GetMemory().GetPointerForRange(address & 0x01ffffffu, 4);
++      if (!ptr)
++        return 0;
++      return (u32(ptr[0]) << 24) | (u32(ptr[1]) << 16) | (u32(ptr[2]) << 8) | ptr[3];
++    };
++    gate << " | osthreads:v=1,current=" << read_ram(0x800000e4u);
++    u32 thread = read_ram(0x800000dcu);
++    std::array<u32, 16> visited{};
++    for (size_t i = 0; i < visited.size() && thread; ++i)
++    {
++      if ((thread & 0xfe000000u) != 0x80000000u ||
++          std::find(visited.begin(), visited.begin() + i, thread) != visited.begin() + i)
++        break;
++      visited[i] = thread;
++      gate << ";addr=" << thread << ",stateattr=" << read_ram(thread + 0x2c8)
++           << ",suspend=" << read_ram(thread + 0x2cc)
++           << ",priority=" << read_ram(thread + 0x2d0)
++           << ",queue=" << read_ram(thread + 0x2dc)
++           << ",srr0=" << read_ram(thread + 0x198)
++           << ",lr=" << read_ram(thread + 0x84)
++           << ",sp=" << read_ram(thread + 4);
++      thread = read_ram(thread + 0x2fc);
++    }
 +    reported_stats = stats + gate.str();
 +    return reported_stats.c_str();
 +  };
    static int last_refresh_policy = -1;
    const int applied_policy = s_applied_wasm_policy.load(std::memory_order_acquire);
    static u32 last_refresh_block_run_count = 0;
-@@ -11394,7 +11414,7 @@
+@@ -11394,7 +11446,7 @@
  #endif
  #line 11305
    {
@@ -43,7 +75,7 @@
    }
    last_refresh_policy = applied_policy;
    last_refresh_block_run_count = s_wasm_block_run_count;
-@@ -11873,7 +11893,7 @@
+@@ -11873,7 +11925,7 @@
  #endif
  #line 11779
    stats = out.str();
