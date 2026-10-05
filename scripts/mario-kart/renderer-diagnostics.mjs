@@ -5,6 +5,7 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
   report.id = 'controlla-renderer-diagnostics';
   report.hidden = true;
   document.body.append(report);
+  let probe = null;
   let pending = false;
   const timer = setInterval(async () => {
     const adapter = getAdapter();
@@ -12,7 +13,7 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
     pending = true;
     try {
       const renderer = await adapter.request('rendererDiagnostics');
-      report.textContent = JSON.stringify({ capturedAt: new Date().toISOString(), frame: getFrame(), renderer });
+      report.textContent = JSON.stringify({ capturedAt: new Date().toISOString(), frame: getFrame(), renderer, probe });
     } catch (error) {
       report.textContent = JSON.stringify({ error: error.message });
     } finally { pending = false; }
@@ -37,13 +38,21 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
       targetFrame = (getFrame()?.frame ?? 0) + frames;
       held = { connected: true, mask, stickX, stickY: 128, cStickX: 128, cStickY: 128,
         triggerLeft: 0, triggerRight: mask & 64 ? 255 : 0, analogA: mask & 1 ? 255 : 0, analogB: mask & 2 ? 255 : 0 };
+      probe = { name, requested: { ...held }, targetFrame, observations: [], releasedAtFrame: null };
       setProbeInput(held);
     };
     controls.append(button);
   }
   const inputTimer = setInterval(() => {
     if (!held) return;
-    if ((getFrame()?.frame ?? 0) >= targetFrame) {
+    const frame = getFrame();
+    const pad = frame?.ppcWasmHelperStats?.match(/pad polls:.*? fastsw:[01]/)?.[0];
+    if (pad && probe.observations.at(-1)?.pad !== pad) {
+      probe.observations.push({ frame: frame.frame, pad });
+      if (probe.observations.length > 64) probe.observations.shift();
+    }
+    if ((frame?.frame ?? 0) >= targetFrame) {
+      probe.releasedAtFrame = frame?.frame ?? 0;
       held = null; setProbeInput(null);
     } else setProbeInput(held);
   }, 40);

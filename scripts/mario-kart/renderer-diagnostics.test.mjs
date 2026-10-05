@@ -2,6 +2,28 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { installRendererDiagnostics } from './renderer-diagnostics.mjs';
 
+test('probe reports retain observed native inputs after release without assuming delivery', async t => {
+  const env = environment(t, '?rendererdiagnostics=1&probeinputs=1');
+  let frame = 100, buttons = 0;
+  installRendererDiagnostics({
+    getAdapter: () => ({ loaded: true, async request() { return {}; } }),
+    getFrame: () => ({ frame, ppcWasmHelperStats: `pad polls:${frame} updates:1 input:0 gen:1 buttons:${buttons} stick:192,128 fastsw:1` }),
+    setProbeInput() {},
+  });
+  env.elements.find(element => element.textContent === 'Drift right + gas (300 frames)').onclick();
+  env.intervals[1]();
+  buttons = 65;
+  for (frame = 101; frame <= 170; frame++) env.intervals[1]();
+  frame = 400; env.intervals[1]();
+  await env.intervals[0]();
+  const probe = JSON.parse(env.elements[0].textContent).probe;
+  assert.equal(probe.requested.mask, 65);
+  assert.equal(probe.releasedAtFrame, 400);
+  assert.equal(probe.observations.length, 64);
+  assert.match(probe.observations.at(-1).pad, /buttons:65/);
+  assert.equal(probe.observations.at(-1).frame, 400);
+});
+
 function environment(t, search) {
   const elements = [], intervals = [], cleanups = [];
   const replace = (name, value) => {
