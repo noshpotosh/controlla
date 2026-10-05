@@ -1352,3 +1352,14 @@ its own overhead. The 850 presented-frame interval took 40.06412 seconds
 (21.22 fps), so it is not a normal-play throughput qualification. Paused after
 capture without overwriting the saved race. Evidence:
 `work/double-dash-precise-profile-{a,b}.json` and `-paused.png`.
+
+Follow-up attribution audit: the leading block represents approximately
+1.27% / 1.24% of each window's sampled execution time, and all eight displayed
+blocks together represent only 5.09% / 4.71%. These percentages use reported
+sample count times the rounded average, so their denominator is approximate.
+The fixed 4,096-entry table with eight probes also dropped attribution for
+15,161 / 15,433 samples (15.20% / 15.57%); totals still include those samples.
+Thus the repeatable leaders are not evidence of a dominant opcode bottleneck.
+Before selecting a new specialization, broader attribution is needed. The
+profile excludes the normal redispatch path and its measurement overhead is
+not separately quantified, which further limits conclusions about normal play.
