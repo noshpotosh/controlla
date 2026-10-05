@@ -1850,3 +1850,20 @@ nonempty with profiling enabled, and stop updating after profiling is disabled.
 JavaScript syntax passed. The exact native build remains live in session 52709
 (linker PID 22921 observed active); these new runtime assertions have not yet
 executed against its output. No speed improvement is claimed.
+
+### FP attribution candidate build and arithmetic result
+
+Build session 52709 completed with exit zero. Candidate WASM hash:
+`e65f32b6c9a562e8beb223e46b97e410a99c6a34b43bc0dc3a7178a0c0cab6a3`.
+Module syntax and four-controller native ABI checks passed. The arithmetic
+verifier passed all 3,744 differential cases and scalar alias checks with
+profiling disabled, enabled, and disabled again. Verification evidence was
+saved against this exact binary in its ignored manifest.
+
+The initial counter assertion failed because GetPpcWasmHelperStats caches its
+report using production block counters; native smoke blocks do not invalidate
+that cache. Counter assertions were removed from the runner rather than
+treating the cached report as a fresh observation. Counter-toggle behavior
+remains unverified. Arithmetic comparisons remain meaningful in both modes.
+Log: `/tmp/controlla-fp-attribution-check.log`. Browser gameplay and performance
+for this candidate are still pending; no speed improvement is claimed.
