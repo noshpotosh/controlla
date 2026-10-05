@@ -148,6 +148,42 @@ draws or presentations cannot establish hardware rendering. For a reproducible
 comparison, use `rendererdiagnostics=1&wgpuclassify=1`, restore a checkpoint,
 and check both native after-load generation and actual command replay counters.
 
+The next browser check reached SELECT CHARACTER COMBINATION and confirmed Mario
+and Luigi. Native GPU rendering displayed the icons, names, stats and OK prompt,
+but left the 3D preview empty. A same-origin snapshot saved at 11:28:40 AM on
+2026-10-05 restored in Software and displayed both characters and their kart.
+This establishes a renderer difference in a matched game state. The GPU report
+at frame 12424 recorded 716,490 indexed draws, 76 successful shaders and 81
+successful pipelines, with no GPU errors, missing resources or skipped draws.
+
+Disabling partial clears with `wgpuclearrect=0` did not restore the preview.
+The report confirmed renderer feature mask `0x0`, native after-load generation
+1 and active `WebGPU-Real`; this rules out the partial-clear path as the sole
+cause. It does not justify shipping legacy whole-frame clears. Local comparison
+screenshots are `work/double-dash-gpu-kart-preview.png`,
+`work/double-dash-software-kart-preview.png`, and
+`work/double-dash-gpu-kart-clear-off.png`; each has a matching `-report.json`.
+
+A temporary isolated-server probe set the consumer's `DIAG_DEPTH_ALWAYS` to
+true, leaving the normal game runtime unchanged. Restoring the same snapshot
+then displayed Mario, Luigi and the kart. Its report confirmed the diagnostic
+flag, native after-load generation 1, real command replay and no GPU errors.
+This isolates depth handling as a cause of the missing preview; forcing depth
+tests to always pass is not a fidelity fix and is not shipped. Evidence:
+`work/double-dash-gpu-kart-depth-always.png` and its matching `-report.json`.
+
+A second isolated-server probe kept ordinary depth testing and changed only
+`GX_NATIVE_DEPTH` to true (far clear 1, unflipped comparisons, producer clear
+depth for partial clears). The matched preview displayed both characters and
+the kart again, with no reported GPU errors. Its report explicitly records
+`diagnosticNativeDepth: true`. This is a candidate depth-convention correction,
+not yet a shipped fix: model occlusion, other menus, cold boot and actual racing
+must be compared before changing the normal runtime. Evidence:
+`work/double-dash-gpu-kart-native-depth.png` and its matching `-report.json`.
+The ignored probe servers are `work/double-dash-depth-probe-serve.mjs` and
+`work/double-dash-native-depth-probe-serve.mjs`; they rewrite served worker text
+on the isolated diagnostic port and do not modify the runtime source or core.
+
 Keyboard controls follow the emulator's bindings:
 
 | Input | Key |
