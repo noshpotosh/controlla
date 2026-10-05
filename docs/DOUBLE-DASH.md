@@ -957,3 +957,30 @@ The independently observed FIFO distance was zero with read pointer
 4347552 and write pointer 4125472; these observations are not a coherent
 snapshot and do not establish a root cause. Continue investigating native
 FIFO scheduling/pointer consistency before promoting patch 0011.
+
+
+### Cached-code invalidation candidate (2026-10-05)
+
+Finish-path diagnostics reproduced a stalled restore: core frames 1004 to
+2331, presented frame fixed at 503, finish requests/schedules/deliveries
+fixed at 1001, active interrupt zero. Bounded OS observations showed all
+11 observed threads waiting and no current guest thread. Main-thread queue
+0x803cb1ac is referenced by the retail executable's draw-done wait and
+finish-interrupt wake code. The disc's debug symbol map is mismatched to
+retail function addresses and must not be used for PC attribution.
+
+Disabling DcbxLoop (`disable=8`) delivered 5819 new frames over 228.452
+seconds (25.47 fps), including acceleration. FastDcbxLoop incorrectly assumes
+that WASM JIT off means no cached compiled blocks; it also skips large
+invalidations. Patch 0013 retains batching but restores cache invalidation.
+The isolated compiled candidate (`work/double-dash-invalidation-core`), hash
+`8b3006242ce105a3e7553543245edc5f5b93671d22cced9c6b15e15c6db64b2a`,
+passed integrity, all current patch hashes, and four-port ABI checks.
+With batching enabled, restored race samples advanced core 791 to 1775,
+presented 759 to 1742, and finish deliveries 1515 to 3480. Acceleration moved
+the kart onto grass; second sample speed 54 percent, visual cadence 31.
+Reports: `work/double-dash-invalidation-a.json` and `-b.json`; screenshot
+`work/double-dash-invalidation-driving.png`. This is a promising candidate,
+not proof of root cause or full-speed/fidelity qualification. Longer runs,
+fresh boot, repeat restoration, physical phone motion, complete races,
+other tracks and multiplayer remain unverified before promotion.
