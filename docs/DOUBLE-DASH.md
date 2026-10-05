@@ -1867,3 +1867,27 @@ treating the cached report as a fresh observation. Counter-toggle behavior
 remains unverified. Arithmetic comparisons remain meaningful in both modes.
 Log: `/tmp/controlla-fp-attribution-check.log`. Browser gameplay and performance
 for this candidate are still pending; no speed improvement is claimed.
+
+### FP attribution candidate initial browser sample
+
+The production candidate gate initially rejected this output because the
+runtime nativeInputAbiChecked flag was absent. The preceding build result
+proved export structure, not runtime controller behavior; the earlier ABI
+claim was too strong. Ran `mario-kart:check-abi` against this isolated output:
+all four ports accept connect/disconnect and invalid ports are rejected. The
+manifest now records that successful runtime check, and official candidate
+selection admits the exact e65f32b6 binary.
+
+Official server session 9068 serves this candidate on port 8082. Browser tab 18
+booted the local game with WebGPU, dual CPU, WASM JIT, 700 warmup, and profiling
+disabled. It rendered the attract sequence without console errors. Resume
+progress found no saved checkpoint for this origin/core hash, so this sample
+is not comparable to the earlier idle-race samples.
+
+Presented frame delta was 307 over 44.064345 monotonic seconds, or 6.9671 fps.
+Evidence: `work/double-dash-fp-attribution-attract-{a,b}.json`; screenshot
+`work/double-dash-fp-attribution-attract.png`. The scene changed through the
+attract demonstration; compilation and scene costs were not isolated. No
+performance gain or regression versus the earlier candidate is established.
+Full speed remains unmet. Candidate tab 18 is paused and retained, along with
+the paused baseline tab 14 and its existing server.
