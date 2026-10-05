@@ -1420,3 +1420,13 @@ only the sound gesture button over it. End game removed the iframe, restored
 the selectable catalog and enabled Start round. This proves the current
 selection/boot/cleanup flow, not physical phone steering, audio output or race
 performance. Screenshot: `work/double-dash-room-current-boot.png`.
+
+Experimental patch 0019 admits non-recording `ps_sum0` / `ps_sum1` through the
+guarded tier's known-helper classifier. The instructions remain on EmitFpCall,
+which flushes dirty register cache state, invokes the native FP helper, checks
+for a halt and reloads written GPRs. No arithmetic emitter is added. This is
+intended to reduce rejection of surrounding integer blocks while retaining
+the reference paired-sum instruction behavior. Rc forms remain excluded.
+Reverse patch validation, builder syntax, isolated configuration and default
+output rejection passed. Native build is running for isolated output
+`work/double-dash-sum-helper-core`; behavior and speed are not yet verified.

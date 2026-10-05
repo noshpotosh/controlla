@@ -1,0 +1,13 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -5050,6 +5050,10 @@
+ 
+ bool IsPpcWasmDirectHelperFpuInstruction(UGeckoInstruction inst)
+ {
++  // WASM paired-sum helper admission candidate: retain reference FP semantics.
++  if (inst.OPCD == 4 && !inst.Rc && (inst.SUBOP5 == 10 || inst.SUBOP5 == 11))
++    return true;
++
+   if (inst.Rc || inst.OPCD != 63)
+     return false;
+ 

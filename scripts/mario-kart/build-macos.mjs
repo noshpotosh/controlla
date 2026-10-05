@@ -11,6 +11,13 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
 const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
 const nativeCpu = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp');
 const nativeFifo = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/Fifo.cpp');
+const pairedSumHelpers = readFileSync(nativeCpu, 'utf8').includes('WASM paired-sum helper admission candidate');
+if (pairedSumHelpers) {
+  if (output === defaultOutput) throw new Error('Paired sum helper candidate requires an isolated DOLPHIN_WASM_OUTPUT_DIR.');
+  const check = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0019-admit-paired-sum-helpers.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('Paired sum helper source does not match patch 0019: ' + check.stderr);
+}
 const preciseSampledProfile = readFileSync(nativeCpu, 'utf8').includes('WASM precise sampled CPU profile candidate');
 if (preciseSampledProfile) {
   if (output === defaultOutput) throw new Error('Precise profile candidate requires an isolated DOLPHIN_WASM_OUTPUT_DIR.');
@@ -110,6 +117,8 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   scaleZeroQuantizedStores,
   pairedSignOperations,
   preciseSampledProfile,
+  pairedSumHelpers,
+  pairedSumPatchSha256: pairedSumHelpers ? hash(resolve(repo, 'scripts/mario-kart/patches/0019-admit-paired-sum-helpers.patch')) : null,
   preciseProfilePatchSha256: preciseSampledProfile ? hash(resolve(repo, 'scripts/mario-kart/patches/0018-preserve-sampled-profile-precision.patch')) : null,
   pairedSignPatchSha256: pairedSignOperations ? hash(resolve(repo, 'scripts/mario-kart/patches/0017-inline-paired-sign-operations.patch')) : null,
   quantizedStorePatchSha256: scaleZeroQuantizedStores ? hash(resolve(repo, 'scripts/mario-kart/patches/0016-inline-scale-zero-quantized-stores.patch')) : null,
