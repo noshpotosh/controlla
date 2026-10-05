@@ -567,3 +567,25 @@ the samples are not yet adjacent to the same specific copy pass. Next sample
 the EFB and copy destination immediately at that pass boundary. Existing
 legacy copy diagnostics only match 608x456 destinations, whereas these
 actual presented source textures are 608x448; do not rely on that filter.
+
+### Aligned copy-boundary result (2026-10-05)
+
+The bounded probe now records EFB, bound source, and destination immediately
+after a non-EFB copy pass ends, before later commands reuse the EFB. It maps
+readbacks after submission. Served-worker syntax validation passes. The
+generation-1 capture has six copy boundaries and no renderer errors; evidence
+is `work/double-dash-race-copy-boundaries.json`.
+
+For copy 1 (frame 270, pipeline 73), the 640x528 EFB and bound source are
+identical: first grid cells RGB 41/27/51, 0/0/27, and 10/9/29. The 608x448
+RGBA destination has similar RGB 43/27/53, 0/0/27, and 9/8/29. Copies 3
+and 5 repeat this relationship with rotating destinations. The different
+texture extents explain grid-cell differences; this is not pixel equality.
+The BGRA 2560x1024 target of pipeline 76 is packed output and must not be
+interpreted as an ordinary full-frame RGB image.
+
+Thus the actual presentation copy receives an already dark EFB, contradicting
+a conclusion that the final copy is where the darkness first appears. Earlier
+brighter EFB samples were at a different point in the command sequence. Next
+trace EFB pass endings and clears/draws preceding the copy to identify where
+bright scene color changes. No output-color or copy bypass has been promoted.
