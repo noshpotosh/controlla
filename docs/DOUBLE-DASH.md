@@ -1487,3 +1487,15 @@ or validation of patch 0019. Items, moving brake response and sustained drift
 still need direct behavior checks. Evidence:
 `work/double-dash-baseline-drive-{accel,steer,swap}.{json,png}`. Paused without
 overwriting the comparison save.
+
+Repeated acceleration (300 frames), left steering with gas (90 frames), and
+rider swap (30 frames) on paired-sum candidate `40171cdf`. Acceleration moved
+the kart to the course edge, steering changed its heading toward the banked
+road, and swapping changed the visible rear rider and minimap portrait from
+Luigi to Mario. Retained acceleration observations show native A (`100` hex)
+held through release at frame 1,963. A distant magenta strip is visible in the
+acceleration screenshot; visual fidelity remains unresolved and its cause is
+not attributed to patch 0019 by these checks. No lap, item use, moving brake
+response, sustained drift or physical phone was qualified. Paused without
+changing the save. Evidence:
+`work/double-dash-sum-drive-{accel,steer,swap}.{json,png}`.
