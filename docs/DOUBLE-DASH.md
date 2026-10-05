@@ -1300,3 +1300,15 @@ Rc variants and unavailable FPU keep fallback. The isolated-output rejection
 guard was explicitly exercised; default output was not overwritten.
 The integrity-checking browser server is prepared but not yet started.
 Gameplay fidelity, helper-call reduction and performance remain pending.
+
+Paired-sign candidate browser screen (mixed JIT, baseline restore) rendered
+1,223 → 2,712 presented frames in 47.883 seconds (31.10 fps), speed 48–55%.
+The race and HUD continued, with no warning/error entries in tab logs. Paired
+negation `fp4/40`, previously 2,383,968 calls in the quantized-only final
+snapshot, no longer appeared among the top eight FP helpers. This supports
+reduction of that path, not proof that every sign helper was eliminated.
+Total FP helper calls still advanced 3,789,281 → 15,952,139. The measured
+rate is close to the prior 30.86 fps sample and does not establish a useful
+speed gain. Fresh boot, driving and full pixel fidelity remain unverified;
+keep this output isolated. Evidence: `work/double-dash-paired-sign-{a,b}.json`
+and final `b.png`.
