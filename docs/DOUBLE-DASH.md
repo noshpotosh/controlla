@@ -881,3 +881,17 @@ Renderer errors remain empty. This matched-core comparison strengthens the
 association with classification but does not prove deterministic causation.
 The next isolated server keeps classification on and suppresses only its
 EFB, backbuffer, and XFB readback gates; no native code or main runtime changes.
+
+The readback-suppression experiment retains classification but keeps its
+three capture gates off. Core frames 1,210 to 3,903 and presented frames
+1,206 to 3,897 continue advancing; instantaneous speed reports 41 then
+36 percent, visual cadence 23 then 21 fps. Evidence:
+`work/double-dash-fifo-no-readbacks-a.json` and `...no-readbacks-b.json`.
+These runs support isolating captures from counter collection, while the
+exact native scheduling failure remains unproven. Patch 0010 makes classifier
+readbacks explicitly opt-in and reports their enabled state. Prepared source
+syntax, reverse patch check, idempotent prepare, and 22 runtime helper tests
+pass. The permanent patch reports readbacks disabled in the browser and
+continues rendering at frame 1,188/presented 1,183, 22 visual fps, 41 percent
+speed, and no renderer errors. Evidence: `work/double-dash-fifo-readback-default.json`
+and `.png`. This is not full-speed play or a full-race fidelity validation.

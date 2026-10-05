@@ -8,7 +8,7 @@ const build = resolve(here, '../../work/double-dash-build');
 function git(args) { return spawnSync('git', ['-C', build, ...args], { encoding: 'utf8' }); }
 const revision = git(['rev-parse', 'HEAD']).stdout.trim();
 if (revision !== '7e38409ace3dda709c178312ff63fd92a3653cc7') throw new Error('Unexpected staged runtime revision.');
-for (const name of ['0001-four-controller-state.patch', '0002-controller-worker-transport.patch', '0003-four-controller-devices.patch', '0004-confirm-state-restore.patch', '0005-preserve-renderer-selection.patch', '0006-renderer-diagnostic-evidence.patch', '0007-restore-console-depth-conversion.patch']) {
+for (const name of ['0001-four-controller-state.patch', '0002-controller-worker-transport.patch', '0003-four-controller-devices.patch', '0004-confirm-state-restore.patch', '0005-preserve-renderer-selection.patch', '0006-renderer-diagnostic-evidence.patch', '0007-restore-console-depth-conversion.patch', '0010-opt-in-classifier-readbacks.patch']) {
   const patch = resolve(here, 'patches', name);
   if (git(['apply', '--reverse', '--check', patch]).status === 0) continue;
   const check = git(['apply', '--check', patch]);

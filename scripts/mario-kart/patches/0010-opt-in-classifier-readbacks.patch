@@ -1,0 +1,108 @@
+--- a/src/core-host.js
++++ b/src/core-host.js
+@@ -115,6 +115,7 @@
+     this.collectMetrics = requestedCollectMetrics();
+     this.legacyOneWayAck = requestedLegacyOneWayAck(window.location.search);
+     this.wgpuReplayDiagnostics = requestedWgpuReplayDiagnostics(window.location.search);
++    this.wgpuClassifierReadbacks = new URLSearchParams(window.location.search).get("wgpuclassifyreadback") === "1";
+     this.wgpuDeepReplayDiagnostics = requestedWgpuDeepReplayDiagnostics(window.location.search);
+     this.wgpuDetachedPresenter = requestedWgpuDetachedPresenter(window.location.search);
+     this.wgpuLoadEpochFence = requestedWgpuLoadEpochFence(window.location.search);
+@@ -395,6 +396,7 @@
+             collectMetrics: this.collectMetrics,
+             legacyOneWayAck: this.legacyOneWayAck,
+             wgpuReplayDiagnostics: this.wgpuReplayDiagnostics,
++            wgpuClassifierReadbacks: this.wgpuClassifierReadbacks,
+             wgpuDeepReplayDiagnostics: this.wgpuDeepReplayDiagnostics,
+             wgpuDetachedPresenter: this.wgpuDetachedPresenter,
+             wgpuLoadEpochFence: this.wgpuLoadEpochFence,
+--- a/src/upstream-worker-adapter.js
++++ b/src/upstream-worker-adapter.js
+@@ -70,6 +70,7 @@
+     collectMetrics = false,
+     legacyOneWayAck = false,
+     wgpuReplayDiagnostics = false,
++    wgpuClassifierReadbacks = false,
+     wgpuDeepReplayDiagnostics = false,
+     wgpuDetachedPresenter = false,
+     wgpuLoadEpochFence = false,
+@@ -165,6 +166,7 @@
+     this.collectMetrics = Boolean(collectMetrics);
+     this.legacyOneWayAck = Boolean(legacyOneWayAck);
+     this.wgpuReplayDiagnostics = Boolean(wgpuReplayDiagnostics);
++    this.wgpuClassifierReadbacks = Boolean(wgpuClassifierReadbacks);
+     this.wgpuDeepReplayDiagnostics = Boolean(wgpuDeepReplayDiagnostics);
+     this.wgpuDetachedPresenter = Boolean(wgpuDetachedPresenter);
+     this.wgpuLoadEpochFence = Boolean(wgpuLoadEpochFence);
+@@ -367,6 +369,7 @@
+       legacyOneWayAck: this.legacyOneWayAck,
+       coreSelection: this.coreSelectionTelemetry(window.location.href),
+       wgpuReplayDiagnostics: this.wgpuReplayDiagnostics,
++      wgpuClassifierReadbacks: this.wgpuClassifierReadbacks,
+       wgpuDeepReplayDiagnostics: this.wgpuDeepReplayDiagnostics,
+       wgpuDetachedPresenter: this.wgpuDetachedPresenter,
+       wgpuLoadEpochFence: this.wgpuLoadEpochFence,
+--- a/src/upstream-discio-worker.js
++++ b/src/upstream-discio-worker.js
+@@ -233,6 +233,7 @@
+ let renderBackend = "none";
+ let rendererDiagnostics = createRendererDiagnostics();
+ let wgpuReplayClassifier = null;
++let wgpuClassifierReadbacksEnabled = false;
+ let wgpuReplayClassifierGeneration = 0;
+ let wgpuPresentCompletionProbeStarted = false;
+ let wgpuClassifierEfbReadbackPending = false;
+@@ -732,6 +733,7 @@
+     outputContract: wgpuOutputContractPayload(),
+     runtimeConfig: wgpuRuntimeConfigPayload(),
+     wgpuReplayClassifier: wgpuReplayClassifier?.snapshot() ?? null,
++    wgpuClassifierReadbacksEnabled,
+     wgpuReplayOps: wgpuReplayOpMetrics.snapshot({ enabled: causalMetricsEnabled }),
+     wgpuUploadAttribution: wgpuUploadAttribution.snapshot({ enabled: causalMetricsEnabled }),
+     wgpuDirtyRangeProjection: wgpuDirtyRangeProjection.snapshot({
+@@ -946,6 +948,7 @@
+         noJitCache: payload.noJitCache,
+         reportedCoreSelection: payload.coreSelection,
+         wgpuReplayDiagnostics: payload.wgpuReplayDiagnostics,
++        wgpuClassifierReadbacks: payload.wgpuClassifierReadbacks,
+         wgpuDeepReplayDiagnostics: payload.wgpuDeepReplayDiagnostics,
+         wgpuDetachedPresenter: payload.wgpuDetachedPresenter,
+         wgpuLoadEpochFence: payload.wgpuLoadEpochFence,
+@@ -1486,6 +1489,7 @@
+   noJitCache = false,
+   reportedCoreSelection = null,
+   wgpuReplayDiagnostics = false,
++  wgpuClassifierReadbacks = false,
+   wgpuDeepReplayDiagnostics: requestedWgpuDeepReplayDiagnostics = false,
+   wgpuDetachedPresenter: requestedWgpuDetachedPresenter = false,
+   wgpuLoadEpochFence: requestedWgpuLoadEpochFence = false,
+@@ -1536,6 +1540,7 @@
+     nextCoreUrl,
+     expectedCoreSha256
+   );
++  wgpuClassifierReadbacksEnabled = Boolean(wgpuReplayDiagnostics && wgpuClassifierReadbacks);
+   wgpuReplayClassifierGeneration += 1;
+   wgpuReplayClassifier = wgpuReplayDiagnostics
+     ? createWgpuReplayClassifier({
+@@ -12743,10 +12748,10 @@
+               tick >= 0 && tick !== self._wgCpyTick && tick < 9;
+             const _wcOk = wgpuDeepReplayDiagnostics &&
+               _wcTick !== self._wgCpyWcTick && _wcTick < 20;
+-            const _classifyOk = Boolean(
++            const _classifyOk = wgpuClassifierReadbacksEnabled && Boolean(
+               wgpuReplayClassifier?.needsPostDrawEfbReadback(P)
+             ) && !wgpuClassifierEfbReadbackPending;
+-            const _backbufferOk = Boolean(
++            const _backbufferOk = wgpuClassifierReadbacksEnabled && Boolean(
+               wgpuReplayClassifier?.needsPresentationReadback("backbuffer", P)
+             ) && !wgpuClassifierBackbufferReadbackPending;
+             // Input-to-visible diagnostics need the actual hardware output,
+@@ -12757,7 +12762,7 @@
+             const _inputBackbufferOk = inputReadbackDiagnostics &&
+               lastBackbufferTexture && !wgpuInputBackbufferReadbackPending &&
+               (!wgpuInputVisualBaselineReady || inputVisibleLatencyTracker.hasPending());
+-            const _sourceOk = lastBackbufferSourceTextureId > 0 && Boolean(
++            const _sourceOk = wgpuClassifierReadbacksEnabled && lastBackbufferSourceTextureId > 0 && Boolean(
+               wgpuReplayClassifier?.needsPresentationReadback("xfb", P)
+             ) && !wgpuClassifierXfbReadbackPending;
+             if (_preOk || _wcOk || _classifyOk || _backbufferOk ||

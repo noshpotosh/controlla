@@ -140,3 +140,11 @@ output, records this patch and the native CPU source hash, and rejects the
 default output. The isolated candidate compiled successfully with 179 exports, and all four
 controller ports passed native ABI checks. Browser gate reporting remains
 unverified until the candidate is booted and its report inspected.
+
+`0010-opt-in-classifier-readbacks.patch` separates command classification
+from its EFB/backbuffer/XFB diagnostic readbacks. `wgpuclassify=1` collects
+counters without those captures; add `wgpuclassifyreadback=1` to explicitly
+request them. The renderer report exposes `wgpuClassifierReadbacksEnabled`.
+Classification without captures cannot establish pixel/readback evidence.
+Deep and input-latency diagnostic captures retain their separate opt-ins.
+This JS-only patch is included in preparation and requires no native rebuild.
