@@ -1276,3 +1276,15 @@ passed for unsigned-byte and signed-halfword boundaries, infinities and
 fallback. The candidate server validates core/loader/patch integrity and now
 serves loopback port 8081; the browser must reload to receive the new core.
 Gameplay fidelity, actual helper-call reduction and speed remain unverified.
+
+Initial browser screen of core 0016 used mixed JIT and the baseline race
+restore. Presented frames advanced 1,637 → 2,682 over 33.865 seconds
+(30.86 fps). The race/HUD rendered and the tab returned no warning/error logs,
+but full pixel fidelity is unqualified (a distant magenta strip is visible).
+The targeted PSQ fast-helper count stayed zero, with no `psqst7q0` fallback
+entry, versus 112,958 → 411,415 PSQ helper calls in the preceding mixed-tier
+screen. This establishes helper-path reduction for the observed workload,
+not a meaningful speed improvement: prior mixed-tier throughput was 30.28 fps.
+Other FP helper calls remained high, 7,591,742 → 17,727,298 in this interval.
+Keep the candidate isolated; fresh boot, driving and full fidelity remain
+pending. Evidence: `work/double-dash-quantized-{a,b}.json` and final `b.png`.
