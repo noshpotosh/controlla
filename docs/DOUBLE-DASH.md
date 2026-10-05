@@ -1099,3 +1099,22 @@ unverified. Do not promote this candidate yet. The normal room runtime remains
 unchanged. Evidence: `work/double-dash-combined-single-fresh-{a,b}.json`,
 `work/double-dash-single-fresh-race-{a,b}.json`, and
 `work/double-dash-single-fresh-race-driving.png`. Baseline progress was preserved.
+
+
+### Single-core steady queue and mapped upload screen
+
+A stationary segment of the freshly started single-core race delivered 1,048
+frames in 38.113 seconds (27.50 fps). Browser replay averaged 8.039 ms/frame;
+periodically sampled UPLOAD_BUFFER work accounted for about 6.190 ms/frame.
+Native producer estimates included FIFO decode 6.250, ring publish 1.055,
+upload copy 1.044 and draw resources 0.902 ms/frame (overlapping estimates).
+
+An isolated reload with `wgpuuploadtransport=mapped` and the preserved baseline
+restore confirmed actual mapped transport. Its measured interval delivered 641
+frames in 25.984 seconds (24.67 fps), with replay at 7.421 ms/frame. It incurred
+210 additional capacity waits totaling 278.645 ms; remap failure count stayed
+zero. The kart/course/HUD rendered and race time advanced. This restored,
+stationary smoke and the fresh queue sample are not a controlled A/B comparison;
+there is no demonstrated end-to-end speed gain. Keep mapped staging opt-in.
+No saved progress was overwritten. Evidence: `work/double-dash-single-steady-
+{a,b}.json`, `work/double-dash-single-mapped-{a,b}.json` and associated PNGs.
