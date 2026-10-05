@@ -1,0 +1,35 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -2169,7 +2169,31 @@
+       return DolphinWeb_CachedInterpreterCheckProgramOrDsi(ppc_state, current_pc, downcount) ? 1 :
+                                                                                                0;
+   }
+-  Interpreter::GetInterpreterOp(inst)(interpreter, inst);
++  // WASM direct reference dispatch candidate: retain interpreter semantics.
++  if (inst.OPCD == 4)
++  {
++    switch (inst.SUBOP5)
++    {
++    case 10: Interpreter::ps_sum0(interpreter, inst); break;
++    case 11: Interpreter::ps_sum1(interpreter, inst); break;
++    case 12: Interpreter::ps_muls0(interpreter, inst); break;
++    case 13: Interpreter::ps_muls1(interpreter, inst); break;
++    case 14: Interpreter::ps_madds0(interpreter, inst); break;
++    case 15: Interpreter::ps_madds1(interpreter, inst); break;
++    case 20: Interpreter::ps_sub(interpreter, inst); break;
++    case 21: Interpreter::ps_add(interpreter, inst); break;
++    case 25: Interpreter::ps_mul(interpreter, inst); break;
++    case 28: Interpreter::ps_msub(interpreter, inst); break;
++    case 29: Interpreter::ps_madd(interpreter, inst); break;
++    case 30: Interpreter::ps_nmsub(interpreter, inst); break;
++    case 31: Interpreter::ps_nmadd(interpreter, inst); break;
++    default: Interpreter::GetInterpreterOp(inst)(interpreter, inst); break;
++    }
++  }
++  else
++  {
++    Interpreter::GetInterpreterOp(inst)(interpreter, inst);
++  }
+   return DolphinWeb_CachedInterpreterCheckProgramOrDsi(ppc_state, current_pc, downcount) ? 1 : 0;
+ }
+ 

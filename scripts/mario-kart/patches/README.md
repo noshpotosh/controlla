@@ -170,3 +170,8 @@ sign/merge paths and is excluded from preparation. Performance is unverified.
 `0022-test-paired-arithmetic-aliases.patch` extends the native generated-WASM
 arithmetic smoke with four scalar-source alias cases and FPRF checks. It is
 experimental and excluded from preparation; executing it requires a fresh build.
+
+`0023-direct-reference-paired-dispatch.patch` is an isolated performance candidate
+that directly invokes the existing paired arithmetic handlers instead of table
+lookup/indirect dispatch. It adds no approximate arithmetic. Native regression
+and browser performance validation are required; preparation excludes it.

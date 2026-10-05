@@ -1661,3 +1661,21 @@ applicability confirmed. Configuration was successfully restored to the fixed ou
 The paused browser and test server continue to use the fixed candidate.
 This validation does not establish full game fidelity or solve its performance
 cost. Further exact arithmetic optimization remains necessary.
+
+### Direct reference dispatch performance candidate (2026-10-05)
+
+Patch 0023 changes the native FP import's OPCD=4 arithmetic dispatch from
+`GetInterpreterOp` plus indirect invocation to a switch calling the same
+reference handlers directly. Cases 10–15, 20,21,25,28–31 match the interpreter
+A-form table; other instructions retain table dispatch. FPU availability and
+program/DSI checks, counters, rounding, exceptions, FPRF, and alias handling
+remain in their existing reference paths. This is an optimization candidate,
+not evidence of a speed improvement.
+
+The builder rejects default output and records/verifies patch 0023 provenance.
+Syntax, reverse applicability and isolated configuration passed. Native build
+session 56892 is running with output `work/double-dash-direct-reference-core`
+and log `/tmp/controlla-direct-reference-build.log`. The fixed reference binary
+and negative control are preserved. Generated-WASM arithmetic regression and
+browser throughput comparison remain pending. Patch 0023 is excluded from
+automatic preparation.

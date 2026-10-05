@@ -11,6 +11,13 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
 const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
 const nativeCpu = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp');
 const nativeFifo = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/Fifo.cpp');
+const directReferenceDispatch = readFileSync(nativeCpu, 'utf8').includes('WASM direct reference dispatch candidate');
+if (directReferenceDispatch) {
+  if (output === defaultOutput) throw new Error('Direct reference dispatch requires isolated output.');
+  const check = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0023-direct-reference-paired-dispatch.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('Direct reference dispatch patch mismatch: ' + check.stderr);
+}
 const pairedArithmeticRegression = readFileSync(nativeCpu, 'utf8').includes('WASM paired arithmetic regression');
 if (pairedArithmeticRegression) {
   if (output === defaultOutput) throw new Error('Paired arithmetic regression requires isolated output.');
@@ -132,6 +139,8 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   pairedSignOperations,
   preciseSampledProfile,
   pairedSumHelpers,
+  directReferenceDispatch,
+  directReferenceDispatchPatchSha256: directReferenceDispatch ? hash(resolve(repo, 'scripts/mario-kart/patches/0023-direct-reference-paired-dispatch.patch')) : null,
   pairedArithmeticRegression,
   pairedArithmeticRegressionPatchSha256: pairedArithmeticRegression ? hash(resolve(repo, 'scripts/mario-kart/patches/0022-test-paired-arithmetic-aliases.patch')) : null,
   referencePairedArithmetic,
