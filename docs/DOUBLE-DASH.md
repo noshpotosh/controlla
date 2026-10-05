@@ -830,3 +830,11 @@ This contradicts a restore-only explanation: dual-core loses FIFO production
 even without loading a state. The initial title speed is not evidence of
 playable full-speed races. Investigate CPU/CP FIFO delivery and GPU drain
 gates with bounded diagnostics; retain the working single-core path.
+
+Disabling generated JIT (`wasmjit=0`) does not resolve dual-core restore
+stalling. Captures `work/double-dash-alpha-dual-nojit-a.json` and
+`...nojit-b.json` advance frame 1,515 to 5,585 with native JIT run count 0,
+but presented frame stays 692 and FIFO decode call count stays 256,002.
+The next diagnostic candidate, patch 0009, exposes FIFO drain gates in the
+existing helper report without changing execution. It is checked for patch
+application, but is not applied, compiled, or included in the runtime yet.

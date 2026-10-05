@@ -129,3 +129,12 @@ repeat the same geometry; the alpha pass disables depth writes and uses equal
 testing when the first pass writes depth. This prototype needs runtime/fidelity
 validation, handling audit for ubershaders and shader/pipeline failures, and
 manifest integration before becoming part of the prepared runtime.
+
+`0009-observe-fifo-drain-gates.patch` is an unapplied diagnostic candidate.
+It adds atomic CP FIFO gate observations to the existing PPC helper report,
+including queue distance, read/link enables, pending interrupt, breakpoint,
+and read/write pointers. The observations refresh even when JIT counters
+are unchanged, and are explicitly not a coherent snapshot. It does not
+change FIFO behavior. Patch application was checked; native compilation and
+browser reporting remain unverified. Do not include it in a runtime manifest
+until that candidate is built and its source provenance is recorded.
