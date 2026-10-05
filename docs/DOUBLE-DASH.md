@@ -1401,3 +1401,12 @@ from left to right while holding gas and drift, and center/release after
 bytes, including analog A and right trigger. It verifies the software
 transport through SessionAuthority into DoubleDash, not physical sensor
 calibration, browser motion permission, or the iframe/native endpoint.
+
+Added an embedded-bridge integration test that runs the actual embedded
+message listener and polling callback against a fake loaded adapter, then
+uses ControllerInputGate and nativeControllerArguments to inspect native ABI
+packets. It verifies held steering/gas/drift, four-port connection and missing
+port neutralization, stale release, reconnect, and rejection of invalid or
+unrelated-window/origin messages without extending input freshness. The
+native setter is simulated; this does not prove delivery into a running WASM
+game or physical phone operation.
