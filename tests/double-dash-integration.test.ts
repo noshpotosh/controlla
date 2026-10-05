@@ -143,3 +143,55 @@ void test('local runtime proxy excludes LAN and tunnel requests', () => {
   assert.equal(isLocalGameRequest('localhost:3000', '10.0.0.2'), false);
   assert.equal(isLocalGameRequest('10.0.0.170:3000', '127.0.0.1'), false);
 });
+
+void test('binary phone tilt steers the kart with held gas and drift, then expires', (t) => {
+  let clock = 0;
+  t.mock.method(performance, 'now', () => clock);
+  let config: ControllerConfig | null = null;
+  const game = new DoubleDash();
+  t.mock.method(doubleDash, 'create', () => game);
+  const authority = new SessionAuthority('host', {
+    toPlayer(_id, message) {
+      if (message.type === 'config') config = message.config;
+    },
+    toVenue() {}, snapshot() {}, event() {}, warning() {},
+  });
+  t.after(() => authority.dispose());
+  authority.setRoster({
+    players: [players[0]],
+    venues: [{ id: 'host', name: 'Host', connected: true }],
+  });
+  const capabilities = defaultCapabilities();
+  capabilities.sensors.accel = { present: true, permission: 'granted' };
+  authority.control('a', { type: 'capabilities', capabilities });
+  authority.start('double-dash', 'free-play');
+  assert.equal(config!.widgets.find((widget) => widget.action === 'steer')?.type, 'tilt');
+  authority.control('a', { type: 'ready', generation: config!.generation });
+  authority.tick();
+  clock = 4000;
+  const send = (seq: number, x: number) => {
+    authority.input('a', encodeInput({
+      seq, time: clock, generation: config!.generation,
+      x, y: 0, vx: 0, vy: 0, buttons: 5,
+      edges: [1, 0, 1, 0], edgeTimes: [clock, 0, clock, 0], confidence: 1,
+    }));
+    authority.tick();
+  };
+  send(1, -1);
+  assert.equal(game.snapshot().controllers[0].stickX, 1);
+  assert.equal(game.snapshot().controllers[0].mask, 1 | 64);
+  assert.equal(game.snapshot().controllers[0].analogA, 255);
+  assert.equal(game.snapshot().controllers[0].triggerRight, 255);
+  clock += 100;
+  send(2, 1);
+  clock += 100;
+  send(3, 1);
+  assert.equal(game.snapshot().controllers[0].stickX, 255);
+  clock += 260;
+  authority.tick();
+  const released = game.snapshot().controllers[0];
+  assert.equal(released.stickX, 128);
+  assert.equal(released.mask, 0);
+  assert.equal(released.analogA, 0);
+  assert.equal(released.triggerRight, 0);
+});

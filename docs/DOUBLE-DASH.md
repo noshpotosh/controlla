@@ -1393,3 +1393,11 @@ drive specialization. Frequent leaders remain rlwinm, stwu and psq_l blocks.
 Profiling overhead and disabled redispatch still prevent normal-play speed
 claims. Paused after capture without saving over the baseline race. Evidence:
 `work/double-dash-broad-profile-{a,b}.json` and `-paused.png`.
+
+Added a room-authority integration check for motion-capable phone input:
+resolved tilt controls receive real binary protocol frames, steer the kart
+from left to right while holding gas and drift, and center/release after
+260ms without frames. The check asserts the resulting native controller
+bytes, including analog A and right trigger. It verifies the software
+transport through SessionAuthority into DoubleDash, not physical sensor
+calibration, browser motion permission, or the iframe/native endpoint.
