@@ -14,6 +14,12 @@ assert.equal(manifest.pairedArithmeticRegressionPatchSha256,
 if (manifest.pairedDifferentialRegression)
   assert.equal(manifest.pairedDifferentialRegressionPatchSha256,
     hash(new URL('./patches/0024-differential-paired-arithmetic.patch', import.meta.url)));
+if (manifest.finitePairedAddSub) {
+  assert.equal(manifest.pairedDifferentialRegression, true,
+    'Finite add/sub candidate requires differential comparisons');
+  assert.equal(manifest.finitePairedAddSubPatchSha256,
+    hash(new URL('./patches/0026-finite-paired-add-sub.patch', import.meta.url)));
+}
 for (const [file, expected] of [['dolphin-core-upstream.wasm', manifest.wasmSha256],
   ['dolphin-core-upstream.js', manifest.loaderSha256]])
   assert.equal(hash(resolve(output, file)), expected, `Integrity mismatch: ${file}`);
@@ -41,6 +47,7 @@ try {
     scalarAliasCases: 4,
     differentialCases: manifest.pairedDifferentialRegression ? 3744 : 0,
     reference: 'native-interpreter',
+    ...(manifest.finitePairedAddSub ? { pairedAddSubCases: 576, finitePairedAddSubPatchSha256: manifest.finitePairedAddSubPatchSha256 } : {}),
   };
   writeFileSync(resolve(output, 'controlla-core-build.json'), JSON.stringify(manifest, null, 2) + '\n');
   process.exit(0);

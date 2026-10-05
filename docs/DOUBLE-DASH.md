@@ -1972,3 +1972,17 @@ Configuration passed; native build is live in session 65455, output
 `/tmp/controlla-finite-paired-{configure,build}.log`. Patch provenance guards
 require isolated output and verify patch 0026; runtime candidate selection
 rejects stale patch evidence. Prior verified cores remain preserved.
+
+The arithmetic runner now requires patch 0026 provenance and differential
+coverage for finite-path candidates, and records 576 paired add/sub cases
+with that patch hash only after a successful native run. These are the
+existing matrix's two operations × three destinations × eight FPSCR modes
+× twelve operand vectors, not 576 finite-only cases. Syntax passed; execution
+awaits the live build session 65455 (linker PID 29578 observed active).
+
+Temporary candidate tab 18's paused e65f32b6 attract state was saved through
+Save progress; status confirmed completion at 18:17:04 local. Screenshot:
+`work/double-dash-fp-candidate-saved.png`. The saved temporary engine was then
+closed to release its memory. Baseline race tab 14 remains open and paused.
+The saved candidate state is scoped to port 8082 and its core hash; restore
+has not yet been reverified.
