@@ -188,6 +188,7 @@ const roundVec = (v: Vec3 | null, digits: number): Vec3 | null =>
   v ? [round(v[0], digits), round(v[1], digits), round(v[2], digits)] : null;
 /** Sensor precision is far coarser than a double; keep uploads small. */
 const compact = (s: RawMotionSample): RawMotionSample => ({
+  ...(s.screenAngle === undefined ? {} : { screenAngle: s.screenAngle }),
   t: round(s.t, 2),
   at: round(s.at, 2),
   interval: s.interval === null ? null : round(s.interval, 2),

@@ -13,6 +13,8 @@ export interface RawMotionSample {
   at: number;
   /** `event.interval` (ms) as reported, or null. */
   interval: number | null;
+  /** Screen rotation when sampled; absent in older recordings. */
+  screenAngle?: number;
   /** `event.acceleration`: the phone's own gravity-removed estimate (m/s²). */
   accel: Vec3 | null;
   /** `event.accelerationIncludingGravity` (m/s²). */

@@ -18,6 +18,7 @@ export const STOPPED_SAMPLE_MS = 2000;
 /** Browser effects are injectable; processing and lifecycle use one monotonic clock. */
 export interface MotionEnvironment {
   now(): number;
+  screenAngle?(): number;
   supported(): boolean;
   requestPermission(): Promise<Permission>;
   capabilities(): Capabilities;
@@ -31,6 +32,8 @@ export interface MotionEnvironment {
 function browserEnvironment(): MotionEnvironment {
   return {
     now: () => performance.now(),
+    screenAngle: () => screen.orientation?.angle ??
+      (typeof window.orientation === 'number' ? window.orientation : 0),
     supported: () => typeof DeviceMotionEvent !== 'undefined',
     requestPermission: async () => {
       const constructor = globalThis.DeviceMotionEvent as unknown as
@@ -320,6 +323,8 @@ export class Motion {
   private sample(event: MotionEventLike) {
     const time = this.env.now();
     const sample = toRawSample(event, time);
+    const screenAngle = this.env.screenAngle?.();
+    if (Number.isFinite(screenAngle)) sample.screenAngle = screenAngle;
     if (this.orientation) {
       sample.orientation = this.orientation;
       this.orientation = null;

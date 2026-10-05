@@ -4,6 +4,21 @@ import { motionFixture as fixture } from './fixtures/motion-provider.ts';
 import { defaultCapabilities } from '../src/client/controls/resolve.ts';
 import type { Permission } from '../src/client/controls/api.ts';
 
+void test('recorded motion preserves screen rotation for each sample', async () => {
+  let angle = 90;
+  const f = fixture(async () => 'granted', true, () => angle);
+  const angles: (number | undefined)[] = [];
+  f.motion.onSample(sample => angles.push(sample.screenAngle));
+  await f.motion.enable();
+  f.emit();
+  angle = -90;
+  f.emit();
+  angle = NaN;
+  f.emit();
+  assert.deepEqual(angles, [90, -90, undefined]);
+  f.motion.dispose();
+});
+
 void test('permission is single-flight; suspension wins over pending permission and diagnostics', async () => {
   let grant!: (value: Permission) => void;
   const f = fixture(

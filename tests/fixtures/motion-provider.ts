@@ -12,6 +12,7 @@ import type { Permission } from '../../src/client/controls/api.ts';
 export function motionFixture(
   permission: () => Promise<Permission> = async () => 'granted',
   supported = true,
+  screenAngle?: () => number,
 ) {
   let time = 0,
     requests = 0,
@@ -22,6 +23,7 @@ export function motionFixture(
   const timers = new Set<{ at: number; run: () => void }>();
   const env: MotionEnvironment = {
     now: () => time,
+    screenAngle,
     supported: () => supported,
     requestPermission: () => {
       requests++;
