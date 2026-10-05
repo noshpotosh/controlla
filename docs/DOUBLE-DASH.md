@@ -1059,3 +1059,22 @@ so the one-count difference alone does not establish a lost interrupt. FIFO
 read/write positions also differed in that stalled run despite zero reported
 distance; these independently read fields warrant investigation. New evidence:
 `work/double-dash-upload-trace-reverted-{a,b}.json` and the driving PNG.
+
+
+### Combined candidate fresh boot still stalls
+
+Without loading progress (checkpoint generation zero), the corrected-invalidation
+plus idle-sleep candidate rendered the original intro and title, reaching core
+frame 2,096 / presented frame 2,087. Start skipped the intro. Later it entered an
+attract-mode split-screen race; a Confirm probe did not establish entry into the
+interactive game menu. Presentation stopped at frame 3,723 while the core counter
+advanced from 4,725 to 6,049. Finish requests/schedules/deliveries all stopped at
+7,441; all observed guest threads were waiting and current thread was zero.
+FIFO distance was zero, read pointer 4,184,160, write pointer 4,125,472, and safe
+read pointer 4,125,440. Thus this failure does not depend on save restoration or
+on the reverted upload logging cleanup. Cached-code invalidation preservation
+and empty-FIFO sleeping do not yet qualify a reliable dual-core game runtime.
+Do not promote the combined candidate. Fresh boot evidence:
+`work/double-dash-combined-fresh-{a,b,c,stall}.json` and associated PNGs.
+A useful next isolation is hardware rendering with a single CPU/GPU thread,
+keeping the corrected core and no progress restore.
