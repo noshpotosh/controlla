@@ -131,6 +131,23 @@ Evidence is retained locally in `work/double-dash-hardware-menu-report.json`,
 `work/double-dash-software-restored-report.json`, and
 `work/double-dash-software-restored-scene.png` (all ignored).
 
+The software main-menu checkpoint also restored successfully into the actual
+native hardware renderer (`video=wgpu`, reported as `WebGPU-Real`). It displayed
+the original main menu at 103% speed, then accepted Confirm to show HOW MANY
+PLAYERS and SELECT MODE / Grand Prix / 50cc. The report at frame 1552 confirmed
+native after-load generation 1, 15,210 indexed draws, 1,559 presentations,
+46 successful shaders, 53 successful pipelines and no GPU errors. Player
+selection later measured 55% speed. This is stronger evidence for those menus;
+it does not establish that the dark attract-mode scene or interactive racing
+is fixed. Local evidence: `work/double-dash-gpu-restored-menu.png` and
+`work/double-dash-gpu-restored-menu-report.json`.
+
+Use `video=wgpu` for native GPU comparisons. `video=webgpu` can select the
+Software-to-WebGPU presentation bridge and reports `WebGPU`; zero native replay
+draws or presentations cannot establish hardware rendering. For a reproducible
+comparison, use `rendererdiagnostics=1&wgpuclassify=1`, restore a checkpoint,
+and check both native after-load generation and actual command replay counters.
+
 Keyboard controls follow the emulator's bindings:
 
 | Input | Key |
