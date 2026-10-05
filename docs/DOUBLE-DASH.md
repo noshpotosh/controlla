@@ -1288,3 +1288,15 @@ not a meaningful speed improvement: prior mixed-tier throughput was 30.28 fps.
 Other FP helper calls remained high, 7,591,742 → 17,727,298 in this interval.
 Keep the candidate isolated; fresh boot, driving and full fidelity remain
 pending. Evidence: `work/double-dash-quantized-{a,b}.json` and final `b.png`.
+
+Paired-sign candidate 0017 (on top of 0016 and synchronized FIFO) completed
+native compilation and module syntax validation. Isolated output:
+`work/double-dash-paired-sign-core`, WASM SHA-256
+`da3298e5f4520002d400bdaa8a72ba6d81af43d5b771f10927282f2549c21484`.
+All four controller connection/disconnection and invalid-port ABI checks
+passed, with 179 exports. Exact-bit generated-WASM screens passed for neg,
+abs, negative-abs and move over 40,000 seeded patterns, signed zero and NaNs.
+Rc variants and unavailable FPU keep fallback. The isolated-output rejection
+guard was explicitly exercised; default output was not overwritten.
+The integrity-checking browser server is prepared but not yet started.
+Gameplay fidelity, helper-call reduction and performance remain pending.
