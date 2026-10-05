@@ -5,6 +5,7 @@ import { ControllerInput } from '../src/client/runtime/controller-input/controll
 import type { ControllerConfig, Widget } from '../src/client/controls/api.ts';
 import type { MotionSnapshot } from '../src/client/controls/motion/contracts.ts';
 import { decodeInput, type InputFrame } from '../src/client/engine/protocol.ts';
+import { MotionProcessor } from '../src/client/controls/motion/processor.ts';
 
 const widgets: Widget[] = [
   {
@@ -302,6 +303,21 @@ void test('tilt follows both landscape rotations and retains recentering', () =>
     assert.ok(Math.abs(f.frames.at(-1)!.x) < 0.001);
     assert.ok(Math.abs(f.frames.at(-1)!.y) < 0.001);
   }
+});
+void test('a steep landscape grip retains steering in both directions after recenter', () => {
+  const config = configuration();
+  config.sensors.tilt.enabled = true;
+  const f = fixture(config, 90), processor = new MotionProcessor();
+  const sample = (y: number) => {
+    processor.sample({ t: 0, at: 0, interval: 16, accel: null, accelG: [0, y, -5], rate: [0, 0, 0] });
+    f.input.tick({ ...f.motion, tilt: processor.tilt });
+  };
+  sample(8);
+  f.input.recenter();
+  f.at(1700); sample(8.6);
+  assert.ok(Math.abs(f.frames.at(-1)!.x - 0.1) < 0.001);
+  f.at(2400); sample(7.4);
+  assert.ok(Math.abs(f.frames.at(-1)!.x + 0.1) < 0.001);
 });
 void test('pointer sampling and recovery preserve position, press anchoring and player settings', () => {
   const config = configuration();

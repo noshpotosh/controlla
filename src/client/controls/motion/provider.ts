@@ -32,8 +32,8 @@ export interface MotionEnvironment {
 function browserEnvironment(): MotionEnvironment {
   return {
     now: () => performance.now(),
-    screenAngle: () => screen.orientation?.angle ??
-      (typeof window.orientation === 'number' ? window.orientation : 0),
+    screenAngle: () => globalThis.screen?.orientation?.angle ??
+      (typeof globalThis.window?.orientation === 'number' ? globalThis.window.orientation : 0),
     supported: () => typeof DeviceMotionEvent !== 'undefined',
     requestPermission: async () => {
       const constructor = globalThis.DeviceMotionEvent as unknown as

@@ -35,6 +35,7 @@ export interface MotionSnapshot {
   readonly rate: readonly number[];
   readonly gravity: readonly number[];
   readonly up: readonly number[];
+  /** Gravity scaled for steering; clamp after subtracting the recentered grip. */
   readonly tilt: Readonly<{ x: number; y: number }>;
   /** Where the top edge points, from gravity and, when available, the compass. */
   readonly aim: AimReference;

@@ -158,9 +158,11 @@ export class MotionProcessor {
     };
   }
   get tilt() {
+    // Keep the grip offset until the controller recenters and rotates it.
+    // Clamping here loses motion beyond the bound before zero is subtracted.
     return {
-      x: Math.max(-1, Math.min(1, this.gravity[0] / 6)),
-      y: Math.max(-1, Math.min(1, this.gravity[1] / 6)),
+      x: this.gravity[0] / 6,
+      y: this.gravity[1] / 6,
     };
   }
 }
