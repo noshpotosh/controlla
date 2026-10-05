@@ -1801,3 +1801,27 @@ was verified earlier with the default runtime. Candidate runtime selection and
 embedded four-port input tests pass, as do TypeScript and renderer tests. This
 is a testing checkpoint, not a claim of original-speed gameplay or physical
 phone motion qualification.
+
+### Candidate shared room browser verification
+
+The candidate room test now passes in an isolated worktree at
+`/private/tmp/controlla-double-dash-room-check`, branch
+`codex/double-dash-room-check`, based on checkpoint `5815712`. The existing
+checkout/server was preserved. The isolated frontend used port 3001, signal
+port 8799 with matching localhost allowed origins, and runtime port 8082.
+
+Created room FDRCW / screen 90EF, selected Double Dash beside Neon Harvest and
+Whack-a-Mole, connected a browser controller, and started the ordinary round.
+The embedded URL used WebGPU/dual CPU and the verified differential candidate.
+The game reached its animated attract sequence with emulator controls hidden;
+the sound gesture removed Enable sound. The controller received Steer, Menus,
+Start / Swap, Accelerate, Brake, Drift, and Item controls. No browser console
+errors were observed in the final running state. This proves room boot and
+controller layout, not physical motion or control-to-game behavior.
+
+End game restored Start round and all three game choices; the DOM contained
+zero iframes afterward. Screenshot: `work/double-dash-candidate-room.png`.
+Temporary test tabs and the isolated frontend/signaling servers were stopped.
+The test worktree is retained for recovery. Original-speed gameplay, audio
+quality, physical phone motion, multiplayer, and complete race qualification
+remain open.
