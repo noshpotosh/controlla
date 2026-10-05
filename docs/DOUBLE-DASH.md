@@ -612,3 +612,19 @@ draws 163-203. Pixel color register 1 varies alpha (e.g. `[250,250,250,8]`,
 pass, not necessarily its final draw. Next inspect that pass's vertex
 coverage and TEV/blend values, using source identity rather than stable IDs.
 Do not simply remove these draws: their intended contribution is unverified.
+
+### Darkening-pass shader bisection (2026-10-05)
+
+The generated fragment calculation samples a texture, interpolates register-2
+blue tint toward register-1 color by sampled RGB, and multiplies sampled
+alpha by register-1 alpha. Its source-matched skip probe passed served-worker
+syntax validation. The generation-1 race reports 1,919 matching EFB draws
+skipped and no renderer errors, yet the course remains dark. Evidence:
+`work/double-dash-blended-pass-probe.json` and its PNG.
+
+Therefore those textured quads are not the sole cause of the pass's brightness
+collapse. A pass-end measurement includes its attachment load and clear
+operations as well as its draws; blaming the last recorded pipeline was too
+narrow. Next record the pass's loadOp, encoded clear RGBA, independent
+color/depth flags, and in-pass ClearRect commands. The non-skipping server
+was restored; the skip probe remains ignored and must not be shipped.
