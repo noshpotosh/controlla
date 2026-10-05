@@ -66,7 +66,7 @@ node scripts/mario-kart/prepare-core.mjs
 node scripts/mario-kart/configure-macos.mjs
 ```
 
-Preparation applies all four Controlla patches idempotently, copies the shared
+Preparation applies all five Controlla patches idempotently, copies the shared
 packet validator into the runtime, and adds the port-aware setter to the full Core Emscripten export list. The third patch configures four emulated
 GameCube controller devices. These changes affect only the isolated build
 checkout, not the current prebuilt runtime.
@@ -83,3 +83,11 @@ file, loaded, and confirmed by generation advancing from 0 to 1 with the core
 still Running. Browser WebGPU restoration remains unverified. IndexedDB was
 checked separately with a synthetic snapshot and a close/reopen cycle in the
 Codex in-app browser; that does not prove the complete emulator restore path.
+
+## Explicit renderer selection
+
+`0005-preserve-renderer-selection.patch` keeps every renderer selection in the
+settings URL, including Software. Upstream removed the default Software value
+when applying settings, allowing the automatic GM4E01 profile to replace it
+with WebGPU hardware at the next mount. All four renderer choices now survive
+the settings URL round trip. This is a JavaScript-only patch.
