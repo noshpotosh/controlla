@@ -1532,3 +1532,20 @@ and need before/after snapshots to attribute a scene. Preparation applies the
 JS-only patch. It changes no texture or draw behavior. Worker and preparation
 syntax checks and reverse patch applicability passed. Browser inspection of
 the new payload remains pending until the worker reloads.
+
+### Browser texture fallback comparison (2026-10-05)
+
+Reloaded patch 0020 is browser-verified. Boot, restored-race frame 1071, and
+post-drive snapshots all report zero missing and unsupported-format fallback
+counts, with empty ID/format arrays. Acceleration targeted frame 1490 and
+released at 1491. Evidence is in `work/double-dash-texture-before.json`,
+`work/double-dash-texture-after.json`, and `work/double-dash-texture-after.png`.
+The screenshot again contains distant saturated pink regions, so the worker's
+dummy substitution paths do not explain them in this run. This does not
+establish that the pink regions differ from original course artwork; a
+reference-renderer comparison is still needed before treating them as defects.
+This run reports `FIRST_EFB_PASS_NO_MUTATION_LATER_PRESENT_MUTATION`: the
+first sampled pass is empty but later color readbacks are nonzero. This differs
+from the previous run and makes first-pass classification unsuitable as an
+image-equivalence gate after restore. The emulator is paused and the saved
+race baseline was not overwritten.
