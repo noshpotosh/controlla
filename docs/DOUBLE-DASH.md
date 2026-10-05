@@ -895,3 +895,18 @@ pass. The permanent patch reports readbacks disabled in the browser and
 continues rendering at frame 1,188/presented 1,183, 22 visual fps, 41 percent
 speed, and no renderer errors. Evidence: `work/double-dash-fifo-readback-default.json`
 and `.png`. This is not full-speed play or a full-race fidelity validation.
+
+### Driving with classifier captures disabled (2026-10-05)
+
+The permanent patch 0010 defaults sustain the native 300-frame acceleration
+probe. The kart moves from the start straight to the grass beside the next
+turn; the later screenshot is after automatic input release and shows 0 mph.
+Report at core frame 2,504/presented frame 2,496 indicates 45 percent speed
+and no renderer errors. Evidence: `work/double-dash-fifo-driving.json` and
+`.png`. This verifies course movement and continued presentation, not a full
+race, physical phone controls, or full-speed play.
+
+The next comparison enables the existing `wgputailgate=1` optimization. Source
+inspection confirms its predicates match the early returns in `Flush()` and
+`RefreshPeekCache()`; the native flag stays default-off. Compare restored-race
+frame deltas, clean/dirty counters, output, and errors before promoting it.
