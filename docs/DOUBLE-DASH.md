@@ -1679,3 +1679,26 @@ and log `/tmp/controlla-direct-reference-build.log`. The fixed reference binary
 and negative control are preserved. Generated-WASM arithmetic regression and
 browser throughput comparison remain pending. Patch 0023 is excluded from
 automatic preparation.
+
+### Direct reference dispatch build and browser sample (2026-10-05)
+
+Build session 56892 completed successfully. WASM SHA-256 is
+`e8a5d7fab723afb5e36ac6174e1337ec9d031f5eed4cb1a10efb32ac6c473a38`,
+with 179 exports. The native generated-WASM scalar alias/FPRF/next-PC smoke
+and all four-port ABI checks passed.
+
+Server 82779 exited 130; candidate server 66790 verifies patch 0023 and
+serves the isolated output on port 8081. Browser active-core SHA matches
+the candidate, and the fixed saved race restored successfully. Profiling,
+classification and readbacks were disabled. Captures
+`work/double-dash-direct-reference-{a,b}.json` span presented frames
+1185–2505: 1320 frames over 47.846935 monotonic seconds, 27.5880 fps.
+No renderer errors were reported. The paused screenshot is
+`work/double-dash-direct-reference-paused.png`.
+
+This interval is higher than the previous reference-handler interval
+(24.6283 fps), but single intervals and differing race-clock ranges do not
+establish a repeatable gain. Both use the same restored idle race workload.
+The candidate retains reference handlers and passes the concrete arithmetic
+regression; full FP edge cases, sustained driving throughput and full-speed
+original fidelity remain unverified. Baseline progress was not overwritten.
