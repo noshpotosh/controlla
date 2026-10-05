@@ -871,3 +871,13 @@ This diagnostic-core run omitted `wgpuclassify=1`, unlike the earlier dual-core
 stall runs. Both native source and runtime options changed, so no cause is
 proven. Compare this same core with classification on before inferring that
 patch 0009 fixed execution or that the classifier caused the stall.
+
+The same FIFO core with `wgpuclassify=1` reproduces frozen presentation:
+`work/double-dash-fifo-classified-a.json` to `...classified-b.json` advances
+core frame 1,967 to 2,734 while presented frame stays 647 and visual cadence
+stays zero. Both gate reports show queue distance 0, read/link enabled, no
+interrupt/breakpoint, read pointer 4,263,616 and write pointer 4,125,472.
+Renderer errors remain empty. This matched-core comparison strengthens the
+association with classification but does not prove deterministic causation.
+The next isolated server keeps classification on and suppresses only its
+EFB, backbuffer, and XFB readback gates; no native code or main runtime changes.
