@@ -1155,3 +1155,12 @@ hash. Forward/reverse patch checks, wrapper syntax, and isolated configuration
 passed. The native build is started with output `work/double-dash-sync-core`;
 browser reliability and performance are unverified. Default room runtime remains
 unchanged. Do not promote until fresh boot, race driving and repeat restore pass.
+
+The bounded-distance candidate build completed and four-port ABI checks passed
+(179 exports). WASM SHA-256:
+`e764beb1fe11b2e0facdb9e368b62e00e446913746c4aad00d0a88348727206a`.
+A dual-core restored-race sample progressed from presented frame 929 to 1,618,
+delivering 689 frames in 31.981 seconds (21.54 fps). Initial speed was
+20%, later 43%; this does not establish a performance gain or reliable restoration.
+The course, kart and HUD rendered. Fresh boot, driving and repeated restores
+remain pending. Evidence: `work/double-dash-sync-{a,b}.json` and PNGs.
