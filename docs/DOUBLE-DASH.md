@@ -531,3 +531,17 @@ The initial ID-based probe was inconclusive: the reboot had no fragment 575,
 so the skip condition never targeted that shader. A source-text match has
 replaced the ephemeral ID in the ignored probe; it still needs a fresh
 verified run. Do not interpret the initial probe image as an overlay test.
+
+### Source-matched overlay probe result (2026-10-05)
+
+The corrected diagnostic compares generated WGSL source text rather than
+ephemeral shader IDs and reports the skipped-draw count. The served worker
+passed `node --check` before testing. The restored race report confirms
+generation 1, 76 skipped matching EFB draws, and no renderer errors.
+The race remains dark and the player minimap icon disappears. Therefore
+this shader contributes to HUD imagery and skipping it is not a rendering
+fix. Evidence is local: `work/double-dash-source-overlay-probe.json` and
+its PNG. The non-skipping diagnostic server was restored afterward.
+
+Next trace the XFB/EFB copy and presentation path, capturing color before
+and after the copy rather than removing additional game draws speculatively.
