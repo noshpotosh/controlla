@@ -3144,3 +3144,16 @@ current-source control's arithmetic configuration. Build 26806 is active;
 native arithmetic/ABI, paused CPU and repeated browser resume checks remain
 pending. Qualified control remains available on owned server 36855:8082.
 No default runtime promotion was made.
+
+### Paused payload host comparison
+
+A second harness against the same actual BlockingLoop/Event/Flag headers
+renewed AllowSleep on every payload, matching patch 0034's paused behavior.
+It recorded six timeout callbacks over 550 ms, eight cumulative callbacks
+after the explicit wakeup, and three callbacks over the later 350 ms.
+Exit zero. The return-only control had exceeded one million callbacks
+after that wakeup. Candidate harness artifacts remain in
+/tmp/controlla-blocking-loop-pause-candidate-check.cpp and its executable.
+This establishes host loop behavior only; it does not prove WASM browser
+CPU savings or reliable game resume. Build 26806 was polled directly and
+remains live linking, not restarted. Browser qualification is pending.
