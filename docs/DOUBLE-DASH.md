@@ -2199,3 +2199,17 @@ errors occurred. Local ignored evidence:
 the original saved race record was not overwritten. These checks cover native
 stick steering and rider swap in one race; physical phone tilt, drift, items,
 complete laps and full-speed fidelity remain unqualified.
+
+### Live drift and release verified
+
+On the same status-core Luigi Circuit race, a 300-frame right-drift plus gas
+probe produced native buttons:120 and stick 192,128. The held-input screenshot
+shows 39 mph, an angled kart and yellow tire sparks, establishing visible
+in-game drift response. The probe released at frame 16960; later native
+telemetry reports buttons:0, stick 128,128 and input:0. No captured console
+errors occurred. Local ignored evidence:
+`work/double-dash-luigi-drift-held.{json,png}` and
+`work/double-dash-luigi-drift-released.json`. This verifies one drift maneuver
+and neutral release, not mini-turbo timing, full races, physical phone motion
+or full-speed fidelity. The session is paused and its original saved race
+checkpoint remains untouched.
