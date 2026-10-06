@@ -119,9 +119,9 @@ test('candidate mode checks arithmetic verification, patch provenance and exact 
     assert.equal(selectRuntime(repo, 'candidate', core).coreDirectory, core);
     manifest.scalarPairedStatusRegression = true; await save();
     assert.throws(() => selectRuntime(repo, 'candidate', core), /scalar paired status regression evidence/);
-    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 9215; await save();
+    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 12287; await save();
     assert.throws(() => selectRuntime(repo, 'candidate', core), /scalar paired status regression evidence/);
-    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 9216; await save();
+    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 12288; await save();
     assert.equal(selectRuntime(repo, 'candidate', core).coreDirectory, core);
     const scalarMulPatch = '0032-guarded-scalar-paired-multiply.patch';
     manifest.guardedScalarPairedMultiply = true; await save();
@@ -132,9 +132,9 @@ test('candidate mode checks arithmetic verification, patch provenance and exact 
     await writeFile(join(patches, scalarMulPatch), 'changed');
     assert.throws(() => selectRuntime(repo, 'candidate', core), /guarded scalar multiply evidence/);
     await writeFile(join(patches, scalarMulPatch), scalarMulPatch);
-    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 9215; await save();
+    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 12287; await save();
     assert.throws(() => selectRuntime(repo, 'candidate', core), /guarded scalar multiply evidence/);
-    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 9216; await save();
+    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 12288; await save();
     const scalarMaddPatch = '0033-guarded-scalar-paired-madd.patch';
     manifest.guardedScalarPairedMadd = true; await save();
     assert.throws(() => selectRuntime(repo, 'candidate', core), /guarded scalar madd evidence/);
@@ -144,9 +144,9 @@ test('candidate mode checks arithmetic verification, patch provenance and exact 
     await writeFile(join(patches, scalarMaddPatch), 'changed');
     assert.throws(() => selectRuntime(repo, 'candidate', core), /guarded scalar madd evidence/);
     await writeFile(join(patches, scalarMaddPatch), scalarMaddPatch);
-    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 9215; await save();
+    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 12287; await save();
     assert.throws(() => selectRuntime(repo, 'candidate', core), /guarded scalar madd evidence/);
-    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 9216; await save();
+    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 12288; await save();
     await writeFile(join(patches, statusPatch), 'changed');
     assert.throws(() => selectRuntime(repo, 'candidate', core), /paired status regression evidence/);
     await writeFile(join(patches, statusPatch), statusPatch);

@@ -2998,3 +2998,31 @@ to release workers. Server and original checkpoint remain available.
 Next performance work should inspect fallback frequency and reduce guard
 cost only where exact-product/fused arithmetic equivalence is established;
 full-speed, visual/audio and physical motion qualification remain open.
+
+
+### Finite-double addend guard experiment
+
+Host exact-product qualification now includes full finite-double B values
+for one quarter of the two million vectors, signed zeros for another
+quarter, and normal float addends otherwise. 1,077,521 eligible cases
+matched separate double multiply/add against fused double arithmetic and
+converted float bit-for-bit; 169,748 accepted cases used finite-double
+addends. 922,479 vectors were excluded and the known tie fixture rejected.
+This is host feasibility evidence, not generated-WASM qualification.
+
+Patch 0033 now checks B only for finiteness, removing its float-precision
+and magnitude restrictions. A still must be normal float precision, the
+rounded-C product stays in normal float range and therefore is exact in
+f64, and tie/raw-NI/normal-result/exception guards remain unchanged.
+Finite B may be zero, subnormal or extended precision. The original fused
+helper handles all excluded cases.
+
+Scalar matrix now has 32 rotations (12,288 cases), adding A=2, C=3 with
+B=1+2^-30 and the smallest double subnormal in separate lane triplets,
+while preserving signed-zero and tie fixtures, aliases and status modes.
+Runtime-selection tests pass with the updated required count. Isolated
+configuration at `work/double-dash-finite-addend-madd-core` succeeded and
+build 67780 is active. Native arithmetic/ABI and race qualification remain
+pending. The earlier signed-zero binary and room default are preserved.
+Server 85939 still serves the earlier verified binary on 8082; no test
+browser tab remains open. No speed improvement is claimed.

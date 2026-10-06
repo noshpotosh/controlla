@@ -30,14 +30,15 @@ ${rounding}
 int main() {
   u64 seed=0xace321ff;
   auto random=[&]() { seed^=seed<<13; seed^=seed>>7; seed^=seed<<17; return seed; };
-  u64 accepted=0, ties=0, rejected=0;
+  u64 accepted=0, ties=0, rejected=0, extended_addends=0;
   for (u32 i=0;i<2000000;++i) {
     const u32 a_bits=(u32(random())&0x807fffffU)|((1+random()%254)<<23);
     const u32 normal_b=(u32(random())&0x807fffffU)|((1+random()%254)<<23);
     const u32 b_bits=i%4==0 ? (normal_b&0x80000000U) : normal_b;
     const u64 c_bits=(random()&0x800fffffffffffffULL)|((823+random()%401)<<52);
     const double a=double(std::bit_cast<float>(a_bits));
-    const double b=double(std::bit_cast<float>(b_bits));
+    const u64 wide_b_bits=(random()&0x800fffffffffffffULL)|((random()%2047)<<52);
+    const double b=i%4==1 ? std::bit_cast<double>(wide_b_bits) : double(std::bit_cast<float>(b_bits));
     const double c=std::bit_cast<double>(c_bits);
     const double rounded=Force25Bit(c);
     const u64 raw_round=(c_bits&0xfffffffff8000000ULL)+(c_bits&0x08000000ULL);
@@ -54,6 +55,7 @@ int main() {
       std::printf("mismatch a=%08x b=%08x c=%016llx\\n",a_bits,b_bits,(unsigned long long)c_bits); return 2;
     }
     ++accepted;
+    if (i%4==1) ++extended_addends;
   }
   // Known reference tie example must remain outside the proposed fast path.
   const double a=50.0;
@@ -62,9 +64,9 @@ int main() {
   const double sum=a*Force25Bit(c)+b;
   if ((std::bit_cast<u64>(sum)&0x1fffffffULL)!=0x10000000ULL) return 3;
   ++ties; // Include the explicitly constructed reference tie fixture.
-  if (!accepted) return 4;
-  std::printf("{\\"vectors\\":2000000,\\"accepted\\":%llu,\\"tiesRejected\\":%llu,\\"otherRejected\\":%llu,\\"nativeWasmQualification\\":false}\\n",
-    (unsigned long long)accepted,(unsigned long long)ties,(unsigned long long)rejected);
+  if (!accepted || !extended_addends) return 4;
+  std::printf("{\\"vectors\\":2000000,\\"accepted\\":%llu,\\"tiesRejected\\":%llu,\\"otherRejected\\":%llu,\\"acceptedExtendedAddends\\":%llu,\\"nativeWasmQualification\\":false}\\n",
+    (unsigned long long)accepted,(unsigned long long)ties,(unsigned long long)rejected,(unsigned long long)extended_addends);
 }
 `);
   const compile = spawnSync('c++', ['-std=c++20', '-O2', '-ffp-contract=off', cpp, '-o', binary], { encoding: 'utf8' });
