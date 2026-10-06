@@ -3467,3 +3467,27 @@ WebGPU exactly12 frames from the same paused checkpoint and compare final
 ticks/image. Evidence work/double-dash-software-step-{one,two,twelve}.
 {json,png}. Tab59 preserved paused; previousWebGPUtab58 closed. Server37396
 remains live. No production/default change; full goal incomplete.
+
+### Settled WebGPU and software checkpoint comparison
+
+A fresh WebGPU session (tab61) on the qualified ff4928b frame-step core
+paused before restoring the original comparison checkpoint, then completed
+exactly twelve native frame-step operations. Final native ticks105960713435
+match the software twelve-step reference exactly; the final step in both
+backends starts at105952605206 and advances one native frame. Boot-relative
+frame counters differ (WebGPU915, software765), as expected from separate
+boot sessions. Counter assertions passed.
+
+The WebGPU screenshot now shows a valid Luigi Circuit race: Mario/Luigi in
+the red kart on grass, eighth place, the same camera/track/HUD/minimap and
+time00:21:593 as the software reference. Software appears more pixelated;
+viewport canvas widths also differ, so no pixel-identical claim is made.
+This resolves the black-image concern for this settled checkpoint only:
+first/second post-load frames remain invalid comparison references in both
+backends. No native rendering fix or default promotion was necessary.
+
+Evidence: work/double-dash-wgpu-step-twelve.{json,png}, compared with
+work/double-dash-software-step-twelve.{json,png}. The previous tab was gone
+at continuation; a fresh session reproduced all twelve steps rather than
+assuming its state. Full-race fidelity, audio, physical motion controls and
+adequate performance remain unverified; the goal stays incomplete.
