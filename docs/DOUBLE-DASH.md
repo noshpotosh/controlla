@@ -2511,3 +2511,32 @@ scene progression, but show no material helper reduction or throughput gain.
 Do not promote this candidate. Next investigate eligibility coverage, including
 the restrictive RN/NI guard, before widening any arithmetic path. FPSCR
 runtime values have not been measured here, so guard exclusion is a hypothesis.
+
+### NI-safe inline eligibility experiment (pending)
+
+Patch 0030 now permits NI while still requiring RN=nearest. Before either
+destination write, it retains both rounded results and checks each unrounded
+double magnitude against `0x3810000000000000`, the original `ForceSingle`
+smallest-normal-single threshold. Both converted results must still be normal.
+This conservatively falls back even with NI off when a raw result lies below
+the threshold. With NI on, it specifically excludes raw subnormal results
+that would round up to normal but which the reference conversion flushes.
+Finite operands, MSR.FP, pending-exception and non-Rc requirements remain.
+This is a reference-semantics extension, not evidence that NI excluded the
+previous live race; its runtime FPSCR state has not been measured.
+
+An independent host C++ check extracted the original `ForceSingle` function
+and compared conversion across both signs and NI modes at 8192 adjacent
+double encodings on each side of the normal threshold. It passed 32772
+eligible reference comparisons, excluding 16384 NI-enabled raw-subnormal
+cases whose ordinary cast rounded to normal. Temporary source/binary:
+`/tmp/controlla-inline-ni-boundary{.cpp,}`. This checks the conversion guard
+boundary, not generated-WASM integration or all arithmetic values.
+
+Configuration 12788 and runtime-selection provenance tests passed. Build
+63903 is running for `work/double-dash-inline-paired-ni-core`, log
+`/tmp/controlla-inline-paired-ni-build.log`. Fresh native arithmetic/status,
+four-port ABI, inline activation and live-race performance checks remain
+required. Prior binaries and source checkpoint are preserved; changing patch
+0030 invalidates their current candidate-selection hash. Shared-stage defaults
+are unchanged. The paused previous candidate remains in tab 40, server 22725.

@@ -1,6 +1,6 @@
 --- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
 +++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
-@@ -4943,6 +4943,98 @@
+@@ -4943,6 +4943,106 @@
           subop5 == 29 || subop5 == 30 || subop5 == 31;
  }
  
@@ -15,7 +15,7 @@
 +  body.push_back(0x45); // eqz
 +  body.push_back(0x45); // boolean
 +  EmitStateLoadU32(body, layout.fpscr_offset);
-+  EmitI32Const(body, 7); // RN and NI: nearest, no flush-to-zero
++  EmitI32Const(body, 3); // RN: nearest; NI allowed only above raw normal threshold
 +  body.push_back(0x71);
 +  body.push_back(0x45);
 +  body.push_back(0x71);
@@ -40,15 +40,23 @@
 +    }
 +  }
 +  body.push_back(0x04); body.push_back(0x40); // if eligible
++  EmitI32Const(body, 1); // accumulate raw-result NI safety before destination writes
 +  for (u32 lane = 0; lane < 2; ++lane)
 +  {
 +    EmitStateLoadF64(body, PsOffset(layout, inst.FA, lane));
 +    EmitStateLoadF64(body, PsOffset(layout, inst.FB, lane));
 +    body.push_back(inst.SUBOP5 == 20 ? 0xa1 : 0xa0); // f64.sub/add
++    EmitLocalSet(body, 6);
++    EmitLocalGet(body, 6);
 +    body.push_back(0xb6); // f32.demote_f64: same ForceSingle nearest conversion
 +    body.push_back(0xbb); // f64.promote_f32
 +    body.push_back(0xbd); // i64.reinterpret_f64
 +    EmitLocalSet(body, 4 + lane); // retain both results before any destination write
++    EmitLocalGet(body, 6);
++    body.push_back(0x99); // f64.abs of the unrounded result
++    EmitF64ConstBits(body, 0x3810000000000000ULL); // smallest normal single as double
++    body.push_back(0x66); // f64.ge: NI cannot flush this raw result
++    body.push_back(0x71);
 +  }
 +  for (u32 lane = 0; lane < 2; ++lane)
 +  {
@@ -67,7 +75,7 @@
 +    EmitI32Const(body, Common::FLOAT_EXP);
 +    body.push_back(0x47);
 +    body.push_back(0x71); // exponent not all-ones
-+    if (lane == 1) body.push_back(0x71); // both results normal
++    body.push_back(0x71); // raw NI safety and both results normal
 +  }
 +  body.push_back(0x04); body.push_back(0x40);
 +  for (u32 lane = 0; lane < 2; ++lane)
@@ -99,7 +107,7 @@
  void EmitSinglePrecisionArithmetic(std::vector<u8>& body, const WasmStateLayout& layout,
                                     const PPCAnalyst::CodeOp& op, u32 downcount)
  {
-@@ -5923,7 +6015,7 @@
+@@ -5923,7 +6023,7 @@
      }
      if ((inst.SUBOP5 == 20 || inst.SUBOP5 == 21) && !inst.Rc)
      {
