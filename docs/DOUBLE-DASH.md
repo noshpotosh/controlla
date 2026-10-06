@@ -2829,3 +2829,31 @@ compiling the changed native source, with all prior patch checks passing.
 Arithmetic, ABI and browser race qualification remain pending; no default
 promotion. Control server 97270 is intact, with no owned browser test tab
 left open.
+
+
+### Generated scalar multiply native/browser qualification
+
+Build 84749 completed. WASM SHA-256:
+`45b852883331de295ef9ef7a8def1bc31166afe37298bfc9b470d7f7ade09ecd`;
+loader SHA-256:
+`35c1ee78cdcc9db33c496716450e7179a0b9de09c7c26d55718d78cc9ba2fe2c`.
+Manifest confirms guarded scalar multiply enabled and broad scalar dispatch
+disabled. Native checks pass 3,744 differential comparisons, 3,072 scalar
+direct/generated status comparisons and 1,536 add/sub status comparisons
+with profiling off/on, plus four-port controller ABI checks. Cold smoke
+FP helper count is 11,384, 14 fewer than the control's 11,398; that only
+proves some arithmetic smoke cases avoided helpers, not gameplay coverage.
+
+Server 40387 served the verified candidate on localhost:8082. Tab 45
+loaded local GM4E01 and restored the unchanged 18:58:43 race checkpoint.
+Generation 1 was consistent, profiling/caches were off and timing samples
+zero. The valid 47.997315-second interval presented 1,291 frames:
+26.897338 FPS, 44.933026% native speed. Browser errors: none observed.
+Control was 26.623391 FPS; this ~1% difference across single intervals with
+uncontrolled host load/scene progression is not a clear speed benefit.
+No default promotion. Broader Force25Bit tie/boundary coverage and full
+gameplay/visual/audio/physical-motion qualification remain open.
+
+Ignored evidence: `work/double-dash-guarded-scalar-mul-race-{a,b}.json`
+and `work/double-dash-guarded-scalar-mul-race.png`. Tab 45 closed after
+evidence capture to release workers. Checkpoint remains available.
