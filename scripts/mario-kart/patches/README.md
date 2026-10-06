@@ -179,3 +179,9 @@ and browser performance validation are required; preparation excludes it.
 `0024-differential-paired-arithmetic.patch` extends the native arithmetic smoke
 with 3744 generated-WASM/reference comparisons across operations, destination
 aliases, FPSCR modes and edge operands. Preparation excludes this experiment.
+
+`0034-sleep-paused-wasm-fifo.patch` is an isolated pause-loop candidate.
+The Emscripten paused payload renews AllowSleep after a late Wakeup; ordinary
+running FIFO work and resume Wakeup are unchanged. Preparation excludes it.
+Builder requires exact patch provenance and isolated output. Browser pause CPU,
+repeated resume and race behavior must be qualified before promotion.

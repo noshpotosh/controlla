@@ -3129,3 +3129,18 @@ can explicitly Wakeup the dual-core loop. Renewing sleep in the paused
 payload may handle that race, but the browser's observed paused CPU cost
 has not yet been attributed to this loop. No native behavior was changed;
 the qualified current-source control and room default remain intact.
+
+### Paused FIFO sleep candidate started
+
+Patch 0034 renews AllowSleep in the Emscripten GPU payload's paused branch.
+This targets the explicit late-Wakeup busy loop demonstrated by the host
+harness; it does not treat timeout-only sleep as faulty. Running FIFO and
+resume Wakeup logic are unchanged. Builder verifies the exact reverse patch,
+requires isolated output and records the candidate flag and patch hash.
+Syntax validation and forward/reverse patch checks passed. Configuration
+80695 completed successfully for work/double-dash-paused-fifo-core with
+broad scalar dispatch and generated madd disabled, matching the qualified
+current-source control's arithmetic configuration. Build 26806 is active;
+native arithmetic/ABI, paused CPU and repeated browser resume checks remain
+pending. Qualified control remains available on owned server 36855:8082.
+No default runtime promotion was made.

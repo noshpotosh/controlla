@@ -1,0 +1,16 @@
+--- a/Source/Core/VideoCommon/Fifo.cpp
++++ b/Source/Core/VideoCommon/Fifo.cpp
+@@ -339,6 +339,13 @@
+         // Do nothing while paused
+         if (!m_emu_running_state.IsSet())
++        {
++#ifdef __EMSCRIPTEN__
++          // WASM paused FIFO sleep candidate: a late Wakeup must not leave
++          // this return-only payload busy-looping. Resume still calls Wakeup.
++          m_gpu_mainloop.AllowSleep();
++#endif
+           return;
++        }
+ 
+         if (m_use_deterministic_gpu_thread)
+         {
