@@ -2684,3 +2684,33 @@ A fresh isolated build at `work/double-dash-scalar-status-core` is linking.
 The expanded native matrix and browser race qualification remain pending.
 The ordinary room candidate command remains on the earlier qualified
 paired-differential core; this experiment has not been promoted.
+
+
+### Expanded scalar matrix and first browser interval
+
+The scalar-status build completed successfully. Exact WASM SHA-256:
+`ee5bf95f0b84390cd81b126077dc290834f5d76828f47b2f515f883e07130527`;
+loader SHA-256:
+`35c1ee78cdcc9db33c496716450e7179a0b9de09c7c26d55718d78cc9ba2fe2c`.
+The actual native module passed all 3,072 scalar direct-helper/generated
+status comparisons, 3,744 paired differential comparisons and 1,536
+add/sub status comparisons with profiling off and on. Four controller
+ports accept connection/disconnection and reject invalid ports. The cold
+smoke now has 11,398 FP helper calls because it executes the added matrix;
+it must not be compared to the earlier smaller smoke as a speed metric.
+
+Browser tab 43 loaded the local GM4E01 CISO and restored the unchanged
+18:58:43 Luigi Circuit checkpoint on localhost:8082. Native telemetry
+confirmed checkpoint generation 1. Profiling was disabled, timing samples
+and eligibility deltas were zero, and renderer caches were off. The
+41.964775-second interval presented 986 frames: 23.495896 FPS and
+39.194643% native speed. No browser errors were observed. This single
+interval is slower than earlier ~34 FPS candidates, but host load and exact
+scene progression are not controlled; it establishes neither a reliable
+regression nor an improvement. The direct scalar experiment is not promoted.
+
+Ignored local evidence: `work/double-dash-direct-scalar-race-a.json`,
+`work/double-dash-direct-scalar-race-b.json` and
+`work/double-dash-direct-scalar-race.png`. Tab 43 remains paused and server
+94579 serves this verified binary on 8082. Full-speed racing, original
+visual/audio fidelity and physical phone motion qualification remain open.
