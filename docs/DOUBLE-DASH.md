@@ -2483,3 +2483,31 @@ native-check evidence, but its old patch hash no longer matches the current
 candidate-selection policy. The corrected binary requires fresh native and
 browser qualification before use. Provenance tests still pass. The shared
 game runtime, saved checkpoint and paused browser baseline remain unchanged.
+
+### Corrected inline-emitter race qualification
+
+Build 32099 completed, exact WASM
+`2a550eef6372619eeee5f8159601ebc374911efb08dbcd085313758f3166799b`.
+Fresh native checks passed 3744 arithmetic and 1536 Rc/status/exception
+comparisons with profiling off/on/off, plus four-port ABI and invalid-port
+rejection. Logs: `/tmp/controlla-inline-paired-offset-{arithmetic,abi}.log`.
+The invalid `offsetof` warning is gone. In separate cold native processes,
+the same passing arithmetic smoke reported 5284 FP helper calls for the
+prior `0b6b80d3` core, and 5269 for both inline-emitter binaries. Reports must
+be read after the smoke first: reading before and after returned a cached
+zero report because the smoke did not change its diagnostic cache key.
+The fresh reports support limited inline activation, not gameplay coverage.
+
+The corrected core booted and restored the saved Luigi Circuit checkpoint
+(generation 1). Profiling and GPU caches were off. In 43.997485 seconds it
+presented 1496 frames: 34.0019 FPS, at 56.7476% native speed. No browser
+errors were reported; FP timing counters stayed zero. Evidence is local in
+`work/double-dash-inline-paired-race-{a,b}.json` and PNG. The race is paused
+in tab 40; server session 22725 uses 8082; source checkpoint unchanged.
+
+FP helper calls were 3335490/s versus 3334876/s in the prior `0b6b80d3` race
+sample, whose FPS was 34.2770. The sequential windows do not prove identical
+scene progression, but show no material helper reduction or throughput gain.
+Do not promote this candidate. Next investigate eligibility coverage, including
+the restrictive RN/NI guard, before widening any arithmetic path. FPSCR
+runtime values have not been measured here, so guard exclusion is a hypothesis.
