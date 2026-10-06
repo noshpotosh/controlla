@@ -3580,3 +3580,21 @@ steps, not autonomous native scheduling: native input acceptance at the
 first step and exact sustained button polling still need observation.
 Existing tab61 keeps the previous module until reloaded with nativeprobe1.
 No native rebuild or normal phone-controller change. Full goal incomplete.
+
+### Native-counter browser trial verified with rider swap
+
+Tab61 loaded nativeprobe1 on current72ff591 diagnostic code and the
+qualifiedff4928b core, paused before restoring the original checkpoint.
+Swap riders sampled native start880 and target910. Thirty single native
+steps completed: polling records show input80/buttons10 on every frame
+881 through910; releasedAtFrame910 equals target and fresh native910.
+The screenshot shows the rider swap animation at time00:21:887.
+
+Twelve subsequent neutral steps reached native922/time00:22:087. Native
+polling reports input0/gen3/buttons0 and the image shows Mario at the rear
+following the completed swap (previously Luigi). Counter/30 held poll/
+release/neutral assertions passed. This verifies one paused thirty-frame
+input trial and visible swap, not all controls or autonomous running
+scheduling. Evidence work/double-dash-native-swap-{thirty,neutral}.{json,png}.
+Tab61 retained paused/fullscreen; server99074 remains live. Full races,
+audio, physical motion and adequate real-time performance remain pending.
