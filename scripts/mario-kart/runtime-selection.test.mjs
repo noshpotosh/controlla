@@ -76,6 +76,16 @@ test('candidate mode checks arithmetic verification, patch provenance and exact 
     await writeFile(join(patches, finitePatch), finitePatch);
     const statusPatch = '0027-paired-status-regression.patch';
     await writeFile(join(patches, statusPatch), statusPatch);
+    const timingPatch = '0028-sampled-fp-helper-timing.patch';
+    await writeFile(join(patches, timingPatch), timingPatch);
+    manifest.sampledFpHelperTiming = true;
+    await save();
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /FP helper timing patch provenance/);
+    manifest.sampledFpHelperTimingPatchSha256 = hash(timingPatch); await save();
+    assert.equal(selectRuntime(repo, 'candidate', core).coreDirectory, core);
+    await writeFile(join(patches, timingPatch), 'changed');
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /FP helper timing patch provenance/);
+    await writeFile(join(patches, timingPatch), timingPatch);
     manifest.pairedStatusRegression = true;
     manifest.pairedStatusRegressionPatchSha256 = hash(statusPatch); await save();
     assert.throws(() => selectRuntime(repo, 'candidate', core), /paired status regression evidence/);

@@ -2286,3 +2286,20 @@ session 59962 is pending, log `/tmp/controlla-fp-timing-build.log`. The previous
 status core and paused baseline browser remain preserved. Build success,
 arithmetic/status assertions, controller ABI and browser timing are unverified
 for this candidate. Do not promote it until those checks complete.
+
+### FP timing candidate built and native checks passed
+
+Build session 59962 completed successfully. Exact WASM hash:
+`2bf63d4d41af0dac55be5ac5bb7a476f081054d24ccc609e30e74ef94d8e2ff6`.
+Arithmetic checks passed 3744 differential cases and 1536 status/exception
+cases with profiling off/on/off; controller ABI accepted all four ports and
+rejected invalid ports. Logs: `/tmp/controlla-fp-timing-{arithmetic,abi}.log`.
+A separate profiling-enabled native smoke returned 1 and reported five FP
+timing samples, 50688 total ns and 13056 maximum ns. This establishes sampler
+activation, not representative game cost; browser scene sampling is pending.
+
+Runtime-selection coverage now rejects absent and tampered patch-0028 hashes
+and accepts the matching record. The arithmetic verifier also checks that
+hash before running the binary. Both runtime-selection tests pass. Browser
+boot/restore and matched scene timing remain required; no production runtime
+or compilation policy was changed. The prior status-core baseline is paused.
