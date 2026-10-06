@@ -11,6 +11,13 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
 const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
 const nativeCpu = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp');
 const nativeFifo = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/Fifo.cpp');
+const directWasmBlockDispatch = readFileSync(nativeCpu, 'utf8').includes('Controlla direct WASM block dispatch candidate');
+if (directWasmBlockDispatch) {
+  if (output === defaultOutput) throw new Error('Direct WASM block dispatch requires isolated output.');
+  const check = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0035-direct-wasm-block-dispatch.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('Direct WASM block dispatch patch mismatch: ' + check.stderr);
+}
 const pausedFifoSleep = readFileSync(nativeFifo, 'utf8').includes('WASM paused FIFO sleep candidate');
 if (pausedFifoSleep) {
   if (output === defaultOutput) throw new Error('Paused FIFO sleep requires isolated output.');
@@ -233,6 +240,8 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   guardedScalarPairedMultiply,
   guardedScalarPairedMadd,
   pausedFifoSleep,
+  directWasmBlockDispatch,
+  directWasmBlockDispatchPatchSha256: directWasmBlockDispatch ? hash(resolve(repo, 'scripts/mario-kart/patches/0035-direct-wasm-block-dispatch.patch')) : null,
   pausedFifoSleepPatchSha256: pausedFifoSleep ? hash(resolve(repo, 'scripts/mario-kart/patches/0034-sleep-paused-wasm-fifo.patch')) : null,
   guardedScalarPairedMaddPatchSha256: guardedScalarPairedMadd ? hash(resolve(repo, 'scripts/mario-kart/patches/0033-guarded-scalar-paired-madd.patch')) : null,
   guardedScalarPairedMultiplyPatchSha256: guardedScalarPairedMultiply ? hash(resolve(repo, 'scripts/mario-kart/patches/0032-guarded-scalar-paired-multiply.patch')) : null,

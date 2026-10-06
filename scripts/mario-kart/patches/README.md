@@ -185,3 +185,9 @@ The Emscripten paused payload renews AllowSleep after a late Wakeup; ordinary
 running FIFO work and resume Wakeup are unchanged. Preparation excludes it.
 Builder requires exact patch provenance and isolated output. Browser pause CPU,
 repeated resume and race behavior must be qualified before promotion.
+
+`0035-direct-wasm-block-dispatch.patch` enables the existing Emscripten direct
+RunWasmBlock callback branch and its inlining attribute in this translation
+unit. It overrides the baseline compiler definition only for this experiment.
+Preparation excludes it; builder requires exact patch provenance and isolated
+output. Native regressions and matched browser throughput are pending.

@@ -3256,3 +3256,22 @@ cannot be attributed solely to code. No unrelated process was altered.
 Future matched race comparisons should record concurrent host load and
 fresh native progress alongside profiling-off throughput. Full speed and
 fidelity remain unverified; latest pause repair is retained.
+
+### Existing direct WASM block dispatch candidate
+
+The native dispatcher already has a gated RunWasmBlock direct-call branch
+and matching always_inline attribute. Baseline compiler definition is0.
+Patch0035 enables that existing Emscripten path locally in the CPU source,
+avoiding an unrelated full-project compiler-flag rebuild. It calls the
+same RunWasmBlock with the same operands and preserves distance/exit
+handling; actual equivalence still requires native/browser qualification.
+Builder requires isolated output, exact reverse patch and records source
+override flag/hash rather than claiming the cache's0 means disabled.
+
+Forward patch and builder syntax checks passed; configure50894 succeeded
+for work/double-dash-direct-block-core. Build61632 is active. It retains
+pause patch0034, scalar multiply0032, scalar matrix12288, generated madd
+and broad scalar dispatch off, matching the previous control except for
+the direct block candidate. Native arithmetic/ABI and matched race checks
+pending. Qualified pause binary86164c0 remains on owned server44476:8082;
+no owned browser tab open and ordinary room default remains unchanged.
