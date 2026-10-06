@@ -2755,3 +2755,18 @@ quiet. Existing scalar binary and paused browser tab 43/server 94579 remain
 intact. Historical patch-0031 binary manifests preserve their old hashes,
 so they cannot be newly selected as current-source candidates after this
 patch change without their original checkpoint provenance.
+
+
+### Build resource observation
+
+Control build 85005 remains live, progressing through the full 1,347-step
+recompilation. During the build, process inspection showed the owned
+browser renderer PID 48851 consuming about 170% CPU despite the game tab
+being paused. Tab 43 was closed after its checkpoint and reports were
+preserved; a subsequent process check confirmed that renderer PID exited.
+This does not establish which worker consumed the CPU or a game-speed
+improvement. It does establish that a paused test tab was still consuming
+resources, so close test tabs between builds/comparisons rather than
+assuming pause removes host load. Other applications were left untouched.
+Server 94579 still serves the earlier scalar binary on 8082; the saved
+IndexedDB checkpoint can be reopened after control qualification.
