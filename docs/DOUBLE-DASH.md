@@ -3508,3 +3508,13 @@ therefore they do not verify speed reduction or braking distance. JSON
 companions retain native polling and release evidence. A complete canvas
 capture and tighter control timing are needed before qualifying braking.
 The game was paused and tab61 retained for follow-up. Full goal incomplete.
+
+### Complete stopped-kart HUD capture
+
+Using the existing Fullscreen control on paused tab61 resolves the clipped
+HUD capture without resizing the browser or changing game rendering.
+work/double-dash-brake-full-hud.png shows the entire game frame, lap1/3,
+time00:55:701 and0mph after the previous brake trial. This proves the final
+stopped state; missing pre-brake speed still prevents attributing stopping
+to braking rather than coasting. Use fullscreen captures for subsequent
+speed comparisons. Tab61 remains paused/fullscreen; no code/default change.
