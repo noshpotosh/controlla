@@ -89,6 +89,8 @@ test('candidate mode checks arithmetic verification, patch provenance and exact 
     manifest.pairedStatusRegression = true;
     const normalPatch = '0029-inline-normal-fprf.patch';
     const eligibilityPatch = '0031-paired-fp-eligibility-attribution.patch';
+    manifest.directScalarPaired = true; await save();
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /direct scalar paired reference requires/);
     await writeFile(join(patches, eligibilityPatch), eligibilityPatch);
     manifest.pairedFpEligibility = true; await save();
     assert.throws(() => selectRuntime(repo, 'candidate', core), /paired FP eligibility patch provenance/);

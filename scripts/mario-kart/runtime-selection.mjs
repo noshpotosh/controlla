@@ -15,6 +15,8 @@ export function selectRuntime(repo, mode = 'prebuilt', candidateOutput = process
         verification?.wasmSha256 !== manifest.wasmSha256 || verification?.differentialCases !== 3744)
       throw new Error('Candidate requires verified controller ABI and reference arithmetic comparisons.');
     const hash = file => createHash('sha256').update(readFileSync(file)).digest('hex');
+    if (manifest.directScalarPaired && !manifest.pairedFpEligibility)
+      throw new Error('Candidate direct scalar paired reference requires patch-0031 evidence.');
     if (manifest.pairedFpEligibility && manifest.pairedFpEligibilityPatchSha256 !==
         hash(resolve(repo, 'scripts/mario-kart/patches/0031-paired-fp-eligibility-attribution.patch')))
       throw new Error('Candidate paired FP eligibility patch provenance mismatch.');

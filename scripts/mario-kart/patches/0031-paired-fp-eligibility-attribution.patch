@@ -8,10 +8,48 @@
  u32 s_wasm_lfs_call_count = 0;
  u32 s_wasm_stfs_call_count = 0;
  u32 s_wasm_lfd_call_count = 0;
-@@ -2584,6 +2585,27 @@
+@@ -2584,6 +2585,68 @@
    EmitU32Leb(imports, type_index);
  }
  
++// WASM direct scalar paired reference candidate: retain NI utilities and aliases.
++int DolphinWeb_CachedInterpreterDirectScalarPaired(int state_ptr, UGeckoInstruction inst,
++                                                  u32 current_pc, u32 downcount)
++{
++  ++s_wasm_fp_call_count;
++  const SampledFpHelperTiming fp_timing;
++  auto& state = *reinterpret_cast<PowerPC::PowerPCState*>(static_cast<std::uintptr_t>(state_ptr));
++  if (DolphinWeb_CachedInterpreterCheckFpu(state, current_pc, downcount))
++    return 1;
++  if (s_ppc_block_profile_enabled)
++    ++s_wasm_fp_key_counts[(inst.OPCD << 10) | inst.SUBOP10];
++  const auto& a = state.ps[inst.FA];
++  const auto& b = state.ps[inst.FB];
++  const auto& c = state.ps[inst.FC];
++  const u32 scalar_lane = inst.SUBOP5 & 1;
++  const double scalar = scalar_lane ? c.PS1AsDouble() : c.PS0AsDouble();
++  float ps0;
++  float ps1;
++  if (inst.SUBOP5 == 12 || inst.SUBOP5 == 13)
++  {
++    const double rounded_scalar = Force25Bit(scalar);
++    ps0 = ForceSingle(state.fpscr, NI_mul(state, a.PS0AsDouble(), rounded_scalar).value);
++    ps1 = ForceSingle(state.fpscr, NI_mul(state, a.PS1AsDouble(), rounded_scalar).value);
++  }
++  else
++  {
++    ps0 = ForceSingle(state.fpscr,
++                      NI_madd<true>(state, a.PS0AsDouble(), scalar, b.PS0AsDouble()).value);
++    ps1 = ForceSingle(state.fpscr,
++                      NI_madd<true>(state, a.PS1AsDouble(), scalar, b.PS1AsDouble()).value);
++  }
++  state.ps[inst.FD].SetBoth(ps0, ps1);
++  state.UpdateFPRFSingle(ps0);
++  if (inst.Rc)
++    state.UpdateCR1();
++  return DolphinWeb_CachedInterpreterCheckProgramOrDsi(state, current_pc, downcount) ? 1 : 0;
++}
++
 +// WASM paired FP eligibility attribution: opt-in helper calls, no arithmetic changes.
 +extern "C" int DolphinWeb_CachedInterpreterFpEligibilityOp(int state_ptr, u32 inst_hex,
 +                                                          u32 current_pc, u32 downcount, u32 unused)
@@ -30,13 +68,16 @@
 +      s_paired_fp_eligibility[bucket].fetch_add(1, std::memory_order_relaxed);
 +    }
 +  }
++  const UGeckoInstruction scalar_inst{inst_hex};
++  if (scalar_inst.OPCD == 4 && scalar_inst.SUBOP5 >= 12 && scalar_inst.SUBOP5 <= 15)
++    return DolphinWeb_CachedInterpreterDirectScalarPaired(state_ptr, scalar_inst, current_pc, downcount);
 +  return DolphinWeb_CachedInterpreterFpOp(state_ptr, inst_hex, current_pc, downcount, unused);
 +}
 +
  struct WasmStateLayout
  {
    u32 npc_offset;
-@@ -7856,7 +7878,7 @@
+@@ -7856,7 +7919,7 @@
    const auto system_index = static_cast<int>(
        reinterpret_cast<std::uintptr_t>(&DolphinWeb_CachedInterpreterSystem));
    const auto fp_index = static_cast<int>(
@@ -45,7 +86,7 @@
    const auto fctiwz_index = static_cast<int>(
        reinterpret_cast<std::uintptr_t>(&DolphinWeb_CachedInterpreterFctiwz));
    const auto interpret_index = static_cast<int>(
-@@ -11263,7 +11285,7 @@
+@@ -11263,7 +11326,7 @@
    const auto system_index = static_cast<int>(
        reinterpret_cast<std::uintptr_t>(&DolphinWeb_CachedInterpreterSystem));
    const auto fp_index = static_cast<int>(
@@ -54,7 +95,7 @@
    const auto fctiwz_index = static_cast<int>(
        reinterpret_cast<std::uintptr_t>(&DolphinWeb_CachedInterpreterFctiwz));
    const auto interpret_index = static_cast<int>(
-@@ -11830,6 +11852,14 @@
+@@ -11830,6 +11893,14 @@
        << " lfd:" << s_wasm_lfd_call_count << " fmr:" << s_wasm_fmr_call_count
        << " fctiwz:" << s_wasm_fctiwz_call_count << " psqfast:" << s_wasm_psq_fast_c_count
        << " gpfifo:" << s_wasm_gpfifo_fastcheck_count;

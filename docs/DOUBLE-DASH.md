@@ -2629,3 +2629,33 @@ pass, older NI reports still yield null eligibility, and a copy with eligibility
 counters reset to zero rejects as expected. FP timing extrapolation still
 exceeds wall time; it remains unsuitable for exclusive cost attribution.
 Shared-stage defaults remain unchanged and full-speed gameplay unfinished.
+
+### Direct scalar paired reference dispatch experiment (pending)
+
+Patch 0031 now also routes scalar paired forms 12/13/14/15 through a direct
+state-based handler before the general FP helper. This handler uses the same
+`Force25Bit`/`NI_mul` for scalar multiply, and `NI_madd<true>` for scalar fused
+multiply/add as `Interpreter_Paired.cpp`. It retains `ForceSingle`, FPRF,
+Rc/CR1, FPU availability and program/DSI checks. Both results are computed
+before `SetBoth`, preserving destination aliases. The scalar value is captured
+before either lane, matching reference evaluation. Reference source files and
+arithmetic utilities are unchanged. No multiply-plus-add approximation is used.
+
+The intended savings are the general helper's interpreter lookup, opcode
+dispatch and separate interpreter-handler call. This is still a WASM helper
+call, not generated inline scalar arithmetic; performance benefit is unknown.
+FP aggregate/opcode counts and sampled timing are retained. The eligibility
+counters still cover only remaining paired add/sub helper calls. The combined
+patch runs scalar dispatch with profiling off and on, while eligibility counters
+remain opt-in. Earlier diagnostic-only binaries retain their historical patch
+hashes and are no longer selected under the updated patch-0031 hash.
+
+Builder manifests now identify `directScalarPaired` and require combined
+patch-0031 evidence; runtime selection and arithmetic verification reject
+that flag without patch evidence. Provenance tests pass. Configure 93898
+passed; build 65075 is running for `work/double-dash-direct-scalar-paired-core`,
+log `/tmp/controlla-direct-scalar-paired-build.log`. Native arithmetic/status,
+controller ABI and browser race validation remain required; scalar Rc/exception
+coverage must not be inferred from the add/sub-only status matrix. Previous
+binaries and shared-stage defaults are preserved. Paused baseline: tab 42,
+server 23697 on 8082; source saved checkpoint untouched.
