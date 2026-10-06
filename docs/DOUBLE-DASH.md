@@ -2345,3 +2345,25 @@ comparison nor the earlier 30.33 FPS status-core sample establishes a speed
 improvement from the timing patch. Full-speed gameplay remains unqualified.
 Performance decisions should use profiling-disabled measurements; sampled
 helper timing needs overhead calibration before exclusive-cost attribution.
+
+### State cache on the arithmetic-correct timing core
+
+With the same `2bf63d4d` binary, profiling disabled, the same saved Luigi
+Circuit checkpoint and `wgpustatecache=1`, the producer cache was active
+and the consumer cache remained disabled. A 41.847205-second interval
+presented 1423 frames (34.0047 FPS), at 56.7651% native speed. No console
+errors were reported; local evidence is
+`work/double-dash-timing-state-cache-race-{a,b}.json` and PNG. The race is
+paused without updating the saved checkpoint.
+
+The producer suppressed an additional 757/366597/551453 bind-group records
+for groups 0/1/2, plus 551453 vertex-buffer and 551453 index-buffer records.
+Pipeline suppression remained zero. Thus the optimization actually removed
+repeated commands, rather than merely setting a request flag. Renderer drain
+time increased by 8985.205 ms during the interval (overlapping native work,
+not an exclusive CPU budget). The preceding cache-off sample was 34.1763 FPS.
+These single sequential windows show no material throughput benefit here;
+do not enable this option in the shared game stage based on this result.
+Visual equivalence across tracks and scene transitions is still unqualified.
+Further performance work should target costs beyond repeated GPU state
+commands; this cache does not close the remaining native-speed gap.
