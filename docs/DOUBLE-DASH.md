@@ -2540,3 +2540,31 @@ four-port ABI, inline activation and live-race performance checks remain
 required. Prior binaries and source checkpoint are preserved; changing patch
 0030 invalidates their current candidate-selection hash. Shared-stage defaults
 are unchanged. The paused previous candidate remains in tab 40, server 22725.
+
+### NI-safe inline candidate qualification
+
+Build 63903 completed successfully. Exact WASM:
+`54fb9bc9483f39054a210fb1c407455a3277cde5dd3253cdce301a5f9476a3fe`.
+Native arithmetic checks passed 3744 comparisons and 1536 Rc/status/exception
+comparisons with profiling off/on/off; all four controller ports and invalid
+port rejection passed. Logs: `/tmp/controlla-inline-paired-ni-{arithmetic,abi}.log`.
+The verifier now reads FP helper statistics once after the first cold smoke,
+avoiding the cached pre-smoke report, and records `firstSmokeFpHelperCalls`
+in the exact-binary verification record. This candidate used 5254 calls,
+versus 5269 for the prior inline path and 5284 for the pre-inline core. This
+establishes increased smoke coverage, not exhaustive guard coverage.
+
+The candidate booted/restored Luigi Circuit (checkpoint generation 1) with
+profiling and GPU caches off. It presented 1494 frames in 43.950945 seconds:
+33.9924 FPS, 56.7102% native speed. FP timing counters stayed zero; browser
+errors were absent. Evidence:
+`work/double-dash-inline-paired-ni-race-{a,b}.json` and PNG. Race paused in
+tab 41, server 47938 on 8082; original saved checkpoint unchanged.
+
+FP helpers ran at 3252404/wall-second versus the prior inline candidate's
+3335490/wall-second. That modest reduction accompanies nearly unchanged
+speed (prior 34.0019 FPS); it does not establish a useful throughput gain
+from these single sequential windows. Most helper traffic remains. Keep
+this candidate isolated and inspect eligibility exclusion before broadening
+arithmetic further. Shared-stage defaults and the production runtime remain
+unchanged; full-speed gameplay remains unfinished.

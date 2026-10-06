@@ -41,6 +41,16 @@ try {
   assert.equal(core.ccall('CoreInit', 'number', [], []), 1);
   const result = core.ccall('RunPpcWasmSinglePrecisionArithmeticSmoke', 'number', [], []);
   assert.equal(result, 1, `Generated-WASM arithmetic regression failed with code ${result}`);
+  // Read once after the first cold smoke: a pre-smoke report can stay cached.
+  let firstSmokeFpHelperCalls;
+  if (manifest.guardedInlinePaired) {
+    const stats = core.ccall('GetPpcWasmHelperStats', 'string', [], []);
+    const calls = stats.match(/imports system:\d+ fp:(\d+)/);
+    assert.ok(calls, 'Missing FP helper-call report after cold arithmetic smoke');
+    firstSmokeFpHelperCalls = Number(calls[1]);
+    assert.ok(Number.isSafeInteger(firstSmokeFpHelperCalls));
+    console.log(`Cold arithmetic smoke FP helper calls: ${firstSmokeFpHelperCalls}. This is not gameplay coverage.`);
+  }
   if (manifest.optInFpAttribution) {
     assert.equal(manifest.optInFpAttributionPatchSha256,
       hash(new URL('./patches/0025-opt-in-fp-opcode-attribution.patch', import.meta.url)));
@@ -60,6 +70,7 @@ try {
     scalarAliasCases: 4,
     differentialCases: manifest.pairedDifferentialRegression ? 3744 : 0,
     reference: 'native-interpreter',
+    ...(firstSmokeFpHelperCalls !== undefined ? { firstSmokeFpHelperCalls } : {}),
     ...(manifest.pairedStatusRegression ? { pairedStatusCases: 1536 } : {}),
     ...(manifest.finitePairedAddSub ? { pairedAddSubCases: 576, finitePairedAddSubPatchSha256: manifest.finitePairedAddSubPatchSha256 } : {}),
   };
