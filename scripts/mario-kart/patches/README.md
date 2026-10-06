@@ -191,3 +191,9 @@ RunWasmBlock callback branch and its inlining attribute in this translation
 unit. It overrides the baseline compiler definition only for this experiment.
 Preparation excludes it; builder requires exact patch provenance and isolated
 output. Native regressions and matched browser throughput are pending.
+
+`0036-native-frame-step.patch` adds a diagnostic-only exported wrapper for
+Dolphin's existing Core::DoFrameStep. It rejects uninitialized or running
+cores; accepted requests use the native one-frame pause/resume mechanism.
+Builder requires exact patch provenance and isolated output. Export, rejection,
+actual stepping and synchronized renderer comparisons remain pending.

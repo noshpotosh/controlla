@@ -11,6 +11,14 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
 const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
 const nativeCpu = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp');
 const nativeFifo = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/Fifo.cpp');
+const nativeCore = resolve(stage, 'core/upstream/dolphin_web_core.cpp');
+const nativeFrameStep = readFileSync(nativeCore, 'utf8').includes('Controlla native frame-step diagnostic');
+if (nativeFrameStep) {
+  if (output === defaultOutput) throw new Error('Native frame stepping requires isolated output.');
+  const check = spawnSync('git', ['-C', stage, 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0036-native-frame-step.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('Native frame-step patch mismatch: ' + check.stderr);
+}
 const directWasmBlockDispatch = readFileSync(nativeCpu, 'utf8').includes('Controlla direct WASM block dispatch candidate');
 if (directWasmBlockDispatch) {
   if (output === defaultOutput) throw new Error('Direct WASM block dispatch requires isolated output.');
@@ -241,6 +249,8 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   guardedScalarPairedMadd,
   pausedFifoSleep,
   directWasmBlockDispatch,
+  nativeFrameStep,
+  nativeFrameStepPatchSha256: nativeFrameStep ? hash(resolve(repo, 'scripts/mario-kart/patches/0036-native-frame-step.patch')) : null,
   directWasmBlockDispatchPatchSha256: directWasmBlockDispatch ? hash(resolve(repo, 'scripts/mario-kart/patches/0035-direct-wasm-block-dispatch.patch')) : null,
   pausedFifoSleepPatchSha256: pausedFifoSleep ? hash(resolve(repo, 'scripts/mario-kart/patches/0034-sleep-paused-wasm-fifo.patch')) : null,
   guardedScalarPairedMaddPatchSha256: guardedScalarPairedMadd ? hash(resolve(repo, 'scripts/mario-kart/patches/0033-guarded-scalar-paired-madd.patch')) : null,

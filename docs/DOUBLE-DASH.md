@@ -3344,3 +3344,20 @@ replacement for the intended performant browser experience.
 Evidence work/double-dash-software-fidelity-reference.{json,png}. Tab56
 paused and closed; server9743 remains live. No code/default promotion.
 Full speed, broad gameplay/audio and physical motion remain unverified.
+
+### Native frame-step diagnostic candidate
+
+Core::DoFrameStep already supports advancing a paused core for one frame
+and automatically pausing it again. Patch0036 exposes that existing
+operation as EMSCRIPTEN_KEEPALIVE ControllaStepFrame, rejecting an
+uninitialized core or any state other than Paused. It does not implement
+an approximate wall-clock resume window. Builder verifies exact source
+patch, requires isolated output and records flag/hash. Preparation excludes
+this experiment; no normal player control was added.
+Forward/reverse patch checks and builder syntax validation passed.
+Configure49378 completed; isolated build31433 is active at
+work/double-dash-frame-step-core, retaining0034/0035 and arithmetic control
+configuration. Native export/ABI/arithmetic checks, diagnostic worker/UI,
+actual frame stepping and synchronized renderer captures remain pending.
+Qualified86164c0 control still serves on server9743:8082, with no owned
+browser tab open. Goal remains incomplete and no promotion occurred.

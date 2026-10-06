@@ -1,0 +1,20 @@
+--- a/core/upstream/dolphin_web_core.cpp
++++ b/core/upstream/dolphin_web_core.cpp
+@@ -1026,6 +1026,17 @@
+   return 1;
+ }
+ 
++// Controlla native frame-step diagnostic: require a paused, booted core.
++EMSCRIPTEN_KEEPALIVE int ControllaStepFrame()
++{
++  auto& system = Core::System::GetInstance();
++  if (!s_runtime_initialized || Core::GetState(system) != Core::State::Paused)
++    return 0;
++  Core::DoFrameStep(system);
++  Core::HostDispatchJobs(system);
++  return 1;
++}
++
+ int ResetCore()
+ {
+   if (!s_runtime_initialized || !Core::IsRunning(Core::System::GetInstance()))
