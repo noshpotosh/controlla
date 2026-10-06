@@ -3429,3 +3429,21 @@ Actual black-canvas resolution remains unverified; worker/GPU presentation
 may need separate investigation. Tab57 closed to release its old paused
 session. Server53228 retains previous injection until restarted; native
 ff4928b binary needs no rebuild. Full fidelity goal remains incomplete.
+
+### Paused refresh retest: metadata fixed, image still black
+
+Server37396 loaded current refresh code; tab58 restored original checkpoint
+while paused. Step1 observed frame995→996, ticks105857240455→105871523977;
+step2 frame996→997, ticks105871523977→105879632079. Both reported exact
+single native frame and remained paused. Refreshed host metadata now reports
+checkpointGeneration1 and presented998/999, resolving the stale generation
+issue. Both saved canvases remain black, so image presentation is still
+unqualified. Second step is not evidence that first-frame partial checkpoint
+alone explains the defect.
+WebGPU replay between captures advanced draw3005→3024, indexed draw9720→
+10242 and present997→998. Backlog after drain remained0. Thus commands are
+being consumed/presented despite black output; this is not demonstrated to
+be an undrained queue. Next compare software stepping and inspect image
+ownership/load-state rendering rather than treating metadata refresh as a
+pixel fix. Evidence work/double-dash-step-refresh-{one,two}.{json,png}.
+Tab58 preserved paused; server37396 remains live. Goal remains incomplete.
