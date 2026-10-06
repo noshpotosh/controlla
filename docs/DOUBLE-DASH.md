@@ -3289,3 +3289,23 @@ helper count29,066 matches control but is not gameplay performance.
 The qualified isolated binary is ready for checkpoint browser comparison;
 no browser race or speed benefit has been established. Server44476 still
 serves the previous pause candidate on8082; room default unchanged.
+
+### Direct block browser race measurement
+
+Native-qualified e4da9e2 candidate booted GM4E01 and restored the original
+18:58:43 race checkpoint, generation1. Profiling/cache options remained off.
+Over56.061445s,1,368 presented frames yielded24.401797FPS and40.702950%
+native speed; browser reported no errors. Fresh native probe independently
+advanced frame1077 to2444 and ticks107664028229 to118740195437.
+Four concurrent host-load snapshots are preserved locally. This single
+interval is near the previous23.625738FPS control and does not establish
+an optimization benefit: exact scene progression, current pause fixes,
+extra pauseprobe request and host load are not matched to that old run.
+No promotion is justified. Next compare the preserved86164c0 pause binary
+with identical current browser adapter/probe settings and host snapshots.
+
+Evidence work/double-dash-direct-block-race-{a,b}.json/.png and
+work/double-dash-direct-block-host-load.json. Tab54 paused then closed;
+owned server52398 serves direct-block candidate8082. Native binaries and
+reference checkpoint remain recoverable; ordinary room default unchanged.
+Full-speed/fidelity goal remains incomplete.
