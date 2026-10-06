@@ -1,5 +1,5 @@
 /** Read worker-side GPU errors without exposing emulator controls to players. */
-export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput }) {
+export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput, refreshPresentation }) {
   if (new URLSearchParams(location.search).get('rendererdiagnostics') !== '1') return;
   const report = document.createElement('pre');
   report.id = 'controlla-renderer-diagnostics';
@@ -7,6 +7,7 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
   document.body.append(report);
   let probe = null;
   let pending = false;
+  let frameStep = null;
   const nativeProgressRequested = new URLSearchParams(location.search).get('pauseprobe') === '1';
   const timer = setInterval(async () => {
     const adapter = getAdapter();
@@ -15,7 +16,7 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
     try {
       const renderer = await adapter.request('rendererDiagnostics');
       const nativeProgress = nativeProgressRequested ? await adapter.request('controllaNativeProgress') : undefined;
-      report.textContent = JSON.stringify({ capturedAt: new Date().toISOString(), frame: getFrame(), renderer, probe, nativeProgress });
+      report.textContent = JSON.stringify({ capturedAt: new Date().toISOString(), frame: getFrame(), renderer, probe, nativeProgress, frameStep });
     } catch (error) {
       report.textContent = JSON.stringify({ error: error.message });
     } finally { pending = false; }
@@ -31,8 +32,11 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
       try {
         const adapter = getAdapter();
         const result = await adapter?.request('controllaStepFrame');
+        frameStep = result ? { stepped: result.stepped, exactSingleFrame: result.exactSingleFrame,
+          frameDelta: result.frameDelta, before: result.before, after: result.after, error: result.error } : null;
         if (!result?.stepped) throw new Error(result?.error || 'Load and pause the game before stepping.');
         adapter.applyFrame?.(result);
+        refreshPresentation?.();
         step.textContent = result.exactSingleFrame ? 'Stepped one native frame' : `Advanced ${result.frameDelta} native frames`;
       } catch (error) { step.textContent = error.message; }
       finally { step.disabled = false; }

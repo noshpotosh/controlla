@@ -3414,3 +3414,18 @@ presentation draining and host paused-frame refresh; do not claim synchronized
 pixel qualification. Evidence work/double-dash-frame-step-{before,after}.json
 and work/double-dash-frame-step-after.png. Tab57 preserved paused for follow-up;
 server53228 remains live. Full goal remains incomplete; no default promotion.
+
+### Paused diagnostic presentation refresh
+
+Host.pause cancels its animation loop, so adapter.applyFrame alone leaves
+lastFrameInfo unchanged. After successful native diagnostic stepping the
+local wrapper now invokes host.renderDolphin and host.publishFrame once.
+It does not start the host/native core or run an animation loop. Step
+before/after counters and observed delta are retained in diagnostic JSON,
+including failure information. Refresh happens only after native success.
+Twelve worker/renderer tests and serve syntax check passed, including
+apply-before-refresh ordering, retained counters and no refresh on failure.
+Actual black-canvas resolution remains unverified; worker/GPU presentation
+may need separate investigation. Tab57 closed to release its old paused
+session. Server53228 retains previous injection until restarted; native
+ff4928b binary needs no rebuild. Full fidelity goal remains incomplete.

@@ -33,7 +33,7 @@ function environment(t, search) {
   };
   replace('location', { search });
   replace('document', {
-    createElement(tag) { const element = { tag, append() {} }; elements.push(element); return element; },
+    createElement(tag) { const element = { tag, append() {}, listeners: {}, addEventListener(event, callback) { this.listeners[event] = callback; } }; elements.push(element); return element; },
     body: { append() {} }, querySelector() { return { append() {} }; },
   });
   replace('window', { addEventListener(event, callback) { assert.equal(event, 'pagehide'); cleanups.push(callback); } });
@@ -47,6 +47,30 @@ test('renderer diagnostics are opt-in and never request a worker report by defau
   installRendererDiagnostics({ getAdapter() { throw new Error('Should not read worker'); } });
   assert.equal(env.elements.length, 0);
   assert.equal(env.intervals.length, 0);
+});
+test('frame stepping refreshes paused presentation only after native success', async t => {
+  const env = environment(t, '?rendererdiagnostics=1&framestep=1');
+  const actions = [];
+  let success = true;
+  const result = { stepped: true, exactSingleFrame: true, frameDelta: 1,
+    before: { frame: 10 }, after: { frame: 11 } };
+  installRendererDiagnostics({
+    getAdapter: () => ({ loaded: true,
+      async request(type) { return type === 'controllaStepFrame' ? success ? result : { stepped: false, error: 'not paused' } : {}; },
+      applyFrame(value) { assert.equal(value, result); actions.push('apply'); } }),
+    getFrame: () => ({ frame: 11 }), refreshPresentation: () => actions.push('refresh'),
+  });
+  const step = env.elements.find(element => element.textContent === 'Step native frame');
+  await step.listeners.click();
+  assert.deepEqual(actions, ['apply', 'refresh']);
+  assert.equal(step.textContent, 'Stepped one native frame');
+  await env.intervals[0]();
+  assert.deepEqual(JSON.parse(env.elements[0].textContent).frameStep.after, { frame: 11 });
+  success = false;
+  await step.listeners.click();
+  assert.equal(step.textContent, 'not paused');
+  assert.deepEqual(actions, ['apply', 'refresh']);
+  assert.equal(step.disabled, false);
 });
 test('diagnostics preserve worker GPU errors, serialize the current frame and retire polling', async t => {
   const env = environment(t, '?rendererdiagnostics=1');

@@ -112,6 +112,7 @@ finishGameShell();
 `;
 const boot = `
 installRendererDiagnostics({ getAdapter: () => host.adapter, getFrame: () => lastFrameInfo,
+  refreshPresentation: () => { host.renderDolphin(); host.publishFrame(); },
   setProbeInput: state => { controllaPhone.state = state; controllaPhone.at = performance.now(); syncInput('Input probe'); } });
 if (new URLSearchParams(location.search).get('embed') === '1') {
   installGameShell();
