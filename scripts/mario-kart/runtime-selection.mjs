@@ -15,8 +15,13 @@ export function selectRuntime(repo, mode = 'prebuilt', candidateOutput = process
         verification?.wasmSha256 !== manifest.wasmSha256 || verification?.differentialCases !== 3744)
       throw new Error('Candidate requires verified controller ABI and reference arithmetic comparisons.');
     const hash = file => createHash('sha256').update(readFileSync(file)).digest('hex');
+    if (manifest.guardedScalarPairedMadd && (!manifest.scalarPairedStatusRegression ||
+        verification.scalarPairedStatusCases !== 6144 || !manifest.guardedScalarPairedMaddPatchSha256 ||
+        manifest.guardedScalarPairedMaddPatchSha256 !==
+        hash(resolve(repo, 'scripts/mario-kart/patches/0033-guarded-scalar-paired-madd.patch'))))
+      throw new Error('Candidate guarded scalar madd evidence mismatch.');
     if (manifest.guardedScalarPairedMultiply && (!manifest.scalarPairedStatusRegression ||
-        verification.scalarPairedStatusCases !== 3072 || !manifest.guardedScalarPairedMultiplyPatchSha256 ||
+        verification.scalarPairedStatusCases !== 6144 || !manifest.guardedScalarPairedMultiplyPatchSha256 ||
         manifest.guardedScalarPairedMultiplyPatchSha256 !==
         hash(resolve(repo, 'scripts/mario-kart/patches/0032-guarded-scalar-paired-multiply.patch'))))
       throw new Error('Candidate guarded scalar multiply evidence mismatch.');
@@ -42,7 +47,7 @@ export function selectRuntime(repo, mode = 'prebuilt', candidateOutput = process
       if (manifest[field] !== hash(resolve(repo, 'scripts/mario-kart/patches', name)))
         throw new Error('Candidate patch provenance mismatch: ' + name);
     }
-    if (manifest.scalarPairedStatusRegression && (!manifest.pairedStatusRegression || verification.scalarPairedStatusCases !== 3072))
+    if (manifest.scalarPairedStatusRegression && (!manifest.pairedStatusRegression || verification.scalarPairedStatusCases !== 6144))
       throw new Error('Candidate scalar paired status regression evidence mismatch.');
     if (manifest.pairedStatusRegression && (verification.pairedStatusCases !== 1536 ||
         manifest.pairedStatusRegressionPatchSha256 !==

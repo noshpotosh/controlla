@@ -2884,3 +2884,32 @@ No generated multiply/add change has been made yet. Build and room
 defaults are unchanged. Next work is to implement conservative guards,
 compare the actual generated code to the interpreter including the known
 tie and aliases, then measure the race.
+
+
+### Guarded scalar multiply/add implementation checkpoint
+
+Patch 0033 adds generated `ps_madds0/ps_madds1` for non-Rc nearest
+rounding. It retains prior FPU/exception/NI guards and requires both A/B
+lanes to have normal float magnitude and at most 24 significant bits.
+Selected C must be normal finite and is rounded with exact Force25Bit
+integer masks/add. Both products must remain within normal float magnitude,
+so their at-most-50-bit significands are exact in f64. It then adds B and
+rejects every single-precision even tie using the reference D_MASK and
+EVEN_TIE constants. Both raw sums must be above the NI flush threshold and
+both conversions normal. All other cases use the fused reference helper
+before any architectural write. Both lanes are computed before stores.
+
+Patch 0027 now uses 16 scalar value rotations, doubling scalar status
+coverage to 6,144 cases. The known 50.0 / 0x1b1c72a0 / 0xbc88cc38 float
+operand triplet appears in both lanes, covering fused tie fallback with
+FA/FB/FC destination aliases, Rc, FPSCR seeds and exception modes. Existing
+add/sub matrix stays at 1,536 cases. Current evidence guards require the
+expanded scalar count and exact patch-0033 hash. Runtime-selection tests
+pass for missing hash, changed patch and incomplete scalar coverage.
+
+Isolated `work/double-dash-guarded-scalar-madd-core` configuration succeeded
+with broad scalar helper dispatch disabled. Build 63974 is linking, with
+all prior patch checks intact. Expanded native arithmetic, controller ABI
+and race qualification remain pending. Previous binaries are preserved;
+the current patch-0027 hash no longer matches their historical manifests.
+Default room runtime remains unchanged. No speed benefit is claimed.

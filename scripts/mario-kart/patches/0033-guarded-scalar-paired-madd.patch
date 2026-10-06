@@ -1,0 +1,177 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -4992,6 +4992,162 @@
+   return subop10 == 528 || subop10 == 560 || subop10 == 592 || subop10 == 624;
+ }
+ 
++// WASM guarded inline scalar paired madd candidate: normal results, reference fallback.
++void EmitGuardedScalarPairedMadd(std::vector<u8>& body, const WasmStateLayout& layout,
++                            const PPCAnalyst::CodeOp& op, u32 downcount)
++{
++  const UGeckoInstruction inst = op.inst;
++  EmitStateLoadU32(body, layout.msr_offset);
++  EmitI32Const(body, 1u << 13);
++  body.push_back(0x71); // i32.and: FPU available
++  body.push_back(0x45); // eqz
++  body.push_back(0x45); // boolean
++  EmitStateLoadU32(body, layout.fpscr_offset);
++  EmitI32Const(body, 3); // RN: nearest; NI allowed only above raw normal threshold
++  body.push_back(0x71);
++  body.push_back(0x45);
++  body.push_back(0x71);
++  const auto& state = Core::System::GetInstance().GetPPCState();
++  const u32 exceptions_offset = static_cast<u32>(reinterpret_cast<std::uintptr_t>(&state.Exceptions) -
++                                                  reinterpret_cast<std::uintptr_t>(&state));
++  EmitStateLoadU32(body, exceptions_offset);
++  EmitI32Const(body, EXCEPTION_DSI | EXCEPTION_PROGRAM);
++  body.push_back(0x71);
++  body.push_back(0x45);
++  body.push_back(0x71);
++  // Restrict A/B to normal float precision: rounded C has 25 significant bits,
++  // so A*C is exact in f64 when its magnitude stays in normal float range.
++  for (u32 reg : {static_cast<u32>(inst.FA), static_cast<u32>(inst.FB)})
++    for (u32 lane = 0; lane < 2; ++lane)
++    {
++      EmitStateLoadI64(body, PsOffset(layout, reg, lane));
++      EmitF64ConstBits(body, 0x1fffffffULL);
++      body.push_back(0xbd);
++      body.push_back(0x83);
++      body.push_back(0x50); // i64.eqz: at most 24 significant bits
++      body.push_back(0x71);
++      EmitStateLoadF64(body, PsOffset(layout, reg, lane));
++      body.push_back(0x99);
++      EmitF64ConstBits(body, 0x3810000000000000ULL);
++      body.push_back(0x66);
++      body.push_back(0x71);
++      EmitStateLoadF64(body, PsOffset(layout, reg, lane));
++      body.push_back(0x99);
++      EmitF64ConstBits(body, 0x47efffffe0000000ULL);
++      body.push_back(0x65); // f64.le: finite normal float upper bound
++      body.push_back(0x71);
++    }
++  const u32 scalar_lane = inst.SUBOP5 & 1;
++  EmitStateLoadU32(body, PsOffset(layout, inst.FC, scalar_lane) + sizeof(u32));
++  EmitI32Const(body, 0x7ff00000);
++  body.push_back(0x71);
++  EmitLocalSet(body, 3);
++  EmitLocalGet(body, 3);
++  body.push_back(0x45); body.push_back(0x45); // normal scalar; subnormals use reference
++  body.push_back(0x71);
++  EmitLocalGet(body, 3);
++  EmitI32Const(body, 0x7ff00000);
++  body.push_back(0x47);
++  body.push_back(0x71);
++  body.push_back(0x04); body.push_back(0x40); // if eligible
++  EmitI32Const(body, 1); // accumulate raw-result NI safety before destination writes
++  for (u32 lane = 0; lane < 2; ++lane)
++  {
++    EmitStateLoadF64(body, PsOffset(layout, inst.FA, lane));
++    // Exact normal-input Force25Bit: (bits & keep_mask) + (bits & round_bit).
++    EmitStateLoadI64(body, PsOffset(layout, inst.FC, scalar_lane));
++    EmitF64ConstBits(body, 0xfffffffff8000000ULL);
++    body.push_back(0xbd);
++    body.push_back(0x83); // i64.and
++    EmitStateLoadI64(body, PsOffset(layout, inst.FC, scalar_lane));
++    EmitF64ConstBits(body, 0x08000000ULL);
++    body.push_back(0xbd);
++    body.push_back(0x83);
++    body.push_back(0x7c); // i64.add, including exponent carry
++    body.push_back(0xbf);
++    body.push_back(0xa2); // f64.mul, matching NI_mul finite normal result
++    EmitLocalSet(body, 6);
++    EmitLocalGet(body, 6);
++    body.push_back(0x99);
++    EmitF64ConstBits(body, 0x3810000000000000ULL);
++    body.push_back(0x66);
++    body.push_back(0x71);
++    EmitLocalGet(body, 6);
++    body.push_back(0x99);
++    EmitF64ConstBits(body, 0x47efffffe0000000ULL);
++    body.push_back(0x65);
++    body.push_back(0x71); // exact product, no f64 overflow/underflow
++    EmitLocalGet(body, 6);
++    EmitStateLoadF64(body, PsOffset(layout, inst.FB, lane));
++    body.push_back(0xa0);
++    EmitLocalSet(body, 6);
++    EmitLocalGet(body, 6);
++    body.push_back(0xbd);
++    EmitF64ConstBits(body, 0x1fffffffULL);
++    body.push_back(0xbd);
++    body.push_back(0x83);
++    EmitF64ConstBits(body, 0x10000000ULL);
++    body.push_back(0xbd);
++    body.push_back(0x52); // i64.ne: reference handles every single-precision tie
++    body.push_back(0x71);
++    EmitLocalGet(body, 6);
++    body.push_back(0xb6); // f32.demote_f64: same ForceSingle nearest conversion
++    body.push_back(0xbb); // f64.promote_f32
++    body.push_back(0xbd); // i64.reinterpret_f64
++    EmitLocalSet(body, 4 + lane); // retain both results before any destination write
++    EmitLocalGet(body, 6);
++    body.push_back(0x99); // f64.abs of the unrounded result
++    EmitF64ConstBits(body, 0x3810000000000000ULL); // smallest normal single as double
++    body.push_back(0x66); // f64.ge: NI cannot flush this raw result
++    body.push_back(0x71);
++  }
++  for (u32 lane = 0; lane < 2; ++lane)
++  {
++    EmitLocalGet(body, 4 + lane);
++    body.push_back(0xbf); // f64.reinterpret_i64
++    body.push_back(0xb6);
++    body.push_back(0xbc); // i32.reinterpret_f32
++    EmitLocalSet(body, lane == 0 ? 7 : 2);
++    EmitLocalGet(body, lane == 0 ? 7 : 2);
++    EmitI32Const(body, Common::FLOAT_EXP);
++    body.push_back(0x71);
++    EmitLocalSet(body, 3);
++    EmitLocalGet(body, 3);
++    body.push_back(0x45); body.push_back(0x45); // exponent nonzero
++    EmitLocalGet(body, 3);
++    EmitI32Const(body, Common::FLOAT_EXP);
++    body.push_back(0x47);
++    body.push_back(0x71); // exponent not all-ones
++    body.push_back(0x71); // raw NI safety and both results normal
++  }
++  body.push_back(0x04); body.push_back(0x40);
++  for (u32 lane = 0; lane < 2; ++lane)
++  {
++    EmitStateStoreU32Prefix(body);
++    EmitLocalGet(body, 4 + lane);
++    EmitStateStoreI64Suffix(body, PsOffset(layout, inst.FD, lane));
++  }
++  EmitStateStoreU32Prefix(body);
++  EmitStateLoadU32(body, layout.fpscr_offset);
++  EmitI32Const(body, ~static_cast<u32>(FPRF_MASK));
++  body.push_back(0x71);
++  EmitI32Const(body, Common::PPC_FPCLASS_NN << FPRF_SHIFT);
++  EmitI32Const(body, Common::PPC_FPCLASS_PN << FPRF_SHIFT);
++  EmitLocalGet(body, 7);
++  EmitI32Const(body, Common::FLOAT_SIGN);
++  body.push_back(0x71);
++  body.push_back(0x1b); // select sign classification
++  body.push_back(0x72);
++  EmitStateStoreU32Suffix(body, layout.fpscr_offset);
++  body.push_back(0x05);
++  EmitFpCall(body, op, downcount);
++  body.push_back(0x0b);
++  body.push_back(0x05);
++  EmitFpCall(body, op, downcount);
++  body.push_back(0x0b);
++}
++
++
+ bool IsPairedSingleArithmeticSubop(u32 subop5)
+ {
+   return subop5 == 12 || subop5 == 13 || subop5 == 14 || subop5 == 15 ||
+@@ -6200,6 +6356,11 @@
+     if (IsPairedSingleMergeSubop(inst.SUBOP10) && !inst.Rc)
+     {
+       EmitPairedSingleMerge(body, layout, op, downcount);
++      return true;
++    }
++    if ((inst.SUBOP5 == 14 || inst.SUBOP5 == 15) && !inst.Rc)
++    {
++      EmitGuardedScalarPairedMadd(body, layout, op, downcount);
+       return true;
+     }
+     if ((inst.SUBOP5 == 12 || inst.SUBOP5 == 13 || inst.SUBOP5 == 14 ||
