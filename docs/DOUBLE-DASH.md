@@ -2770,3 +2770,34 @@ resources, so close test tabs between builds/comparisons rather than
 assuming pause removes host load. Other applications were left untouched.
 Server 94579 still serves the earlier scalar binary on 8082; the saved
 IndexedDB checkpoint can be reopened after control qualification.
+
+
+### Scalar-disabled control qualification
+
+Build 85005 completed successfully. Control WASM SHA-256:
+`98534e41aecd88d03da712316d1cfec65edbb68995fa80533c14652e464f8e95`;
+loader SHA-256:
+`35c1ee78cdcc9db33c496716450e7179a0b9de09c7c26d55718d78cc9ba2fe2c`.
+The actual build manifest records `directScalarPairedDispatch: false`.
+Native checks passed all 3,744 differential, 3,072 scalar direct/generated
+status and 1,536 add/sub status cases, profiling off and on, plus four-port
+connection/disconnection and invalid-port rejection. Cold smoke helper
+count remains 11,398 because the test matrix directly calls the candidate
+even when gameplay dispatch is disabled.
+
+Server 97270 on localhost:8082 served this verified control. Browser tab 44
+booted local GM4E01, restored the original 18:58:43 race checkpoint and
+reported generation 1. Profiling and renderer caches were off, with zero
+FP timing samples and zero eligibility deltas. The valid 43.833635-second
+interval presented 1,167 frames: 26.623391 FPS and 44.442067% native speed.
+No browser errors were observed. This exceeds the enabled experiment's
+23.5/24.8 FPS observations, but one control interval with uncontrolled host
+load and exact scene progression cannot isolate causality or explain the
+remaining full-speed gap. Neither experiment is promoted.
+
+Evidence: ignored `work/double-dash-scalar-control-race-{a,b}.json` and
+`work/double-dash-scalar-control-race.png`. Tab 44 was closed after recording
+evidence to release worker CPU usage. Saved checkpoint is unchanged.
+Full-speed, visual/audio fidelity and physical motion qualification remain
+open. Next optimization should isolate a narrower frequent scalar operation
+and retain exact rounding/NI/reference fallback semantics.
