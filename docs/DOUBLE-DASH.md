@@ -3093,3 +3093,18 @@ Browser race comparison remains pending. No runtime promotion was made.
 The shared picker integration was also rechecked: all 22 integration,
 renderer, catalog and round tests passed. Double Dash remains a registered
 game using the ordinary room stage and phone controls.
+
+### Current-source control browser race comparison
+
+The qualified 494e5d7 control restored GM4E01's original 18:58:43 race
+checkpoint on localhost:8082. Generation 1 remained consistent across a
+44.062115-second interval: 1,041 presented frames, 23.625738 FPS and
+39.414159% native speed. Profiling and all diagnostic caches were disabled;
+no browser errors were observed. This is above the finite-addend madd
+experiment's 15.559057 FPS, but one interval does not isolate host load or
+scene progression. Neither result is sufficient for full-speed promotion.
+Preserved ignored evidence: work/double-dash-current-madd-control-race-
+{a,b}.json and .png. Tab 49 was paused then closed to release workers.
+Owned server 36855 now serves the control on 8082. The ordinary room's
+default candidate remains unchanged. Next work should address the paused
+GPU loop separately and continue measuring the running performance gap.
