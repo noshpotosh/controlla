@@ -2303,3 +2303,25 @@ and accepts the matching record. The arithmetic verifier also checks that
 hash before running the binary. Both runtime-selection tests pass. Browser
 boot/restore and matched scene timing remain required; no production runtime
 or compilation policy was changed. The prior status-core baseline is paused.
+
+### Sampled FP timing: live race qualification
+
+The isolated `2bf63d4d` timing core restored the saved `4630560c` Luigi
+Circuit race through the comparison loader; both interval reports show native
+checkpoint generation 1. After restarting the CPU profile, a 52.116685-second
+interval presented 1317 frames (25.2702 FPS), advancing at 42.1593% of native
+speed. No browser console errors were reported. Evidence is saved locally in
+`work/double-dash-fp-timing-race-{a,b}.json` and the corresponding PNG; the
+race was paused afterward without replacing the source saved checkpoint.
+
+The cumulative timing counters increased by 128300 samples and 52406272 ns,
+averaging 408.47 ns per sampled helper. Multiplying by the sampling rate of
+1024 estimates 53.664 seconds, or 102.97% of elapsed wall time. This is not a
+credible exclusive CPU attribution: periodic sampling bias, timer overhead,
+clock resolution and scheduling interruptions are not isolated. In particular,
+the extrapolation exceeding wall time invalidates treating it as a measured
+fraction of a single worker's execution budget. The profiling-enabled FPS is
+not directly comparable to the earlier profiling-disabled 30.33 FPS interval.
+Next qualification should measure this same core with profiling disabled and
+then calibrate sampling overhead/bias before using these timings to justify
+an arithmetic optimization. No candidate promotion follows from this sample.
