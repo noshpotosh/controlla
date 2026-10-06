@@ -3491,3 +3491,20 @@ work/double-dash-software-step-twelve.{json,png}. The previous tab was gone
 at continuation; a fresh session reproduced all twelve steps rather than
 assuming its state. Full-race fidelity, audio, physical motion controls and
 adequate performance remain unverified; the goal stays incomplete.
+
+### Running acceleration/brake input delivery
+
+Tab61 restored the original race checkpoint running with probeinputs1.
+Accelerate requested300 native frames; native pad observations reported
+buttons100 and automatic release at2104 (target2097). Brake requested90
+frames; observations switched from neutral to buttons200, with release
+at2564 (target2558). Assertions verify brake polling and eventual release.
+The40ms probe timer overshoots target frames; these are not exact-duration
+input trials. The kart appears at a different track position after driving.
+
+Screenshots work/double-dash-accel-before-brake.png and
+work/double-dash-brake-after.png clip the lower HUD even with fullPage;
+therefore they do not verify speed reduction or braking distance. JSON
+companions retain native polling and release evidence. A complete canvas
+capture and tighter control timing are needed before qualifying braking.
+The game was paused and tab61 retained for follow-up. Full goal incomplete.
