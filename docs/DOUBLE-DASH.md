@@ -2971,3 +2971,30 @@ is active. Arithmetic, four-port ABI and race qualification remain pending.
 The previous slower candidate and current room default are preserved; no
 performance improvement is claimed. Server 1609 still serves the previous
 verified binary on 8082, with no test browser tab open.
+
+
+### Signed-zero native and browser qualification
+
+Build 36640 completed. WASM SHA-256:
+`71ac2dde6701b0df99f92b9a067fb64b6833053e06bb7006d37194ad429a1e69`;
+loader SHA-256:
+`3929f79a28cfef92a90f707fdfca916ea03086444fb1fe913ba650d86d3724b7`.
+Native checks pass all 9,216 scalar direct/generated status comparisons,
+3,744 differential and 1,536 add/sub status comparisons, profiling off/on,
+plus the four-port ABI checks. Cold helper count is 22,854; matrix growth
+means it is not a speed comparison with earlier smaller smoke runs.
+
+Server 85939 on localhost:8082 served the verified module. Tab 47 booted
+GM4E01 and restored the unchanged 18:58:43 checkpoint. Generation 1 was
+consistent, with profiling/caches off and no timing samples. The valid
+44.012690-second interval presented 1,022 frames: 23.220576 FPS and
+38.737257% native speed. No browser errors were observed. The prior guarded
+madd interval was 23.169383 FPS; these measurements do not demonstrate a
+performance improvement from admitting zero addends. No default promotion.
+
+Ignored evidence: `work/double-dash-zero-addend-madd-race-{a,b}.json` and
+`work/double-dash-zero-addend-madd-race.png`. Tab 47 closed after capture
+to release workers. Server and original checkpoint remain available.
+Next performance work should inspect fallback frequency and reduce guard
+cost only where exact-product/fused arithmetic equivalence is established;
+full-speed, visual/audio and physical motion qualification remain open.
