@@ -1,0 +1,16 @@
+--- a/Source/Core/Core/PowerPC/PowerPC.cpp
++++ b/Source/Core/Core/PowerPC/PowerPC.cpp
+@@ -693,5 +693,13 @@
+ 
+ void PowerPCState::UpdateFPRFSingle(float fvalue)
+ {
++  // WASM inline normal FPRF candidate: identical reference classification.
++  const u32 bits = std::bit_cast<u32>(fvalue);
++  const u32 exponent = bits & Common::FLOAT_EXP;
++  if (exponent > 0 && exponent < Common::FLOAT_EXP)
++  {
++    fpscr.FPRF = bits & Common::FLOAT_SIGN ? Common::PPC_FPCLASS_NN : Common::PPC_FPCLASS_PN;
++    return;
++  }
+   fpscr.FPRF = Common::ClassifyFloat(fvalue);
+ }

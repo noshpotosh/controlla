@@ -15,6 +15,9 @@ export function selectRuntime(repo, mode = 'prebuilt', candidateOutput = process
         verification?.wasmSha256 !== manifest.wasmSha256 || verification?.differentialCases !== 3744)
       throw new Error('Candidate requires verified controller ABI and reference arithmetic comparisons.');
     const hash = file => createHash('sha256').update(readFileSync(file)).digest('hex');
+    if (manifest.inlineNormalFprf && manifest.inlineNormalFprfPatchSha256 !==
+        hash(resolve(repo, 'scripts/mario-kart/patches/0029-inline-normal-fprf.patch')))
+      throw new Error('Candidate inline normal FPRF patch provenance mismatch.');
     if (manifest.sampledFpHelperTiming && manifest.sampledFpHelperTimingPatchSha256 !==
         hash(resolve(repo, 'scripts/mario-kart/patches/0028-sampled-fp-helper-timing.patch')))
       throw new Error('Candidate FP helper timing patch provenance mismatch.');

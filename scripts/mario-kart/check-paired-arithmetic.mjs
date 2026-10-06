@@ -9,6 +9,9 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR);
 const manifest = JSON.parse(readFileSync(resolve(output, 'controlla-core-build.json')));
 assert.equal(manifest.pairedArithmeticRegression, true, 'Candidate must include the alias regression.');
 const hash = file => createHash('sha256').update(readFileSync(file)).digest('hex');
+if (manifest.inlineNormalFprf)
+  assert.equal(manifest.inlineNormalFprfPatchSha256,
+    hash(new URL('./patches/0029-inline-normal-fprf.patch', import.meta.url)));
 if (manifest.sampledFpHelperTiming)
   assert.equal(manifest.sampledFpHelperTimingPatchSha256,
     hash(new URL('./patches/0028-sampled-fp-helper-timing.patch', import.meta.url)));

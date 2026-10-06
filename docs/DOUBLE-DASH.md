@@ -2387,3 +2387,22 @@ timing with explicit warnings for extrapolation beyond wall time. This does
 not prove identical scene windows, build identity, hardware pixel fidelity or
 exclusive CPU cost. Verified with the real single-mode and FP-profile report
 pairs; a reversed pair must fail instead of producing a negative benchmark.
+
+### Inline normal-number FPRF experiment (pending)
+
+Patch `0029-inline-normal-fprf.patch` adds the reference classifier's exact
+normal-single exponent/sign case directly to `PowerPCState::UpdateFPRFSingle`.
+Zero, subnormal, infinity and NaN results still use `Common::ClassifyFloat`.
+It changes no arithmetic, FPSCR rounding, NI handling or exception dispatch.
+The intent is to remove one separate classifier call on common results;
+compiler inlining and real gameplay benefit are not yet established.
+
+The builder requires isolated output and an exact reverse patch check, and
+records PowerPC source and patch hashes. Candidate selection and the native
+arithmetic runner reject mismatched patch provenance. Runtime-selection tests
+pass with missing/tampered hash coverage. Configuration session 29061 passed;
+build session 25794 compiled PowerPC.cpp and is linking the isolated
+`work/double-dash-normal-fprf-core` output. Log:
+`/tmp/controlla-normal-fprf-build.log`. Native 3744 arithmetic and 1536
+status/exception comparisons, four-port ABI and browser validation remain
+required. Existing binaries and shared-stage defaults are preserved.
