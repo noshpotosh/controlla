@@ -3395,3 +3395,22 @@ Actual paused frame advancement, running-state rejection and synchronized
 renderer image qualification remain pending. Server9743 still serves the
 previous control; the isolated frame-step binary is preserved for testing.
 No promotion or completion claim.
+
+### Browser native frame step succeeds; image presentation incomplete
+
+Server53228 serves qualifiedff4928b frame-step core. Tab57 booted GM4E01,
+paused before restoring original18:58:43 checkpoint, then requested Step
+native frame. UI confirmed Stepped one native frame and continued to show
+Run (paused). Fresh progress advanced frame913 to914 and native ticks
+105857240455 to105871523977. No browser errors. This establishes one native
+step after frozen restore; actual tick advancement is not assumed to equal
+a complete NTSC video period from an arbitrary checkpoint boundary.
+
+The captured canvas is black and last exposed frame metadata remains at
+presented911/checkpointGeneration0, despite live progress matching restored
+ticks. Thus stepped image presentation/metadata refresh is incomplete and
+this screenshot cannot serve as a fidelity comparison. Investigate worker
+presentation draining and host paused-frame refresh; do not claim synchronized
+pixel qualification. Evidence work/double-dash-frame-step-{before,after}.json
+and work/double-dash-frame-step-after.png. Tab57 preserved paused for follow-up;
+server53228 remains live. Full goal remains incomplete; no default promotion.
