@@ -2946,3 +2946,28 @@ Source comment calling rounded C 25 significant bits is imprecise: the
 mask retains 25 fraction bits plus the hidden bit; the product bound is
 at most 50 significant bits, still exactly representable in f64. The
 documented bound is 50; arithmetic uses the exact reference mask.
+
+
+### Signed-zero addend coverage experiment
+
+Host feasibility now includes signed-zero B for one quarter of two million
+random vectors. 1,212,061 eligible cases match double fused arithmetic and
+converted float bit-for-bit; 787,939 are rejected, plus the explicit tie
+fixture stays outside the fast path. This remains host evidence only.
+
+Patch 0033 now admits signed zero B while retaining normal-float A, exact
+product bounds, selected-C rounding, non-tie and normal-result guards. It
+uses float equality with zero to accept either sign and preserves both
+results before destination writes. The precision comment is corrected to
+25 fraction bits plus the implicit bit, at most 50 product bits.
+
+Patch 0027 expands scalar rotations to 24 and therefore 9,216 scalar
+status cases. New triplets (A=2, B=+0/-0, C=3) place signed-zero addends
+with normal products/results in both lanes, including destination aliases
+and NI/Rc/exception modes. Current evidence guards require 9,216 cases.
+Runtime-selection tests pass. A new isolated configuration at
+`work/double-dash-zero-addend-madd-core` succeeded and native build 36640
+is active. Arithmetic, four-port ABI and race qualification remain pending.
+The previous slower candidate and current room default are preserved; no
+performance improvement is claimed. Server 1609 still serves the previous
+verified binary on 8082, with no test browser tab open.

@@ -1,6 +1,6 @@
 --- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
 +++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
-@@ -4992,6 +4992,162 @@
+@@ -4992,6 +4992,170 @@
    return subop10 == 528 || subop10 == 560 || subop10 == 592 || subop10 == 624;
  }
  
@@ -27,8 +27,9 @@
 +  body.push_back(0x71);
 +  body.push_back(0x45);
 +  body.push_back(0x71);
-+  // Restrict A/B to normal float precision: rounded C has 25 significant bits,
-+  // so A*C is exact in f64 when its magnitude stays in normal float range.
++  // Restrict A to normal float and B to normal float or signed zero.
++  // Rounded C retains 25 fraction bits plus the implicit bit,
++  // so A*C has at most 50 significant bits, exact in normal f64 range.
 +  for (u32 reg : {static_cast<u32>(inst.FA), static_cast<u32>(inst.FB)})
 +    for (u32 lane = 0; lane < 2; ++lane)
 +    {
@@ -42,6 +43,13 @@
 +      body.push_back(0x99);
 +      EmitF64ConstBits(body, 0x3810000000000000ULL);
 +      body.push_back(0x66);
++      if (reg == inst.FB)
++      {
++        EmitStateLoadF64(body, PsOffset(layout, reg, lane));
++        EmitF64ConstBits(body, 0);
++        body.push_back(0x61); // f64.eq accepts either zero sign
++        body.push_back(0x72);
++      }
 +      body.push_back(0x71);
 +      EmitStateLoadF64(body, PsOffset(layout, reg, lane));
 +      body.push_back(0x99);
@@ -163,7 +171,7 @@
  bool IsPairedSingleArithmeticSubop(u32 subop5)
  {
    return subop5 == 12 || subop5 == 13 || subop5 == 14 || subop5 == 15 ||
-@@ -6200,6 +6356,11 @@
+@@ -6200,6 +6364,11 @@
      if (IsPairedSingleMergeSubop(inst.SUBOP10) && !inst.Rc)
      {
        EmitPairedSingleMerge(body, layout, op, downcount);

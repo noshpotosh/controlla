@@ -33,7 +33,8 @@ int main() {
   u64 accepted=0, ties=0, rejected=0;
   for (u32 i=0;i<2000000;++i) {
     const u32 a_bits=(u32(random())&0x807fffffU)|((1+random()%254)<<23);
-    const u32 b_bits=(u32(random())&0x807fffffU)|((1+random()%254)<<23);
+    const u32 normal_b=(u32(random())&0x807fffffU)|((1+random()%254)<<23);
+    const u32 b_bits=i%4==0 ? (normal_b&0x80000000U) : normal_b;
     const u64 c_bits=(random()&0x800fffffffffffffULL)|((823+random()%401)<<52);
     const double a=double(std::bit_cast<float>(a_bits));
     const double b=double(std::bit_cast<float>(b_bits));
