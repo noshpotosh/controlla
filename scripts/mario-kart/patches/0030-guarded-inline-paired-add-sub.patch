@@ -1,0 +1,107 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -4943,6 +4943,95 @@
+          subop5 == 29 || subop5 == 30 || subop5 == 31;
+ }
+ 
++// WASM guarded inline paired add/sub candidate: normal results, reference fallback.
++void EmitGuardedPairedAddSub(std::vector<u8>& body, const WasmStateLayout& layout,
++                            const PPCAnalyst::CodeOp& op, u32 downcount)
++{
++  const UGeckoInstruction inst = op.inst;
++  EmitStateLoadU32(body, layout.msr_offset);
++  EmitI32Const(body, 1u << 13);
++  body.push_back(0x71); // i32.and: FPU available
++  body.push_back(0x45); // eqz
++  body.push_back(0x45); // boolean
++  EmitStateLoadU32(body, layout.fpscr_offset);
++  EmitI32Const(body, 7); // RN and NI: nearest, no flush-to-zero
++  body.push_back(0x71);
++  body.push_back(0x45);
++  body.push_back(0x71);
++  EmitStateLoadU32(body, static_cast<u32>(offsetof(PowerPC::PowerPCState, Exceptions)));
++  EmitI32Const(body, EXCEPTION_DSI | EXCEPTION_PROGRAM);
++  body.push_back(0x71);
++  body.push_back(0x45);
++  body.push_back(0x71);
++  for (u32 reg : {static_cast<u32>(inst.FA), static_cast<u32>(inst.FB)})
++  {
++    for (u32 lane = 0; lane < 2; ++lane)
++    {
++      EmitStateLoadU32(body, PsOffset(layout, reg, lane) + sizeof(u32));
++      EmitI32Const(body, 0x7ff00000);
++      body.push_back(0x71);
++      EmitI32Const(body, 0x7ff00000);
++      body.push_back(0x47); // i32.ne: finite operand
++      body.push_back(0x71);
++    }
++  }
++  body.push_back(0x04); body.push_back(0x40); // if eligible
++  for (u32 lane = 0; lane < 2; ++lane)
++  {
++    EmitStateLoadF64(body, PsOffset(layout, inst.FA, lane));
++    EmitStateLoadF64(body, PsOffset(layout, inst.FB, lane));
++    body.push_back(inst.SUBOP5 == 20 ? 0xa1 : 0xa0); // f64.sub/add
++    body.push_back(0xb6); // f32.demote_f64: same ForceSingle nearest conversion
++    body.push_back(0xbb); // f64.promote_f32
++    body.push_back(0xbd); // i64.reinterpret_f64
++    EmitLocalSet(body, 4 + lane); // retain both results before any destination write
++  }
++  for (u32 lane = 0; lane < 2; ++lane)
++  {
++    EmitLocalGet(body, 4 + lane);
++    body.push_back(0xbf); // f64.reinterpret_i64
++    body.push_back(0xb6);
++    body.push_back(0xbc); // i32.reinterpret_f32
++    EmitLocalSet(body, lane == 0 ? 7 : 2);
++    EmitLocalGet(body, lane == 0 ? 7 : 2);
++    EmitI32Const(body, Common::FLOAT_EXP);
++    body.push_back(0x71);
++    EmitLocalSet(body, 3);
++    EmitLocalGet(body, 3);
++    body.push_back(0x45); body.push_back(0x45); // exponent nonzero
++    EmitLocalGet(body, 3);
++    EmitI32Const(body, Common::FLOAT_EXP);
++    body.push_back(0x47);
++    body.push_back(0x71); // exponent not all-ones
++    if (lane == 1) body.push_back(0x71); // both results normal
++  }
++  body.push_back(0x04); body.push_back(0x40);
++  for (u32 lane = 0; lane < 2; ++lane)
++  {
++    EmitStateStoreU32Prefix(body);
++    EmitLocalGet(body, 4 + lane);
++    EmitStateStoreI64Suffix(body, PsOffset(layout, inst.FD, lane));
++  }
++  EmitStateStoreU32Prefix(body);
++  EmitStateLoadU32(body, layout.fpscr_offset);
++  EmitI32Const(body, ~static_cast<u32>(FPRF_MASK));
++  body.push_back(0x71);
++  EmitI32Const(body, Common::PPC_FPCLASS_NN << FPRF_SHIFT);
++  EmitI32Const(body, Common::PPC_FPCLASS_PN << FPRF_SHIFT);
++  EmitLocalGet(body, 7);
++  EmitI32Const(body, Common::FLOAT_SIGN);
++  body.push_back(0x71);
++  body.push_back(0x1b); // select sign classification
++  body.push_back(0x72);
++  EmitStateStoreU32Suffix(body, layout.fpscr_offset);
++  body.push_back(0x05);
++  EmitFpCall(body, op, downcount);
++  body.push_back(0x0b);
++  body.push_back(0x05);
++  EmitFpCall(body, op, downcount);
++  body.push_back(0x0b);
++}
++
+ void EmitSinglePrecisionArithmetic(std::vector<u8>& body, const WasmStateLayout& layout,
+                                    const PPCAnalyst::CodeOp& op, u32 downcount)
+ {
+@@ -5923,7 +6012,7 @@
+     }
+     if ((inst.SUBOP5 == 20 || inst.SUBOP5 == 21) && !inst.Rc)
+     {
+-      EmitPairedSingleAddSub(body, layout, op, downcount);
++      EmitGuardedPairedAddSub(body, layout, op, downcount);
+       return true;
+     }
+     if ((inst.SUBOP5 == 25 || inst.SUBOP5 == 28 || inst.SUBOP5 == 29 || inst.SUBOP5 == 30 ||

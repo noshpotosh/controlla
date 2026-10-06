@@ -2435,3 +2435,28 @@ paused, original saved checkpoint untouched, server session 90140 on 8082.
 The preceding timing-core sample was 34.1763 FPS, so this single comparison
 does not establish a meaningful throughput improvement. Keep the candidate
 isolated; shared-stage defaults remain unchanged and full-speed play unfinished.
+
+### Guarded generated-WASM paired add/sub experiment (pending)
+
+Patch `0030-guarded-inline-paired-add-sub.patch` adds a generated-WASM path
+for non-Rc paired add/sub. It requires MSR.FP, RN/NI zero, no pending program
+or DSI exception and four finite operands. Both lane results are computed and
+rounded to single precision before any destination write. Only two normal
+single results use the inline stores and lane-zero FPRF update; all other
+cases call the existing reference helper. Rc instructions retain their existing
+dispatch. This targets helper boundaries rather than changing arithmetic.
+Generated locals 4/5 hold the result bits; lane-zero sign is retained in local
+7 through the classification check. No new WASM imports or exports are added.
+Helper-call/opcode counts will exclude successful inline operations and must
+not be interpreted as total FP instruction counts for this candidate.
+
+Builder guards require isolated output and exact reverse patch verification;
+candidate selection and arithmetic verification check the new patch hash.
+Patch 0021 still reverse-checks after the new emitter is added, preserving
+reference fallback evidence. Runtime-selection tests pass, including missing
+and tampered patch-0030 records. Configure session 67801 passed; native build
+55070 is running for `work/double-dash-inline-paired-core`, with log
+`/tmp/controlla-inline-paired-build.log`. Arithmetic/status and four-port ABI
+checks plus browser race performance remain pending. Existing binaries,
+saved checkpoint and shared-stage defaults are preserved. The paused prior
+candidate remains in browser tab 39, served by session 90140 on 8082.

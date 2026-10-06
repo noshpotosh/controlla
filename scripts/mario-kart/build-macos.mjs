@@ -11,6 +11,13 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
 const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
 const nativeCpu = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp');
 const nativeFifo = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/Fifo.cpp');
+const guardedInlinePaired = readFileSync(nativeCpu, 'utf8').includes('WASM guarded inline paired add/sub candidate');
+if (guardedInlinePaired) {
+  if (output === defaultOutput) throw new Error('Guarded inline paired arithmetic requires isolated output.');
+  const check = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0030-guarded-inline-paired-add-sub.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('Guarded inline paired patch mismatch: ' + check.stderr);
+}
 const nativePowerPc = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/PowerPC.cpp');
 const inlineNormalFprf = readFileSync(nativePowerPc, 'utf8').includes('WASM inline normal FPRF candidate');
 if (inlineNormalFprf) {
@@ -184,6 +191,8 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   pairedSumHelpers,
   pairedStatusRegression,
   sampledFpHelperTiming,
+  guardedInlinePaired,
+  guardedInlinePairedPatchSha256: guardedInlinePaired ? hash(resolve(repo, 'scripts/mario-kart/patches/0030-guarded-inline-paired-add-sub.patch')) : null,
   inlineNormalFprf,
   inlineNormalFprfSourceSha256: inlineNormalFprf ? hash(nativePowerPc) : null,
   inlineNormalFprfPatchSha256: inlineNormalFprf ? hash(resolve(repo, 'scripts/mario-kart/patches/0029-inline-normal-fprf.patch')) : null,

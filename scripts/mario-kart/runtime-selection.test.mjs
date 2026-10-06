@@ -88,6 +88,14 @@ test('candidate mode checks arithmetic verification, patch provenance and exact 
     await writeFile(join(patches, timingPatch), timingPatch);
     manifest.pairedStatusRegression = true;
     const normalPatch = '0029-inline-normal-fprf.patch';
+    const inlinePatch = '0030-guarded-inline-paired-add-sub.patch';
+    await writeFile(join(patches, inlinePatch), inlinePatch);
+    manifest.guardedInlinePaired = true; await save();
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /guarded inline paired patch provenance/);
+    manifest.guardedInlinePairedPatchSha256 = hash(inlinePatch); await save();
+    await writeFile(join(patches, inlinePatch), 'changed');
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /guarded inline paired patch provenance/);
+    await writeFile(join(patches, inlinePatch), inlinePatch);
     await writeFile(join(patches, normalPatch), normalPatch);
     manifest.inlineNormalFprf = true; await save();
     assert.throws(() => selectRuntime(repo, 'candidate', core), /inline normal FPRF patch provenance/);
