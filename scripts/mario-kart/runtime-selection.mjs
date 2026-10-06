@@ -37,6 +37,8 @@ export function selectRuntime(repo, mode = 'prebuilt', candidateOutput = process
       if (manifest[field] !== hash(resolve(repo, 'scripts/mario-kart/patches', name)))
         throw new Error('Candidate patch provenance mismatch: ' + name);
     }
+    if (manifest.scalarPairedStatusRegression && (!manifest.pairedStatusRegression || verification.scalarPairedStatusCases !== 3072))
+      throw new Error('Candidate scalar paired status regression evidence mismatch.');
     if (manifest.pairedStatusRegression && (verification.pairedStatusCases !== 1536 ||
         manifest.pairedStatusRegressionPatchSha256 !==
         hash(resolve(repo, 'scripts/mario-kart/patches/0027-paired-status-regression.patch'))))

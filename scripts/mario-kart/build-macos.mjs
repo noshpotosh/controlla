@@ -43,6 +43,7 @@ if (sampledFpHelperTiming) {
     resolve(repo, 'scripts/mario-kart/patches/0028-sampled-fp-helper-timing.patch')], { encoding: 'utf8' });
   if (check.status !== 0) throw new Error('FP helper timing patch mismatch: ' + check.stderr);
 }
+const scalarPairedStatusRegression = readFileSync(nativeCpu, 'utf8').includes('WASM scalar paired status regression');
 const pairedStatusRegression = readFileSync(nativeCpu, 'utf8').includes('WASM paired status regression');
 if (pairedStatusRegression) {
   if (output === defaultOutput) throw new Error('Paired status regression requires isolated output.');
@@ -200,6 +201,7 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   preciseSampledProfile,
   pairedSumHelpers,
   pairedStatusRegression,
+  scalarPairedStatusRegression,
   sampledFpHelperTiming,
   pairedFpEligibility,
   directScalarPaired,

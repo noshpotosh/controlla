@@ -2659,3 +2659,28 @@ controller ABI and browser race validation remain required; scalar Rc/exception
 coverage must not be inferred from the add/sub-only status matrix. Previous
 binaries and shared-stage defaults are preserved. Paused baseline: tab 42,
 server 23697 on 8082; source saved checkpoint untouched.
+
+
+### Scalar paired status qualification checkpoint
+
+The isolated `work/double-dash-direct-scalar-paired-core` build completed and
+passed 3,744 paired differential comparisons, the existing 1,536 add/sub
+status comparisons, and connection/disconnection checks on all four native
+controller ports. Its cold arithmetic smoke retained 5,254 FP helper calls;
+this is test coverage evidence, not a gameplay speed measurement. No race
+performance claim is established for the scalar candidate.
+
+Patch 0027 now also exercises scalar paired multiply and multiply/add
+suboperations 12–15 through both the direct candidate helper and generated
+WASM, using the interpreter as reference. Its 3,072 combinations include
+destination aliases for all three source registers, Rc, eight FPSCR seeds,
+eight special-value rotations and enabled/disabled FP exception delivery.
+It compares both result lanes, FPSCR, all CR fields, exceptions, next PC and
+halt outcome. The build manifest and candidate selector require matching
+scalar status evidence when this matrix is present. Runtime-selection tests
+pass, including missing and incomplete scalar case counts.
+
+A fresh isolated build at `work/double-dash-scalar-status-core` is linking.
+The expanded native matrix and browser race qualification remain pending.
+The ordinary room candidate command remains on the earlier qualified
+paired-differential core; this experiment has not been promoted.

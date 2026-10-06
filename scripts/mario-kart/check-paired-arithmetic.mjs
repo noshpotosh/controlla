@@ -68,6 +68,7 @@ try {
   }
   console.log('Generated WASM scalar alias results, FPRF updates and next-PC passed. No game was booted.');
   if (manifest.pairedDifferentialRegression) console.log('All 3744 paired differential cases passed.');
+  if (manifest.scalarPairedStatusRegression) console.log('All 3072 scalar paired direct-helper and generated Rc/status/exception comparisons passed.');
   if (manifest.pairedStatusRegression) console.log('All 1536 paired Rc/status/exception comparisons passed.');
   manifest.pairedArithmeticVerification = {
     checkedAt: new Date().toISOString(),
@@ -77,6 +78,7 @@ try {
     reference: 'native-interpreter',
     ...(firstSmokeFpHelperCalls !== undefined ? { firstSmokeFpHelperCalls } : {}),
     ...(manifest.pairedStatusRegression ? { pairedStatusCases: 1536 } : {}),
+    ...(manifest.scalarPairedStatusRegression ? { scalarPairedStatusCases: 3072 } : {}),
     ...(manifest.finitePairedAddSub ? { pairedAddSubCases: 576, finitePairedAddSubPatchSha256: manifest.finitePairedAddSubPatchSha256 } : {}),
   };
   writeFileSync(resolve(output, 'controlla-core-build.json'), JSON.stringify(manifest, null, 2) + '\n');

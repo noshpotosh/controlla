@@ -117,6 +117,12 @@ test('candidate mode checks arithmetic verification, patch provenance and exact 
     assert.throws(() => selectRuntime(repo, 'candidate', core), /paired status regression evidence/);
     manifest.pairedArithmeticVerification.pairedStatusCases = 1536; await save();
     assert.equal(selectRuntime(repo, 'candidate', core).coreDirectory, core);
+    manifest.scalarPairedStatusRegression = true; await save();
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /scalar paired status regression evidence/);
+    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 3071; await save();
+    assert.throws(() => selectRuntime(repo, 'candidate', core), /scalar paired status regression evidence/);
+    manifest.pairedArithmeticVerification.scalarPairedStatusCases = 3072; await save();
+    assert.equal(selectRuntime(repo, 'candidate', core).coreDirectory, core);
     await writeFile(join(patches, statusPatch), 'changed');
     assert.throws(() => selectRuntime(repo, 'candidate', core), /paired status regression evidence/);
     await writeFile(join(patches, statusPatch), statusPatch);
