@@ -2913,3 +2913,36 @@ all prior patch checks intact. Expanded native arithmetic, controller ABI
 and race qualification remain pending. Previous binaries are preserved;
 the current patch-0027 hash no longer matches their historical manifests.
 Default room runtime remains unchanged. No speed benefit is claimed.
+
+
+### Guarded multiply/add native and race qualification
+
+Build 63974 completed. WASM SHA-256:
+`8e63a4312a30a9016e04b87265224ba90e88f8e959db3101aba0e1c190f98afb`;
+loader SHA-256:
+`515bc88381490eaa9eeb52265d57787ace9c3a7703fd15b662d99b4e4cce793e`.
+Manifest confirms guarded multiply/add enabled and broad direct scalar
+dispatch disabled. Native checks pass 6,144 scalar direct/generated status
+comparisons (including known fused tie operands), 3,744 differential and
+1,536 add/sub status comparisons, profiling off/on. Four-port ABI checks
+pass. Cold helper count is 17,160; the larger scalar matrix makes it
+incomparable to earlier 11,384/11,398 smoke counts for speed claims.
+
+Server 1609 on localhost:8082 served the verified module. Tab 46 booted
+GM4E01 and restored the unchanged 18:58:43 Luigi Circuit checkpoint.
+Generation 1 remained consistent, with profiling/caches off and zero
+timing samples. The valid 43.980455-second interval presented 1,019
+frames: 23.169383 FPS and 38.655733% native speed. No browser errors were
+observed. This is below the recent 26.6/26.9 FPS control/multiply-only
+observations; one interval cannot isolate host load from guard overhead or
+fallback frequency, but it supplies no case for promotion.
+
+Ignored evidence: `work/double-dash-guarded-scalar-madd-race-{a,b}.json`
+and `work/double-dash-guarded-scalar-madd-race.png`. Tab 46 closed to release
+workers. Server/checkpoint remain available. Remaining work includes guard
+coverage/fallback attribution (the current B-normal guard excludes zero B),
+controlled repeats and the full-speed/visual/audio/physical-motion goal.
+Source comment calling rounded C 25 significant bits is imprecise: the
+mask retains 25 fraction bits plus the hidden bit; the product bound is
+at most 50 significant bits, still exactly representable in f64. The
+documented bound is 50; arithmetic uses the exact reference mask.
