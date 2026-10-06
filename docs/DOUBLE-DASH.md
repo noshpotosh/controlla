@@ -3207,3 +3207,19 @@ this successful probe session. Evidence work/double-dash-native-pause-probe-
 {a,b}.json; tab52 preserved for follow-up, server60432 remains live.
 Next trace the UI-to-native running-state path before claiming the paused
 GPU candidate fixes game pause. Goal remains incomplete.
+
+### Native start/pause worker dispatch repair
+
+Source tracing found adapter.start()/pause() send start/pause messages but
+pinned upstream-discio-worker.js has no handlers for either; it throws
+Unknown upstream worker message. The local worker injection now handles
+both through the existing validationSetCorePaused transition, including
+native SetCorePaused, timing suspension/reset and state observation. It
+requires Paused/Running confirmation after accepted boot and throws on a
+failed transition rather than reporting success. Before accepted boot it
+returns the current frame without attempting a native state change.
+Ten worker/renderer tests passed, including native dispatch direction,
+failed-state rejection and pre-boot handling. No native rebuild required.
+Actual browser frozen-counter and repeated resume qualification pending.
+Old tab52 closed to release its advancing workers. Server60432 still has
+previous injection loaded; restart that owned server before browser test.

@@ -35,3 +35,24 @@ test('native progress samples live counters and retries a torn tick read', async
   });
   assert.equal(torn.available, false);
 });
+
+test('transport start and pause reach native transition and reject failed state changes', async () => {
+  const source = 'return async function dispatch(type, api) { switch(type) {\n    case "rendererDiagnostics": return {};\n} }';
+  const calls = [];
+  const coreBoot = { accepted: true };
+  let observed = 'Paused';
+  const dispatch = new Function('coreBoot', 'framePayload', 'handleMessage', installProfileResetRequest(source))(
+    coreBoot, () => ({ booting: true }), async (type, payload) => {
+      calls.push({ type, payload }); return { coreStateName: observed };
+    });
+  await dispatch('pause', {});
+  observed = 'Running';
+  await dispatch('start', {});
+  assert.deepEqual(calls, [
+    { type: 'validationSetCorePaused', payload: { paused: true } },
+    { type: 'validationSetCorePaused', payload: { paused: false } },
+  ]);
+  await assert.rejects(dispatch('pause', {}), /Native pause failed/);
+  coreBoot.accepted = false;
+  assert.deepEqual(await dispatch('start', {}), { booting: true });
+});
