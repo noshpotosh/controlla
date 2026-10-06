@@ -1,0 +1,55 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -1608,6 +1608,33 @@
+          IsConditionalBranchTo(inst, branch_address, target_address);
+ }
+ 
++// WASM sampled FP helper timing: opt-in wall time, no arithmetic changes.
++std::atomic<u64> s_fp_timing_samples{0};
++std::atomic<u64> s_fp_timing_total_ns{0};
++std::atomic<u64> s_fp_timing_max_ns{0};
++struct SampledFpHelperTiming
++{
++  bool sampled;
++  std::chrono::steady_clock::time_point start{};
++  SampledFpHelperTiming() : sampled(s_ppc_block_profile_enabled &&
++                                    (s_wasm_fp_call_count & 1023u) == 0)
++  {
++    if (sampled) start = std::chrono::steady_clock::now();
++  }
++  ~SampledFpHelperTiming()
++  {
++    if (!sampled) return;
++    const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
++        std::chrono::steady_clock::now() - start).count();
++    const u64 ns = elapsed > 0 ? static_cast<u64>(elapsed) : 0;
++    s_fp_timing_samples.fetch_add(1, std::memory_order_relaxed);
++    s_fp_timing_total_ns.fetch_add(ns, std::memory_order_relaxed);
++    u64 max = s_fp_timing_max_ns.load(std::memory_order_relaxed);
++    while (max < ns && !s_fp_timing_max_ns.compare_exchange_weak(
++        max, ns, std::memory_order_relaxed)) {}
++  }
++};
++
+ u32 ElapsedMicros(std::chrono::steady_clock::time_point start,
+                   std::chrono::steady_clock::time_point end)
+ {
+@@ -2145,6 +2172,7 @@
+                                                  u32 downcount, u32 unused)
+ {
+   ++s_wasm_fp_call_count;
++  const SampledFpHelperTiming fp_timing;
+   (void)unused;
+   auto& system = Core::System::GetInstance();
+   auto& interpreter = system.GetInterpreter();
+@@ -11693,6 +11721,10 @@
+   emit_throttle_profile(DolphinWeb::WasmTimingProfile::ThrottleSite::ViSiPoll);
+   out << "reject:" << s_wasm_direct_tier_reject_count << " ";
+   out << s_wasm_helper_call_count << " calls, " << s_wasm_helper_halt_count << " halt";
++  out << " | fptiming:v=1,rate=1024,samples="
++      << s_fp_timing_samples.load(std::memory_order_relaxed)
++      << ",totalns=" << s_fp_timing_total_ns.load(std::memory_order_relaxed)
++      << ",maxns=" << s_fp_timing_max_ns.load(std::memory_order_relaxed);
+   out << " | imports system:" << s_wasm_system_call_count << " fp:" << s_wasm_fp_call_count
+       << " lfs:" << s_wasm_lfs_call_count << " stfs:" << s_wasm_stfs_call_count
+       << " lfd:" << s_wasm_lfd_call_count << " fmr:" << s_wasm_fmr_call_count

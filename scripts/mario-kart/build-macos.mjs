@@ -11,6 +11,13 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
 const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
 const nativeCpu = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp');
 const nativeFifo = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/Fifo.cpp');
+const sampledFpHelperTiming = readFileSync(nativeCpu, 'utf8').includes('WASM sampled FP helper timing');
+if (sampledFpHelperTiming) {
+  if (output === defaultOutput) throw new Error('FP helper timing requires isolated output.');
+  const check = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0028-sampled-fp-helper-timing.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('FP helper timing patch mismatch: ' + check.stderr);
+}
 const pairedStatusRegression = readFileSync(nativeCpu, 'utf8').includes('WASM paired status regression');
 if (pairedStatusRegression) {
   if (output === defaultOutput) throw new Error('Paired status regression requires isolated output.');
@@ -168,6 +175,8 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   preciseSampledProfile,
   pairedSumHelpers,
   pairedStatusRegression,
+  sampledFpHelperTiming,
+  sampledFpHelperTimingPatchSha256: sampledFpHelperTiming ? hash(resolve(repo, 'scripts/mario-kart/patches/0028-sampled-fp-helper-timing.patch')) : null,
   pairedStatusRegressionPatchSha256: pairedStatusRegression ? hash(resolve(repo, 'scripts/mario-kart/patches/0027-paired-status-regression.patch')) : null,
   finitePairedAddSub,
   finitePairedAddSubPatchSha256: finitePairedAddSub ? hash(resolve(repo, 'scripts/mario-kart/patches/0026-finite-paired-add-sub.patch')) : null,

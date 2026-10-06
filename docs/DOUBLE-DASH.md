@@ -2265,3 +2265,24 @@ not prove helper arithmetic is the bottleneck; native helper-specific sampled
 timing is the next evidence needed before rewriting reference arithmetic.
 The existing sampled block profile labels whole blocks by their first opcode
 and cannot assign a helper cost from those labels.
+
+### Native FP helper sampled timing candidate
+
+Patch 0028 adds an RAII wall-time sampler around the native FP helper. Only
+when existing CPU profiling is enabled, every 1024th aggregate FP call reads
+the monotonic clock. Every helper return path is included. Atomic cumulative
+sample count, total nanoseconds and maximum duration are reported as
+`fptiming:v=1,rate=1024,samples=...,totalns=...,maxns=...`. Arithmetic and FPU /
+exception behavior are unchanged. Counts are cumulative for the core lifetime;
+profile reset does not reset these counters, so scene cost requires deltas.
+Periodic sampling may alias instruction patterns, clock overhead is included,
+and wall time can include scheduling; this is not an exact CPU cost oracle.
+
+Build guards require isolated output and exact patch evidence; candidate
+selection checks the timing patch hash. Existing patch 0026 reverse-check
+still passes; two runtime-selection tests and build script syntax passed.
+Configuration completed for `work/double-dash-fp-timing-core`. Native build
+session 59962 is pending, log `/tmp/controlla-fp-timing-build.log`. The previous
+status core and paused baseline browser remain preserved. Build success,
+arithmetic/status assertions, controller ABI and browser timing are unverified
+for this candidate. Do not promote it until those checks complete.
