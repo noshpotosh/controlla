@@ -3157,3 +3157,25 @@ after that wakeup. Candidate harness artifacts remain in
 This establishes host loop behavior only; it does not prove WASM browser
 CPU savings or reliable game resume. Build 26806 was polled directly and
 remains live linking, not restarted. Browser qualification is pending.
+
+### Paused FIFO candidate native and first browser resume checks
+
+Build 26806 completed. WASM SHA-256
+86164c0591a79436f04db1e247af9f6e911d35bd52ea04249d36c96f425d779b;
+manifest pausedFifoSleep=true, patch hash
+976e8e313bc1a7b162940866d9b326774ec8be5767198634cf94044e5e0f2895.
+Native qualification passed 3,744 paired differential, 12,288 scalar status
+and 1,536 paired status comparisons with profiling off/on; four-port ABI
+passed. Cold smoke helper count 29,066 is not gameplay coverage.
+
+Browser tab 50 booted GM4E01 and restored the original race checkpoint,
+generation 1. Pause displayed Run; exposed diagnostics remained at frame
+1121/ticks107809599688 across the paused interval. Their capturedAtMs also
+remained unchanged, so this is stale exposed telemetry, not independent
+proof that native workers stopped or CPU use dropped. Resume displayed
+Pause and fresh telemetry advanced to frame1817/ticks113446748779 with
+generation1. One resume succeeded without browser errors; repeated cycles,
+CPU comparison and running performance remain pending. Evidence preserved
+under work/double-dash-paused-fifo-{pause-a,pause-b,resume}.json and
+work/double-dash-paused-fifo-resume.png. Tab50 closed; owned server11924
+serves candidate8082. Ordinary room default is unchanged.
