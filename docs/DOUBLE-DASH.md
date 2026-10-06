@@ -2406,3 +2406,32 @@ build session 25794 compiled PowerPC.cpp and is linking the isolated
 `/tmp/controlla-normal-fprf-build.log`. Native 3744 arithmetic and 1536
 status/exception comparisons, four-port ABI and browser validation remain
 required. Existing binaries and shared-stage defaults are preserved.
+
+### Inline FPRF candidate qualification
+
+Build 25794 completed successfully. Exact WASM:
+`0b6b80d30684e4a5ce4cf7487cff1dafcd8c7c0dd71d3b02a43b625c18911065`.
+Native checks passed 3744 arithmetic and 1536 Rc/status/exception comparisons
+with profiling disabled and enabled; all four controller ports passed, and
+invalid ports were rejected. Logs: `/tmp/controlla-normal-fprf-{arithmetic,abi}.log`.
+
+Because native reference arithmetic also uses `UpdateFPRFSingle`, those tests
+alone cannot independently qualify its changed classification implementation.
+`node scripts/mario-kart/check-fprf-classifier.mjs` extracts the actual patched
+method into a host C++ wrapper and compares it against the original compiled
+`Common::ClassifyFloat`. It passed 1052672 patterns: every exponent/sign class
+with eight mantissa boundary patterns, plus 1048576 deterministic additional
+patterns. The wrapper uses the same five-bit FPRF field. This is a host
+classification check, not exhaustive float coverage or a WASM substitute.
+PowerPC source SHA256: `29d3e3a33b35afcca610b0f1f3e574a159c5dcfe845c6ccc46397bb67f3e1fac`;
+reference source: `e7bcd6a48701a361a84a9c0dfbf2ddb0c5c5219a1370838c05f99a5e8dff9dbb`.
+
+The candidate booted and restored the saved `4630560c` Luigi Circuit race.
+Checkpoint generation remained 1. Profiling and GPU caches were disabled.
+In 43.965290 seconds it presented 1507 frames: 34.2770 FPS and 57.2159%
+native speed. FP timing counters stayed zero; no browser errors were reported.
+Evidence: `work/double-dash-normal-fprf-race-{a,b}.json` and PNG. The race is
+paused, original saved checkpoint untouched, server session 90140 on 8082.
+The preceding timing-core sample was 34.1763 FPS, so this single comparison
+does not establish a meaningful throughput improvement. Keep the candidate
+isolated; shared-stage defaults remain unchanged and full-speed play unfinished.
