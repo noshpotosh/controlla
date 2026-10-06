@@ -5,6 +5,12 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
   report.id = 'controlla-renderer-diagnostics';
   report.hidden = true;
   document.body.append(report);
+  const exitFullscreen = document.createElement('button');
+  exitFullscreen.type = 'button';
+  exitFullscreen.textContent = 'Exit fullscreen';
+  exitFullscreen.className = 'controlla-diagnostic-exit';
+  exitFullscreen.addEventListener('click', () => document.exitFullscreen());
+  document.querySelector('.crt-set').append(exitFullscreen);
   let probe = null;
   let pending = false;
   let frameStep = null;

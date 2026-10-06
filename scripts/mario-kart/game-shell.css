@@ -20,3 +20,6 @@ html,body{margin:0;min-height:100%;background:#111416;color:#f4f5ed;font-family:
 .topbar-actions #runButton .glyph,.topbar-actions #muteButton .glyph{display:none}.topbar-actions .tip::before{display:none!important}
 .crt-set:fullscreen{padding:0;border:0;background:#000}.crt-set:fullscreen .screen-viewport{max-height:100dvh;height:100dvh;width:100%;aspect-ratio:auto}.crt-set:fullscreen #screen{max-height:100dvh;height:100%;max-width:100%;width:auto}
 @media(max-width:700px){.topbar{padding:16px;gap:14px}.party-head{padding:20px 16px 16px;align-items:start;flex-direction:column;gap:4px}.play-area{padding:0 16px 16px}.party-note{padding:0 16px 20px}.screen-viewport,#screen{max-height:65dvh}.topbar-actions{gap:6px}.topbar-actions button,.topbar-actions a{padding:9px 11px}}
+
+.crt-set:not(:fullscreen) .controlla-diagnostic-exit{display:none}
+.crt-set:fullscreen .controlla-diagnostic-exit{position:absolute;top:12px;right:12px;z-index:10;padding:8px 12px;background:#181d20;color:white;border:1px solid #555;border-radius:6px}

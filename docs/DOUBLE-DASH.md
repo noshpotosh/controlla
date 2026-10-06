@@ -3533,3 +3533,28 @@ frame release with a stale heartbeat and pagehide neutralization. Worker
 progress between reports still permits overshoot; exact-duration native
 input scheduling and browser retest remain unfinished. Existing tab61 and
 server process use the previous injected boot until reload/restart.
+
+### Published-frame release retest and full-HUD brake trial
+
+Owned server99074 reloads4a5412b injection with qualifiedff4928b native
+core. A diagnostic-only Exit fullscreen button was added inside the
+fullscreen game stage; browser click returned successfully to input
+controls. It is absent without rendererdiagnostics1 and hidden outside
+fullscreen. Fourteen renderer/worker tests passed.
+
+Tab61 running acceleration trial released at hostframe1658 (target1650):
+published-frame observation does not eliminate running overshoot. Paused
+full-HUD capture shows14mph/time00:36:393. Native progressframe1785.
+Brake applied while paused, then90 native single-frame steps completed.
+Final nativeframe1875, ticks113890435108, HUD2mph/time00:37:887. Brake
+pollingbuttons200 observed; probe releasehostframe1871 equals target1871.
+Counter/poll/release assertions passed. This verifies speed reduction
+during this brake trial, not hardware-equivalent braking distance or
+exact90-frame input duration: host/native counters differ and input was
+released before all90 native steps ended. The14mph screenshot was after
+acceleration had already released, so it records coasting speed.
+
+Evidence work/double-dash-release-retest-{accelerate,brake}.{json,png}.
+Tab61 retained paused/fullscreen. Exact native input scheduling, complete
+races, original-reference braking comparisons and performance remain
+unqualified. Full goal stays incomplete.
