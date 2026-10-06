@@ -3275,3 +3275,17 @@ and broad scalar dispatch off, matching the previous control except for
 the direct block candidate. Native arithmetic/ABI and matched race checks
 pending. Qualified pause binary86164c0 remains on owned server44476:8082;
 no owned browser tab open and ordinary room default remains unchanged.
+
+### Direct block candidate native qualification
+
+Build61632 completed after direct live-handle waits. WASM SHA-256
+ e4da9e2fdcda9f579bb91d4952fc2c6a80dbd0b19b2535b404daf6aaea5af650
+(without leading whitespace); directWasmBlockDispatch=true, patch hash
+2bbf424872039c064edc4f3d084d4b3b6f273dd0a184338b8d8a8270a0c869e4.
+Arithmetic qualification passed3,744 paired differential,12,288 scalar
+status/exception and1,536 paired status/exception cases with profiling
+both disabled/enabled. Four-controller ABI check passed. Cold smoke
+helper count29,066 matches control but is not gameplay performance.
+The qualified isolated binary is ready for checkpoint browser comparison;
+no browser race or speed benefit has been established. Server44476 still
+serves the previous pause candidate on8082; room default unchanged.
