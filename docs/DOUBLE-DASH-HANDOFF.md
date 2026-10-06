@@ -92,6 +92,14 @@ not contain the playable runtime; preserve this machine's qualified builds.
    of one measured wall interval, while GPU drain measured about 23.4%; these
    are not exclusive CPU attribution. Preserve exact arithmetic and compare
    correctness against the native reference before promoting optimizations.
+   The upstream `src/wgpu-visual-cadence.js` defaults its per-present downsample
+   and readback on for WebGPU, independent of `metrics=1`; `wgpuvisual=0` is an
+   explicit attribution control. Existing 24.4/18.7 FPS evidence included this
+   sampler. Measure a matched on/off pair before attributing its cost. Tab 62
+   is retained with `wgpuvisual=0` and the original checkpointsource, but its
+   Play request remains at “Getting the race ready…” with demo-mode logs and
+   no renderer report or console errors. Server PID 66791 was confirmed live.
+   Reinspect that existing boot; no native measurement or speedup is established.
 2. **Complete representative original gameplay.** Verify an entire race and
    results screen, lap transitions, course loading, collisions, item pickup/use,
    drift/mini-turbo, rider swaps, pause/resume, menu navigation, rematches and
