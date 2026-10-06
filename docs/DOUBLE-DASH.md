@@ -3237,3 +3237,22 @@ in the booted session, not repeated race cycles, CPU savings or full speed.
 Evidence work/double-dash-repaired-{pause-a,pause-b,resume}.json and
 work/double-dash-repaired-pause.png. Tab53 paused again then closed to
 release workers. Server44476 remains live; room default unchanged.
+
+### Running performance attribution from preserved control interval
+
+Read actual current-madd-control race a/b counters over44.062115s.
+Module compile delta155655us and instantiate33301us together account for
+0.428840% wall time, too little to explain the native speed gap in this
+interval. WebGPU drain delta10308.395ms is23.395143% wall; producer ring
+and upload waits both report zero. These overlapping counters must not be
+summed as exclusive CPU attribution. This narrows the next test toward
+native execution rather than compile caching or measured producer waits.
+
+Read-only host process inspection also found substantial unrelated CPU
+activity (Discord renderer45.5%, WindowServer41.6%, Chrome helpers40.1%
+and33.5%) with no owned game tab open. Snapshot CPU figures do not describe
+load during earlier intervals, so historical candidate speed differences
+cannot be attributed solely to code. No unrelated process was altered.
+Future matched race comparisons should record concurrent host load and
+fresh native progress alongside profiling-off throughput. Full speed and
+fidelity remain unverified; latest pause repair is retained.
