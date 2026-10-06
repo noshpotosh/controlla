@@ -3026,3 +3026,31 @@ build 67780 is active. Native arithmetic/ABI and race qualification remain
 pending. The earlier signed-zero binary and room default are preserved.
 Server 85939 still serves the earlier verified binary on 8082; no test
 browser tab remains open. No speed improvement is claimed.
+
+
+### Finite-addend native and race qualification
+
+Build 67780 completed. WASM SHA-256:
+`9834ed2cfbaa06b38bfb8b48b2e89cbceafc87f26d572b1dc5babc906297b7f0`;
+loader SHA-256:
+`5f7faaba316c8cc904e7b5a3f21b3ca40e7e2511c16ff8dc8e8bfe6fe9d3106c`.
+Native checks pass 12,288 scalar direct/generated status comparisons,
+3,744 differential and 1,536 add/sub status comparisons, profiling off/on,
+plus four-port ABI checks. Cold helper count 28,452 reflects the expanded
+matrix and is not comparable as a speed metric to smaller smoke runs.
+
+Server 51574 served the verified module on localhost:8082. Tab 48 booted
+GM4E01 and restored the original 18:58:43 checkpoint. Generation 1 was
+consistent, profiling/caches off, with zero timing samples. The valid
+46.082485-second interval presented 717 frames: 15.559057 FPS and
+25.924450% native speed. No browser errors were observed. This is below
+the earlier 23.2 FPS guarded-madd intervals and supplies no performance
+case for promotion. A single interval does not isolate host load or
+compiled-code effects. The next comparison should build a current-source
+control with generated madd disabled and the same 12,288-case matrix.
+
+Ignored evidence: `work/double-dash-finite-addend-madd-race-{a,b}.json` and
+`work/double-dash-finite-addend-madd-race.png`. Tab 48 closed to release
+workers. Server/checkpoint remain available; default room runtime stays
+on the earlier qualified candidate. Full-speed and fidelity goal remains
+incomplete.
