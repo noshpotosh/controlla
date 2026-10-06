@@ -3598,3 +3598,25 @@ input trial and visible swap, not all controls or autonomous running
 scheduling. Evidence work/double-dash-native-swap-{thirty,neutral}.{json,png}.
 Tab61 retained paused/fullscreen; server99074 remains live. Full races,
 audio, physical motion and adequate real-time performance remain pending.
+
+### Native ninety-frame steering and B-button trials
+
+Continuing tab61 from native922: left+gas trial922→1012 and right+gas
+1012→1102 each released exactly at native target. Native polls show
+buttons100 with stick64/192 respectively. Full-HUD screenshots show
+heading changes, then paved track at11mph/time00:25:099 (left endpoint
+5mph/time00:23:591). These validate directional analog input and visible
+movement in this scene, not physical phone calibration or full handling.
+
+B-button trial1102→1192 also released at target; polls show input2/
+buttons200 with centered stick. Endpoint time00:26:598 shows15mph,
+not0mph. Long-held B may continue into reverse after stopping, but that
+explanation remains unverified; speed alone does not encode direction.
+Shorter intermediate captures are needed before qualifying braking or
+reverse behavior. No assertion of a renderer/physics defect is warranted
+from this endpoint alone. All three duration/release/native endpoint
+assertions passed; bounded polling history retains only last64 samples.
+
+Evidence work/double-dash-native-{steer-left,steer-right,brake-ninety}.
+{json,png}. Tab61 remains paused/fullscreen at1192. Real-time performance,
+full races, items, audio and physical motion remain incomplete.
