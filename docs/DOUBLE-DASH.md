@@ -3192,3 +3192,18 @@ request without pauseprobe=1. This does not alter emulation or core builds.
 Nine worker/renderer tests passed, including torn-read retry, missing ABI,
 existing diagnostic opt-in behavior and input release. Actual browser
 paused-counter qualification and CPU process comparison remain pending.
+
+### Fresh native pause probe contradicts displayed pause
+
+The server11924 retained the old injected worker module; pauseprobe request
+was rejected. That owned server was restarted as60432 with current code.
+Tab52 booted GM4E01 and the new native probe returned fresh counters.
+After Pause displayed Run, samples a/b advanced worker clock by17.99949s,
+native frame937 to1217 (+280), ticks7645534071 to9920748335
+(+2275214264). Thus displayed pause does not stop native emulation in this
+booted session. The native freeze assertion failed, providing direct
+counterevidence to pause completion. No race checkpoint was restored in
+this successful probe session. Evidence work/double-dash-native-pause-probe-
+{a,b}.json; tab52 preserved for follow-up, server60432 remains live.
+Next trace the UI-to-native running-state path before claiming the paused
+GPU candidate fixes game pause. Goal remains incomplete.
