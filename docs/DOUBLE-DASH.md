@@ -2714,3 +2714,23 @@ Ignored local evidence: `work/double-dash-direct-scalar-race-a.json`,
 `work/double-dash-direct-scalar-race.png`. Tab 43 remains paused and server
 94579 serves this verified binary on 8082. Full-speed racing, original
 visual/audio fidelity and physical phone motion qualification remain open.
+
+
+### Scalar candidate repeat interval
+
+A second checkpoint restore completed, but the immediate telemetry capture
+retained the previous generation. The race analyzer rejected that interval
+(`loadedCheckpointGeneration` mismatch); those reports are not performance
+evidence. After allowing telemetry to refresh, a new interval on generation
+2 measured 1,134 presented frames in 45.696895 seconds: 24.815690 FPS and
+41.369640% native speed. Profiling and all renderer cache flags remained
+off, with zero FP timing samples. Evidence is preserved locally as
+`work/double-dash-direct-scalar-repeat2-{a,b}.json` and
+`work/double-dash-direct-scalar-repeat2.png`. The same browser remains paused.
+
+Both valid scalar intervals are around 24 FPS. This does not isolate scalar
+dispatch from wrapper/diagnostic code or host load, and no optimization
+benefit is established. A same-source control with scalar dispatch disabled
+is the next performance experiment; preserve all other diagnostics, test
+coverage and runtime options to narrow the cause. Full-speed goal remains
+incomplete and no room-default promotion was made.
