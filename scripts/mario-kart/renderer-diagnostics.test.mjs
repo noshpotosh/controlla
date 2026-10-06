@@ -137,3 +137,37 @@ test('combined drift probes preserve gas pressure and release every held control
   assert.equal(inputs.at(-1).analogB, 0);
   frame = 430; env.intervals[1](); assert.equal(inputs.at(-1), null);
 });
+
+test('published frames release probes before the heartbeat sees the target', async t => {
+  const env = environment(t, '?rendererdiagnostics=1&probeinputs=1');
+  const inputs = [];
+  const diagnostics = installRendererDiagnostics({
+    getAdapter: () => ({ loaded: true, async request() { return {}; } }),
+    // Intentionally stale: the callback must use its supplied fresh frame.
+    getFrame: () => ({ frame: 100 }),
+    setProbeInput: state => inputs.push(state),
+  });
+  env.elements.find(element => element.textContent === 'Brake (90 frames)').onclick();
+  diagnostics.observeFrame({ frame: 189 });
+  assert.equal(inputs.at(-1).mask, 2);
+  diagnostics.observeFrame({ frame: 190 });
+  assert.equal(inputs.at(-1), null);
+  const count = inputs.length;
+  env.intervals[1]();
+  assert.equal(inputs.length, count); // A stale heartbeat cannot reassert brake.
+  await env.intervals[0]();
+  assert.equal(JSON.parse(env.elements[0].textContent).probe.releasedAtFrame, 190);
+});
+
+test('page departure neutralizes an unfinished held probe', t => {
+  const env = environment(t, '?rendererdiagnostics=1&probeinputs=1');
+  const inputs = [];
+  const diagnostics = installRendererDiagnostics({ getAdapter: () => ({ loaded: true }),
+    getFrame: () => ({ frame: 100 }), setProbeInput: state => inputs.push(state) });
+  env.elements.find(element => element.textContent === 'Accelerate (300 frames)').onclick();
+  env.cleanups.forEach(callback => callback());
+  assert.equal(inputs.at(-1), null);
+  const count = inputs.length;
+  diagnostics.observeFrame({ frame: 101 });
+  assert.equal(inputs.length, count);
+});

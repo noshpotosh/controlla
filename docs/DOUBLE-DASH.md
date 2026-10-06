@@ -3518,3 +3518,18 @@ time00:55:701 and0mph after the previous brake trial. This proves the final
 stopped state; missing pre-brake speed still prevents attributing stopping
 to braking rather than coasting. Use fullscreen captures for subsequent
 speed comparisons. Tab61 remains paused/fullscreen; no code/default change.
+
+### Diagnostic probe release on published frames
+
+Input probes now observe every host.onFrame report and release on the
+first observed frame reaching the target, in addition to the40ms heartbeat.
+The callback uses supplied fresh counters rather than stale lastFrameInfo;
+a stale heartbeat cannot reassert a released control. Page departure also
+neutralizes an unfinished probe. Instrumentation remains opt-in behind
+rendererdiagnostics1/probeinputs1; normal game controls are unaffected.
+
+Fourteen renderer/worker tests and serve syntax passed, including fresh
+frame release with a stale heartbeat and pagehide neutralization. Worker
+progress between reports still permits overshoot; exact-duration native
+input scheduling and browser retest remain unfinished. Existing tab61 and
+server process use the previous injected boot until reload/restart.

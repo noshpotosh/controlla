@@ -111,9 +111,13 @@ localButton.addEventListener('click', async () => {
 finishGameShell();
 `;
 const boot = `
-installRendererDiagnostics({ getAdapter: () => host.adapter, getFrame: () => lastFrameInfo,
+const controllaDiagnostics = installRendererDiagnostics({ getAdapter: () => host.adapter, getFrame: () => lastFrameInfo,
   refreshPresentation: () => { host.renderDolphin(); host.publishFrame(); },
   setProbeInput: state => { controllaPhone.state = state; controllaPhone.at = performance.now(); syncInput('Input probe'); } });
+if (controllaDiagnostics?.observeFrame) {
+  const originalOnFrame = host.onFrame;
+  host.onFrame = info => { originalOnFrame(info); controllaDiagnostics.observeFrame(info); };
+}
 if (new URLSearchParams(location.search).get('embed') === '1') {
   installGameShell();
   void installEmbeddedGame({ getAdapter: () => host.adapter, mount: mountFile,

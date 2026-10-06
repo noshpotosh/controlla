@@ -81,9 +81,10 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
     };
     controls.append(button);
   }
-  const inputTimer = setInterval(() => {
+  // Observe each published frame as well as the heartbeat. Native workers can
+  // still advance between reports, so this reduces latency, not an exact bound.
+  const observeFrame = (frame = getFrame()) => {
     if (!held) return;
-    const frame = getFrame();
     const pad = frame?.ppcWasmHelperStats?.match(/pad polls:.*? fastsw:[01]/)?.[0];
     if (pad && probe.observations.at(-1)?.pad !== pad) {
       probe.observations.push({ frame: frame.frame, pad });
@@ -93,6 +94,8 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
       probe.releasedAtFrame = frame?.frame ?? 0;
       held = null; setProbeInput(null);
     } else setProbeInput(held);
-  }, 40);
-  window.addEventListener('pagehide', () => clearInterval(inputTimer), { once: true });
+  };
+  const inputTimer = setInterval(() => observeFrame(), 40);
+  window.addEventListener('pagehide', () => { clearInterval(inputTimer); held = null; setProbeInput(null); }, { once: true });
+  return { observeFrame };
 }
