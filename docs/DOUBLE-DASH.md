@@ -3309,3 +3309,21 @@ work/double-dash-direct-block-host-load.json. Tab54 paused then closed;
 owned server52398 serves direct-block candidate8082. Native binaries and
 reference checkpoint remain recoverable; ordinary room default unchanged.
 Full-speed/fidelity goal remains incomplete.
+
+### Matched browser-adapter block-dispatch control
+
+Preserved86164c0 pause binary was served with the same current browser
+adapter, pauseprobe, profiling-off/cache-off options and original race
+checkpoint used for direct dispatch. Over56.145850s generation1,
+1,049 presented frames yielded18.683482FPS/31.206116% native speed;
+no browser errors. Direct-dispatch interval was24.401797FPS/40.702950%.
+This roughly30.6% difference motivates repetition but is not causal proof:
+scene progression and host scheduling still differ. Concurrent snapshots
+showed substantial unrelated Chrome/Discord/WindowServer and simulator
+activity in both runs. No unrelated process was changed. Do not promote
+from one pair or claim full speed; retain both binaries for repetition.
+
+Evidence work/double-dash-matched-block-control-race-{a,b}.json/.png and
+work/double-dash-matched-block-control-host-load.json. Tab55 paused then
+closed. Server9743 now serves the control on8082. Native checkout still
+contains patch0035 for recovery; default room runtime remains unchanged.
