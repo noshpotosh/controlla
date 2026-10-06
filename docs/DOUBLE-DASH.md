@@ -3223,3 +3223,17 @@ failed-state rejection and pre-boot handling. No native rebuild required.
 Actual browser frozen-counter and repeated resume qualification pending.
 Old tab52 closed to release its advancing workers. Server60432 still has
 previous injection loaded; restart that owned server before browser test.
+
+### Repaired pause browser native-counter qualification
+
+Owned server60432 was replaced with44476 to load the current transport
+injection. Tab53 booted GM4E01 on pause candidate86164c0. Fresh native
+progress samples during displayed pause advanced the worker clock by
+15.999515s while native frame stayed895 and ticks stayed7305430746.
+After Resume, frame advanced to1184 (+289) and ticks to9647679373
+(+2342248627). The fresh-counter freeze/resume assertion passed and no
+browser errors were observed. This proves one native pause/resume cycle
+in the booted session, not repeated race cycles, CPU savings or full speed.
+Evidence work/double-dash-repaired-{pause-a,pause-b,resume}.json and
+work/double-dash-repaired-pause.png. Tab53 paused again then closed to
+release workers. Server44476 remains live; room default unchanged.
