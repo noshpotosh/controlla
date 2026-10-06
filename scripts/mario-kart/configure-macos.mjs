@@ -38,7 +38,10 @@ const lockHash = createHash('sha256').update(readFileSync(manifest)).digest('hex
 const cargoHash = createHash('sha256').update(readFileSync(resolve(build, 'tools/naga-spirv-wgsl/Cargo.lock'))).digest('hex');
 // Preserve the upstream Windows verifier; this generated entry point records
 // the actual macOS tools rather than claiming compatibility with Windows hashes.
+const scalarDispatch = process.env.DOLPHIN_WEB_DIRECT_SCALAR_PAIRED || '1';
+if (!['0', '1'].includes(scalarDispatch)) throw new Error('DOLPHIN_WEB_DIRECT_SCALAR_PAIRED must be 0 or 1.');
 const source = readFileSync(resolve(build, 'tools/configure-upstream-wasm.mjs'), 'utf8')
+  .replace('-DXXH_VECTOR=0 ', `-DXXH_VECTOR=0 -DDOLPHIN_WEB_DIRECT_SCALAR_PAIRED=${scalarDispatch} `)
   .replace('const toolchain = verifyWasmToolchain();', `const toolchain = ${JSON.stringify({ paths, lock: { rust: { target: 'wasm32-unknown-emscripten' } }, hashes: { lock: lockHash, cargoLock: cargoHash } })};`)
   .replace('`${dirname(rustc)};${dirname(emcc)};${process.env.PATH ?? ""}`', '`${dirname(rustc)}:${dirname(emcc)}:${process.env.PATH ?? ""}`');
 const generated = resolve(build, 'tools/configure-controlla-macos.mjs');

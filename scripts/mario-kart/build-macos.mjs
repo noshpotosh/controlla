@@ -167,6 +167,9 @@ if (destinationAlphaPrototype) {
   if (patchCheck.status !== 0) throw new Error('Destination-alpha prototype source does not match patch 0008: ' + patchCheck.stderr);
 }
 const cache = readFileSync(resolve(stage, 'build/dolphin-wasm/CMakeCache.txt'), 'utf8');
+const directScalarPairedDispatch = directScalarPaired && cache.includes('-DDOLPHIN_WEB_DIRECT_SCALAR_PAIRED=1');
+if (directScalarPaired && !/-DDOLPHIN_WEB_DIRECT_SCALAR_PAIRED=[01](?: |$)/m.test(cache))
+  throw new Error('Configure an explicit scalar dispatch control before building.');
 const configuredOutput = cache.match(/^DOLPHIN_WASM_OUTPUT_DIR:[^=]+=(.*)$/m)?.[1];
 if (!configuredOutput || resolve(configuredOutput) !== output) {
   throw new Error('Configured WASM output differs from the requested output. Reconfigure with the same DOLPHIN_WASM_OUTPUT_DIR.');
@@ -205,6 +208,7 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   sampledFpHelperTiming,
   pairedFpEligibility,
   directScalarPaired,
+  directScalarPairedDispatch,
   pairedFpEligibilityPatchSha256: pairedFpEligibility ? hash(resolve(repo, 'scripts/mario-kart/patches/0031-paired-fp-eligibility-attribution.patch')) : null,
   guardedInlinePaired,
   guardedInlinePairedPatchSha256: guardedInlinePaired ? hash(resolve(repo, 'scripts/mario-kart/patches/0030-guarded-inline-paired-add-sub.patch')) : null,

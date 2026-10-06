@@ -2734,3 +2734,24 @@ benefit is established. A same-source control with scalar dispatch disabled
 is the next performance experiment; preserve all other diagnostics, test
 coverage and runtime options to narrow the cause. Full-speed goal remains
 incomplete and no room-default promotion was made.
+
+
+### Matched scalar dispatch control
+
+Patch 0031 now retains the direct scalar helper but gates its dispatch with
+`DOLPHIN_WEB_DIRECT_SCALAR_PAIRED` (default 1). macOS configuration accepts
+only 0 or 1 and writes the definition into compiler flags. The builder
+requires this explicit definition and records `directScalarPairedDispatch`
+from the actual CMake cache, separately from helper presence. Both control
+and enabled builds keep the same scalar helper and status test matrix.
+No arithmetic simplification is introduced. Runtime-selection tests and
+JavaScript syntax checks pass.
+
+A disabled control was configured successfully at
+`work/double-dash-scalar-control-core`; native build session 85005 is active.
+Its arithmetic/ABI and race checks remain pending. Changing compiler flags
+requires recompilation; do not restart this build merely because output is
+quiet. Existing scalar binary and paused browser tab 43/server 94579 remain
+intact. Historical patch-0031 binary manifests preserve their old hashes,
+so they cannot be newly selected as current-source candidates after this
+patch change without their original checkpoint provenance.
