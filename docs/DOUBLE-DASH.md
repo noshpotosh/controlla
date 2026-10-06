@@ -2593,3 +2593,39 @@ coverage. Configure 92937 passed; build 23153 is running for
 Native arithmetic/status, controller ABI, counter activation and live race
 attribution remain pending. Previous qualified NI binary, saved checkpoint
 and shared-stage defaults are preserved. Paused baseline: tab 41, server 47938.
+
+### Remaining-helper eligibility measured in Luigi Circuit
+
+Build 23153 completed; exact WASM
+`ca9fcafb9944afb3f579e7561a5faf1c536add66c479c8fd647e31ddb07ec20c`.
+Native arithmetic/status checks passed 3744/1536 comparisons with profiling
+off/on/off; four ports and invalid-port rejection passed. Logs:
+`/tmp/controlla-fp-eligibility-{arithmetic,abi}.log`. Cold smoke helper count
+remained 5254, matching the underlying NI-safe arithmetic candidate.
+
+The core booted/restored the saved race (generation 1), with profiling on.
+An authoritative 135.746740-second report interval presented 3114 frames
+(22.9398 FPS, 38.2710% native speed); this instrumentation-heavy result is
+not a performance qualification. No browser errors were reported. Evidence:
+`work/double-dash-fp-eligibility-race-{a,b}.json` and PNG. Race paused in
+tab 42; server 23697 on 8082; source checkpoint untouched.
+
+Remaining paired add/sub helper deltas were 8398123 calls. Every measured
+call had RN=0, NI=1 and Rc=0. Both second operands were zero in 360925 calls
+(4.2977%); 8037198 calls (95.7023%) had other second-lane operands. This
+rules out non-nearest rounding and Rc as observed exclusions for this window;
+it does not identify other output/operand guard failures. Import FP count
+increased by 314412293, so paired add/sub was only about 2.67% of remaining
+FP helper traffic. Broader zero-lane handling alone cannot remove most helper
+traffic. End-report leading keys decode to scalar paired multiply/add forms:
+SUBOP10 values 12/76/140 map to SUBOP5=12, 110/46 to 14, and 79/143/15 to 15.
+The report prints only leading cumulative keys, not complete per-operation
+interval deltas or cost. Next inspect those scalar forms before optimizing
+more add/sub edge cases; the original leading add/sub counts included startup.
+
+The race analyzer now reports eligibility deltas and sorted mode/Rc/zero-lane
+fractions, rejecting reset counters and changed reporting. Real new reports
+pass, older NI reports still yield null eligibility, and a copy with eligibility
+counters reset to zero rejects as expected. FP timing extrapolation still
+exceeds wall time; it remains unsuitable for exclusive cost attribution.
+Shared-stage defaults remain unchanged and full-speed gameplay unfinished.

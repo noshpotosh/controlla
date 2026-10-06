@@ -38,6 +38,39 @@ for (const key of flags) {
   configuration[key] = webgpu[1]?.[key] ?? null;
 }
 const warnings = ['Single interval; host load and exact scene progression are not controlled.'];
+const parseEligibility = frame => {
+  const report = /fpelig:v=1,scope=remaining-helper-calls([^|]*)/.exec(frame.ppcWasmHelperStats ?? '');
+  if (!report) return null;
+  const buckets = new Map();
+  for (const entry of report[1].matchAll(/;mode=(\d+),rc=(\d+),zero1=(\d+),calls=(\d+)/g)) {
+    const [mode, rc, zero1, calls] = entry.slice(1).map(Number);
+    if (mode > 7 || rc > 1 || zero1 > 1 || !Number.isSafeInteger(calls))
+      throw new Error('Invalid paired FP eligibility bucket');
+    const key = mode | (rc << 3) | (zero1 << 4);
+    if (buckets.has(key)) throw new Error('Duplicate paired FP eligibility bucket');
+    buckets.set(key, calls);
+  }
+  return buckets;
+};
+const eligibility = frames.map(parseEligibility);
+let pairedHelperEligibility = null;
+if (eligibility.some(Boolean)) {
+  if (!eligibility.every(Boolean)) throw new Error('Paired FP eligibility reporting changed during interval');
+  const buckets = [];
+  let calls = 0;
+  for (const key of new Set([...eligibility[0].keys(), ...eligibility[1].keys()])) {
+    const delta = (eligibility[1].get(key) ?? 0) - (eligibility[0].get(key) ?? 0);
+    if (delta < 0) throw new Error('Paired FP eligibility counters reset during interval');
+    if (!delta) continue;
+    calls += delta;
+    buckets.push({ rn: key & 3, ni: Boolean(key & 4), rc: Boolean(key & 8),
+      bothSecondOperandsZero: Boolean(key & 16), calls: delta });
+  }
+  buckets.sort((a, b) => b.calls - a.calls);
+  pairedHelperEligibility = { calls, callsPerWallSecond: calls / seconds,
+    buckets: buckets.map(bucket => ({ ...bucket, fraction: bucket.calls / calls })) };
+  warnings.push('Eligibility counts cover remaining paired add/sub helper calls, excluding inline successes.');
+}
 const parseTiming = frame => {
   const match = /fptiming:v=1,rate=(\d+),samples=(\d+),totalns=(\d+),maxns=(\d+)/
     .exec(frame.ppcWasmHelperStats ?? '');
@@ -58,4 +91,5 @@ if (timing.every(Boolean)) {
 }
 console.log(JSON.stringify({ sources: paths, seconds, presentedFrames,
   fps: presentedFrames / seconds, nativeSpeedFraction: ticks / start.coreTicksPerSecond / seconds,
-  checkpointGeneration: end.loadedCheckpointGeneration, configuration, fpTiming, warnings }, null, 2));
+  checkpointGeneration: end.loadedCheckpointGeneration, configuration, fpTiming,
+  pairedHelperEligibility, warnings }, null, 2));
