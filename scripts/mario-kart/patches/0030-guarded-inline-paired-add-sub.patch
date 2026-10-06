@@ -1,6 +1,6 @@
 --- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
 +++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
-@@ -4943,6 +4943,95 @@
+@@ -4943,6 +4943,98 @@
           subop5 == 29 || subop5 == 30 || subop5 == 31;
  }
  
@@ -19,7 +19,10 @@
 +  body.push_back(0x71);
 +  body.push_back(0x45);
 +  body.push_back(0x71);
-+  EmitStateLoadU32(body, static_cast<u32>(offsetof(PowerPC::PowerPCState, Exceptions)));
++  const auto& state = Core::System::GetInstance().GetPPCState();
++  const u32 exceptions_offset = static_cast<u32>(reinterpret_cast<std::uintptr_t>(&state.Exceptions) -
++                                                  reinterpret_cast<std::uintptr_t>(&state));
++  EmitStateLoadU32(body, exceptions_offset);
 +  EmitI32Const(body, EXCEPTION_DSI | EXCEPTION_PROGRAM);
 +  body.push_back(0x71);
 +  body.push_back(0x45);
@@ -96,7 +99,7 @@
  void EmitSinglePrecisionArithmetic(std::vector<u8>& body, const WasmStateLayout& layout,
                                     const PPCAnalyst::CodeOp& op, u32 downcount)
  {
-@@ -5923,7 +6012,7 @@
+@@ -5923,7 +6015,7 @@
      }
      if ((inst.SUBOP5 == 20 || inst.SUBOP5 == 21) && !inst.Rc)
      {

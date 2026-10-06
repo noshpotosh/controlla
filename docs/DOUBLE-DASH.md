@@ -2460,3 +2460,26 @@ and tampered patch-0030 records. Configure session 67801 passed; native build
 checks plus browser race performance remain pending. Existing binaries,
 saved checkpoint and shared-stage defaults are preserved. The paused prior
 candidate remains in browser tab 39, served by session 90140 on 8082.
+
+### Inline-emitter native checks and exception-offset correction
+
+Build 55070 finished, producing
+`c9766596a28675085a0e2f3a0cc7e51b456040f4ebc080e8d02ebe1d2d05d317`.
+It passed all 3744 native arithmetic comparisons and 1536 Rc/status/exception
+comparisons with profiling off and on. Controller ABI checks passed all four
+ports and rejected invalid ports. Logs:
+`/tmp/controlla-inline-paired-{arithmetic,abi}.log`. No game has been booted
+with this binary, and the assertions do not yet establish which normal cases
+avoided the helper or cover every possible pending-exception state.
+
+The compiler warned that `offsetof(PowerPCState, Exceptions)` used a
+non-standard-layout type. Patch 0030 now derives the member offset from
+the actual core state object during code generation, following the other
+state-address calculations. The accessor does not execute per emulated FP
+instruction. Configuration 21069 passed; corrected build 32099 is running
+in `work/double-dash-inline-paired-offset-core`, log
+`/tmp/controlla-inline-paired-offset-build.log`. Preserve the first binary as
+native-check evidence, but its old patch hash no longer matches the current
+candidate-selection policy. The corrected binary requires fresh native and
+browser qualification before use. Provenance tests still pass. The shared
+game runtime, saved checkpoint and paused browser baseline remain unchanged.
