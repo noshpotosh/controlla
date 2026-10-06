@@ -2246,3 +2246,22 @@ It provides no evidence for promoting fastmemhoist; default-off is retained.
 Both policies remain substantially below full speed. Future optimization
 should target other measured costs rather than assume grouped bounds checks
 improve this scene. The baseline game is paused; saved progress is unchanged.
+
+### FP boundary and race interval cost inspection
+
+Source inspection confirms generated blocks import the native FP helper via
+`fp: wasmTable.get(fp_index)` when instantiating their WASM module. They do
+not install a per-call JavaScript wrapper, so JavaScript bridge removal is
+not an optimization target for these helper calls.
+
+The default idle race interval recorded about 2,994,173 FP helper calls per
+wall second. JIT module compilation increased only 1208 microseconds and
+instantiation 46339 microseconds across 45.764620 seconds; therefore cold JIT
+construction does not explain this interval's roughly half-speed emulation.
+WebGPU drain work increased 9978.275 ms (overlapping native work; not an
+exclusive CPU budget). Hoisting sample FP calls were about 2,893,184/sec,
+with compilation 316401 us and instantiation 30067 us. Frequency alone does
+not prove helper arithmetic is the bottleneck; native helper-specific sampled
+timing is the next evidence needed before rewriting reference arithmetic.
+The existing sampled block profile labels whole blocks by their first opcode
+and cannot assign a helper cost from those labels.
