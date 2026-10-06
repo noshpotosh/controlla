@@ -3620,3 +3620,23 @@ assertions passed; bounded polling history retains only last64 samples.
 Evidence work/double-dash-native-{steer-left,steer-right,brake-ninety}.
 {json,png}. Tab61 remains paused/fullscreen at1192. Real-time performance,
 full races, items, audio and physical motion remain incomplete.
+
+### Short braking intervals: slowing observed, reverse unproven
+
+Tab61 accelerated from native1192 for90 steps (a300-frame probe replaced
+early by braking) and reached1282/25mph/time00:28:084. New B-button trial
+start1282,target1372 was captured at ten/thirty/ninety native steps. HUD
+readings28mph/time00:28:262,23mph/time00:28:599 and9mph/time00:29:586.
+Native polling at ten steps reportsbuttons200 from1283 onward, with
+acceleration released. Refreshed final release1372 equals target; native
+1372. First final report still contained1371 because the last click was
+asynchronous; recapture after completion passed duration/release/poll
+assertions. Do not interpret a click-return as a completed native step.
+
+This provides interval evidence of slowing during the B trial. It does
+not show stopping or establish reverse, nor explain the initial speed
+increase. No braking equivalence claim or physics fix follows from these
+images alone; native pad polling/application/presentation timing needs
+further investigation. Evidence work/double-dash-brake-interval-
+{before,ten,thirty,ninety}.{json,png}. Tab61 paused/fullscreen at1372;
+server99074 live. Full goal remains incomplete.
