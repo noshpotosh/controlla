@@ -3054,3 +3054,24 @@ Ignored evidence: `work/double-dash-finite-addend-madd-race-{a,b}.json` and
 workers. Server/checkpoint remain available; default room runtime stays
 on the earlier qualified candidate. Full-speed and fidelity goal remains
 incomplete.
+
+
+### Current-source generated-madd control build
+
+The qualified finite-addend experiment is preserved at commit 178ec00 and
+its isolated binary. Patch 0033 was reverse-applied only to the ignored
+native checkout to disable generated multiply/add while retaining guarded
+scalar multiply and the current 12,288-case status matrix. All tracked
+patches remain available for recovery; this is an explicit control build,
+not deletion of the experiment. Configuration succeeded at
+`work/double-dash-current-madd-control-core`, broad scalar dispatch off.
+Build 16024 is active. Native arithmetic/ABI and browser qualification
+remain pending. Server 51574 still serves the previous verified candidate
+on 8082 with no owned browser tab open.
+
+A separate source observation: FifoManager's GPU loop returns immediately
+when emulation is paused, before reaching the existing empty-FIFO
+AllowSleep call. This may explain earlier paused-tab CPU consumption; no
+behavioral fix or causal qualification has been made. Inspect BlockingLoop
+wake/sleep semantics before changing pause handling, and keep that
+experiment separate from the current performance control.
