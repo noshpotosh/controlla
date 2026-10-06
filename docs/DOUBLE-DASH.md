@@ -3179,3 +3179,16 @@ CPU comparison and running performance remain pending. Evidence preserved
 under work/double-dash-paused-fifo-{pause-a,pause-b,resume}.json and
 work/double-dash-paused-fifo-resume.png. Tab50 closed; owned server11924
 serves candidate8082. Ordinary room default is unchanged.
+
+### Fresh native progress diagnostic for pause qualification
+
+Opt-in rendererdiagnostics=1&pauseprobe=1 now requests native progress
+from the worker independently of its last presented frame. The injected
+request reads actual GetFrame/GetCoreTicksLow/GetCoreTicksHigh exports,
+stamps worker performance.now(), and retries a high-word rollover up to
+three times. Missing exports or unstable reads report unavailable rather
+than fabricating zero progress. Normal diagnostic polling makes no extra
+request without pauseprobe=1. This does not alter emulation or core builds.
+Nine worker/renderer tests passed, including torn-read retry, missing ABI,
+existing diagnostic opt-in behavior and input release. Actual browser
+paused-counter qualification and CPU process comparison remain pending.

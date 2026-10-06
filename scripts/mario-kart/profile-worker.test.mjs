@@ -16,3 +16,22 @@ test('unexpected worker dispatch fails closed instead of applying a partial rewr
   assert.throws(() => installProfileResetRequest('different worker'), /pinned worker dispatch/);
   assert.throws(() => installProfileResetRequest('    case "rendererDiagnostics":\n    case "rendererDiagnostics":'), /pinned worker dispatch/);
 });
+
+test('native progress samples live counters and retries a torn tick read', async () => {
+  const source = 'return async function(type, api) { switch(type) {\n    case "rendererDiagnostics": return {};\n} }';
+  const dispatch = new Function(installProfileResetRequest(source))();
+  const highs = [1, 2, 2, 2];
+  const result = await dispatch('controllaNativeProgress', {
+    getCoreTicksHigh: () => highs.shift(), getCoreTicksLow: () => 5, getFrame: () => 17,
+  });
+  assert.equal(result.available, true);
+  assert.equal(result.ticks, 2 * 0x100000000 + 5);
+  assert.equal(result.frame, 17);
+  assert.ok(Number.isFinite(result.capturedAtMs));
+  assert.deepEqual(await dispatch('controllaNativeProgress', {}), { available: false });
+  let high = 0;
+  const torn = await dispatch('controllaNativeProgress', {
+    getCoreTicksHigh: () => high++, getCoreTicksLow: () => 0, getFrame: () => 0,
+  });
+  assert.equal(torn.available, false);
+});

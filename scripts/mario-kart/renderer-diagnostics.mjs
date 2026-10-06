@@ -7,13 +7,15 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
   document.body.append(report);
   let probe = null;
   let pending = false;
+  const nativeProgressRequested = new URLSearchParams(location.search).get('pauseprobe') === '1';
   const timer = setInterval(async () => {
     const adapter = getAdapter();
     if (pending || !adapter?.loaded || typeof adapter.request !== 'function') return;
     pending = true;
     try {
       const renderer = await adapter.request('rendererDiagnostics');
-      report.textContent = JSON.stringify({ capturedAt: new Date().toISOString(), frame: getFrame(), renderer, probe });
+      const nativeProgress = nativeProgressRequested ? await adapter.request('controllaNativeProgress') : undefined;
+      report.textContent = JSON.stringify({ capturedAt: new Date().toISOString(), frame: getFrame(), renderer, probe, nativeProgress });
     } catch (error) {
       report.textContent = JSON.stringify({ error: error.message });
     } finally { pending = false; }
