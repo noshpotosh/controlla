@@ -1,0 +1,71 @@
+--- a/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
++++ b/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp
+@@ -326,6 +326,7 @@
+ u32 s_wasm_system_call_count = 0;
+ u32 s_wasm_fp_call_count = 0;
+ u32 s_wasm_gpfifo_fastcheck_count = 0;
++std::array<std::atomic<u64>, 32> s_paired_fp_eligibility{};
+ u32 s_wasm_lfs_call_count = 0;
+ u32 s_wasm_stfs_call_count = 0;
+ u32 s_wasm_lfd_call_count = 0;
+@@ -2584,6 +2585,27 @@
+   EmitU32Leb(imports, type_index);
+ }
+ 
++// WASM paired FP eligibility attribution: opt-in helper calls, no arithmetic changes.
++extern "C" int DolphinWeb_CachedInterpreterFpEligibilityOp(int state_ptr, u32 inst_hex,
++                                                          u32 current_pc, u32 downcount, u32 unused)
++{
++  if (s_ppc_block_profile_enabled)
++  {
++    const UGeckoInstruction inst{inst_hex};
++    if (inst.OPCD == 4 && (inst.SUBOP5 == 20 || inst.SUBOP5 == 21))
++    {
++      const auto& state = *reinterpret_cast<PowerPC::PowerPCState*>(
++          static_cast<std::uintptr_t>(state_ptr));
++      constexpr u64 magnitude = 0x7fffffffffffffffULL;
++      const bool zero_lane1 = (state.ps[inst.FA].PS1AsU64() & magnitude) == 0 &&
++                              (state.ps[inst.FB].PS1AsU64() & magnitude) == 0;
++      const u32 bucket = (state.fpscr.Hex & 7) | (inst.Rc ? 8 : 0) | (zero_lane1 ? 16 : 0);
++      s_paired_fp_eligibility[bucket].fetch_add(1, std::memory_order_relaxed);
++    }
++  }
++  return DolphinWeb_CachedInterpreterFpOp(state_ptr, inst_hex, current_pc, downcount, unused);
++}
++
+ struct WasmStateLayout
+ {
+   u32 npc_offset;
+@@ -7856,7 +7878,7 @@
+   const auto system_index = static_cast<int>(
+       reinterpret_cast<std::uintptr_t>(&DolphinWeb_CachedInterpreterSystem));
+   const auto fp_index = static_cast<int>(
+-      reinterpret_cast<std::uintptr_t>(&DolphinWeb_CachedInterpreterFpOp));
++      reinterpret_cast<std::uintptr_t>(&DolphinWeb_CachedInterpreterFpEligibilityOp));
+   const auto fctiwz_index = static_cast<int>(
+       reinterpret_cast<std::uintptr_t>(&DolphinWeb_CachedInterpreterFctiwz));
+   const auto interpret_index = static_cast<int>(
+@@ -11263,7 +11285,7 @@
+   const auto system_index = static_cast<int>(
+       reinterpret_cast<std::uintptr_t>(&DolphinWeb_CachedInterpreterSystem));
+   const auto fp_index = static_cast<int>(
+-      reinterpret_cast<std::uintptr_t>(&DolphinWeb_CachedInterpreterFpOp));
++      reinterpret_cast<std::uintptr_t>(&DolphinWeb_CachedInterpreterFpEligibilityOp));
+   const auto fctiwz_index = static_cast<int>(
+       reinterpret_cast<std::uintptr_t>(&DolphinWeb_CachedInterpreterFctiwz));
+   const auto interpret_index = static_cast<int>(
+@@ -11830,6 +11852,14 @@
+       << " lfd:" << s_wasm_lfd_call_count << " fmr:" << s_wasm_fmr_call_count
+       << " fctiwz:" << s_wasm_fctiwz_call_count << " psqfast:" << s_wasm_psq_fast_c_count
+       << " gpfifo:" << s_wasm_gpfifo_fastcheck_count;
++  out << " | fpelig:v=1,scope=remaining-helper-calls";
++  for (u32 bucket = 0; bucket < s_paired_fp_eligibility.size(); ++bucket)
++  {
++    const u64 calls = s_paired_fp_eligibility[bucket].load(std::memory_order_relaxed);
++    if (calls != 0)
++      out << ";mode=" << (bucket & 7) << ",rc=" << ((bucket >> 3) & 1)
++          << ",zero1=" << ((bucket >> 4) & 1) << ",calls=" << calls;
++  }
+   if (s_fast_dcbx_loop_blocks != 0)
+   {
+     out << " | dcbloop blocks:" << s_fast_dcbx_loop_blocks

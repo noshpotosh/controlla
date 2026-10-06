@@ -2568,3 +2568,28 @@ from these single sequential windows. Most helper traffic remains. Keep
 this candidate isolated and inspect eligibility exclusion before broadening
 arithmetic further. Shared-stage defaults and the production runtime remain
 unchanged; full-speed gameplay remains unfinished.
+
+### Opt-in remaining-helper eligibility attribution (pending)
+
+Patch `0031-paired-fp-eligibility-attribution.patch` wraps the existing FP
+import with profiling-only paired add/sub counters. For remaining helper
+calls it records FPSCR low three bits (RN/NI), Rc, and whether both source
+second lanes are signed or unsigned zero. It forwards the exact original
+arguments and return value; it does not evaluate or change arithmetic.
+Counters use relaxed atomics, are cumulative across profile resets, and are
+reported as `fpelig:v=1,scope=remaining-helper-calls;mode=...,rc=...,zero1=...,calls=...`.
+Mode bits 0/1 are RN, bit 2 NI. This is not a complete FP instruction profile:
+successful generated inline operations do not enter the helper. Individual
+counter reads do not form a coherent cross-worker snapshot. Use interval
+deltas and do not use profiling-enabled FPS to qualify runtime performance.
+
+Both native FP table pointers now use the wrapper; its address-taking retains
+the callable function without adding a public core API. All earlier patch
+reverse checks are still required by the builder, along with the new isolated
+output/hash guard. Candidate selection and arithmetic verification check patch
+0031 provenance. Runtime-selection tests pass with missing/tampered evidence
+coverage. Configure 92937 passed; build 23153 is running for
+`work/double-dash-fp-eligibility-core`, log `/tmp/controlla-fp-eligibility-build.log`.
+Native arithmetic/status, controller ABI, counter activation and live race
+attribution remain pending. Previous qualified NI binary, saved checkpoint
+and shared-stage defaults are preserved. Paused baseline: tab 41, server 47938.

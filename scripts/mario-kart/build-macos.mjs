@@ -11,6 +11,13 @@ const output = resolve(process.env.DOLPHIN_WASM_OUTPUT_DIR || defaultOutput);
 const nativeBackend = resolve(stage, 'vendor/dolphin/Source/Core/VideoBackends/WebGPU/WebGPUGfx.cpp');
 const nativeCpu = resolve(stage, 'vendor/dolphin/Source/Core/Core/PowerPC/CachedInterpreter/CachedInterpreter.cpp');
 const nativeFifo = resolve(stage, 'vendor/dolphin/Source/Core/VideoCommon/Fifo.cpp');
+const pairedFpEligibility = readFileSync(nativeCpu, 'utf8').includes('WASM paired FP eligibility attribution');
+if (pairedFpEligibility) {
+  if (output === defaultOutput) throw new Error('Paired FP eligibility attribution requires isolated output.');
+  const check = spawnSync('git', ['-C', resolve(stage, 'vendor/dolphin'), 'apply', '--reverse', '--check',
+    resolve(repo, 'scripts/mario-kart/patches/0031-paired-fp-eligibility-attribution.patch')], { encoding: 'utf8' });
+  if (check.status !== 0) throw new Error('Paired FP eligibility patch mismatch: ' + check.stderr);
+}
 const guardedInlinePaired = readFileSync(nativeCpu, 'utf8').includes('WASM guarded inline paired add/sub candidate');
 if (guardedInlinePaired) {
   if (output === defaultOutput) throw new Error('Guarded inline paired arithmetic requires isolated output.');
@@ -191,6 +198,8 @@ writeFileSync(output === defaultOutput ? resolve(stage, 'controlla-core-build.js
   pairedSumHelpers,
   pairedStatusRegression,
   sampledFpHelperTiming,
+  pairedFpEligibility,
+  pairedFpEligibilityPatchSha256: pairedFpEligibility ? hash(resolve(repo, 'scripts/mario-kart/patches/0031-paired-fp-eligibility-attribution.patch')) : null,
   guardedInlinePaired,
   guardedInlinePairedPatchSha256: guardedInlinePaired ? hash(resolve(repo, 'scripts/mario-kart/patches/0030-guarded-inline-paired-add-sub.patch')) : null,
   inlineNormalFprf,
