@@ -3327,3 +3327,20 @@ Evidence work/double-dash-matched-block-control-race-{a,b}.json/.png and
 work/double-dash-matched-block-control-host-load.json. Tab55 paused then
 closed. Server9743 now serves the control on8082. Native checkout still
 contains patch0035 for recovery; default room runtime remains unchanged.
+
+### Software renderer reference checkpoint capture
+
+Preserved86164c0 control booted with video=software/cpu=dual and restored
+the original checkpoint generation1. Runtime reports configured/active
+Software Renderer, BootDisc accepted; no browser errors. Captured native
+frame759/ticks106530213571. Image includes Luigi/Mario kart, track/grass,
+flower/tree textures, HUD and populated minimap. Saturated distant pink
+regions are also visible in this software reference, so their presence
+alone is not evidence of a WebGPU defect. Existing WebGPU capture is a
+later race time and cannot establish pixel equivalence or resolve every
+artifact. Same-state frozen-frame capture is still needed for rigorous
+rendering comparison. Software rendering is a reference path, not a
+replacement for the intended performant browser experience.
+Evidence work/double-dash-software-fidelity-reference.{json,png}. Tab56
+paused and closed; server9743 remains live. No code/default promotion.
+Full speed, broad gameplay/audio and physical motion remain unverified.
