@@ -3075,3 +3075,21 @@ AllowSleep call. This may explain earlier paused-tab CPU consumption; no
 behavioral fix or causal qualification has been made. Inspect BlockingLoop
 wake/sleep semantics before changing pause handling, and keep that
 experiment separate from the current performance control.
+
+### Current-source control native qualification
+
+Build 16024 completed successfully. Current control WASM SHA-256 is
+494e5d7ea150f3f692851154caefb046f3eaa01047d046c6c178204b0aa62472;
+loader SHA-256 is
+5f7faaba316c8cc904e7b5a3f21b3ca40e7e2511c16ff8dc8e8bfe6fe9d3106c.
+Manifest confirms guarded scalar multiply/add and broad scalar dispatch
+are disabled. Arithmetic qualification passed 3,744 paired differential,
+12,288 scalar status/exception and 1,536 paired status/exception cases,
+with profiling disabled and enabled. The native ABI check passed all four
+controller ports and rejected invalid ports. Cold smoke recorded 29,066
+FP helper calls; that is test execution rather than gameplay evidence.
+Browser race comparison remains pending. No runtime promotion was made.
+
+The shared picker integration was also rechecked: all 22 integration,
+renderer, catalog and round tests passed. Double Dash remains a registered
+game using the ordinary room stage and phone controls.
