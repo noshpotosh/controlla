@@ -2228,3 +2228,21 @@ idle race interval has yet been measured; this cannot establish an improvement.
 The policy remains diagnostic-only, with grouped memory safety/differential
 qualification and repeated matched race comparisons required before promotion.
 The race is paused, and the saved gameplay record remains untouched.
+
+### Default-policy race baseline versus bounds-check hoisting
+
+A fresh default-policy status-core session restored the identical 18:58:43
+Luigi Circuit checkpoint, native generation 1. Its hoisting emission counters
+were zero. With the player idle, 1388 frames were presented over 45.764620
+seconds: 30.3291 FPS and native throughput 50.5665% of real time. No captured
+console errors occurred. Local ignored evidence:
+`work/double-dash-default-race-{a,b}.json` and `.png`.
+
+The default scene interval was 7.0714–30.2130 seconds after restoration; the
+hoisting run was 6.5884–27.8621, at 28.8481 FPS and 48.1337% speed. Both use
+the same saved state and exact binary, but scene boundaries differ and there
+is only one sample per policy. Therefore this does not prove a regression.
+It provides no evidence for promoting fastmemhoist; default-off is retained.
+Both policies remain substantially below full speed. Future optimization
+should target other measured costs rather than assume grouped bounds checks
+improve this scene. The baseline game is paused; saved progress is unchanged.
