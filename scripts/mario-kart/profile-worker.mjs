@@ -3,7 +3,37 @@ export function installProfileResetRequest(source) {
   const marker = '    case "rendererDiagnostics":';
   if (source.split(marker).length !== 2)
     throw new Error('CPU profile diagnostic requires the pinned worker dispatch.');
-  return source.replace(marker, `    case "start":
+  return source.replace(marker, `    case "controllaStepFrame": {
+      if (!moduleInstance?._ControllaStepFrame)
+        return { stepped: false, error: "Native frame-step export unavailable." };
+      if (api?.getCoreStateName?.() !== "Paused")
+        return { stepped: false, error: "Pause the native core before stepping." };
+      const before = await handleMessage("controllaNativeProgress", {});
+      if (!before.available) return { stepped: false, error: "Native progress unavailable." };
+      ppcWasmJitTimingSuspensions += 1;
+      resetPpcWasmJitTiming();
+      try {
+        if (moduleInstance._ControllaStepFrame() !== 1)
+          return { stepped: false, error: "Native frame-step request rejected." };
+        for (let attempt = 0; attempt < 200; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          api.pumpHostJobs?.();
+          const after = await handleMessage("controllaNativeProgress", {});
+          if (after.available && after.frame > before.frame && api.getCoreStateName() === "Paused") {
+            const frameDelta = after.frame - before.frame;
+            return { stepped: true, exactSingleFrame: frameDelta === 1, frameDelta,
+              before, after, ...framePayload() };
+          }
+        }
+        return { stepped: false, error: "Native frame-step completion timed out." };
+      } finally {
+        if (api.getCoreStateName() !== "Paused") api.setCorePaused?.(1);
+        ppcWasmJitCorePaused = api.getCoreStateName() === "Paused";
+        resetPpcWasmJitTiming();
+        ppcWasmJitTimingSuspensions -= 1;
+      }
+    }
+    case "start":
     case "pause": {
       if (!coreBoot.accepted) return framePayload();
       const paused = type === "pause";

@@ -21,6 +21,23 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
     } finally { pending = false; }
   }, 2000);
   window.addEventListener('pagehide', () => clearInterval(timer), { once: true });
+  if (new URLSearchParams(location.search).get('framestep') === '1') {
+    const step = document.createElement('button');
+    step.textContent = 'Step native frame';
+    step.type = 'button';
+    document.querySelector('.topbar-actions').append(step);
+    step.addEventListener('click', async () => {
+      step.disabled = true;
+      try {
+        const adapter = getAdapter();
+        const result = await adapter?.request('controllaStepFrame');
+        if (!result?.stepped) throw new Error(result?.error || 'Load and pause the game before stepping.');
+        adapter.applyFrame?.(result);
+        step.textContent = result.exactSingleFrame ? 'Stepped one native frame' : `Advanced ${result.frameDelta} native frames`;
+      } catch (error) { step.textContent = error.message; }
+      finally { step.disabled = false; }
+    });
+  }
   if (new URLSearchParams(location.search).get('ppcprof') === '1') {
     const reset = document.createElement('button');
     reset.textContent = 'Reset CPU profile';

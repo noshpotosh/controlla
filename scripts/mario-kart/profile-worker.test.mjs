@@ -56,3 +56,23 @@ test('transport start and pause reach native transition and reject failed state 
   coreBoot.accepted = false;
   assert.deepEqual(await dispatch('start', {}), { booting: true });
 });
+
+test('frame step requires native pause and reports observed frame advancement', async () => {
+  const source = 'return async function(type, api) { switch(type) {\n    case "rendererDiagnostics": return {};\n} }';
+  let advanced = false;
+  let state = 'Paused';
+  const module = { _ControllaStepFrame() { advanced = true; return 1; } };
+  const dispatch = new Function('moduleInstance', 'handleMessage', 'framePayload', 'setTimeout',
+    'let ppcWasmJitTimingSuspensions = 0, ppcWasmJitCorePaused = true; function resetPpcWasmJitTiming() {}\n' + installProfileResetRequest(source))(
+      module, async () => ({ available: true, frame: advanced ? 11 : 10, ticks: advanced ? 200 : 100 }),
+      () => ({ rendered: true }), resolve => resolve());
+  const api = { getCoreStateName: () => state, pumpHostJobs() {}, setCorePaused() { state = 'Paused'; } };
+  const result = await dispatch('controllaStepFrame', api);
+  assert.equal(result.stepped, true);
+  assert.equal(result.exactSingleFrame, true);
+  assert.equal(result.frameDelta, 1);
+  state = 'Running';
+  assert.match((await dispatch('controllaStepFrame', api)).error, /Pause the native/);
+  delete module._ControllaStepFrame;
+  assert.match((await dispatch('controllaStepFrame', api)).error, /export unavailable/);
+});

@@ -3361,3 +3361,19 @@ configuration. Native export/ABI/arithmetic checks, diagnostic worker/UI,
 actual frame stepping and synchronized renderer captures remain pending.
 Qualified86164c0 control still serves on server9743:8082, with no owned
 browser tab open. Goal remains incomplete and no promotion occurred.
+
+### Frame-step worker and opt-in UI
+
+rendererdiagnostics=1&framestep=1 adds a local diagnostic button. The worker
+requires the new export, Paused native state and available fresh counters;
+it requests native stepping then waits up to20s for frame advancement and
+Paused confirmation. Response records before/after counters, actual frame
+delta and exactSingleFrame only when delta=1. Failed/timed-out operations
+report failure and restore pause if necessary. Timing watchdog attribution
+is suspended during the diagnostic and reset afterward. UI applies the
+returned frame without adding controls to normal game/embedded flows.
+Eleven worker/renderer tests pass, including stepping direction, observed
+single-frame result, running-state rejection and unavailable export.
+Build31433 remains live compiling native wrapper. Browser qualification
+and synchronized renderer comparisons remain pending. Server9743 still
+loads previous injection until restarted; default runtime unchanged.
