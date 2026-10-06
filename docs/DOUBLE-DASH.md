@@ -2367,3 +2367,23 @@ do not enable this option in the shared game stage based on this result.
 Visual equivalence across tracks and scene transitions is still unqualified.
 Further performance work should target costs beyond repeated GPU state
 commands; this cache does not close the remaining native-speed gap.
+
+### Single-thread execution comparison
+
+The `2bf63d4d` core with `cpu=single`, WebGPU, profiling off and state cache
+off restored the same Luigi Circuit checkpoint (generation 1 at both ends).
+It presented 1340 frames in 44.067285 seconds: 30.4080 FPS and 50.7316%
+native speed. No browser errors were reported. Local evidence:
+`work/double-dash-timing-single-race-{a,b}.json` and PNG. The race is paused
+and the source checkpoint is unchanged. The preceding split-mode cache-off
+sample was 34.1763 FPS; this single interval supports retaining `cpu=dual`,
+not switching the shared game stage to single-thread execution.
+
+`node scripts/mario-kart/analyze-race.mjs <start.json> <end.json>` now computes
+frame throughput and native speed from saved reports. It rejects nonincreasing
+time/frame/tick counters, changed or missing restored checkpoint identity,
+clock-rate changes and changed cache flags. It reports optional sampled FP
+timing with explicit warnings for extrapolation beyond wall time. This does
+not prove identical scene windows, build identity, hardware pixel fidelity or
+exclusive CPU cost. Verified with the real single-mode and FP-profile report
+pairs; a reversed pair must fail instead of producing a negative benchmark.
