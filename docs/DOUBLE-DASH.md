@@ -2801,3 +2801,31 @@ evidence to release worker CPU usage. Saved checkpoint is unchanged.
 Full-speed, visual/audio fidelity and physical motion qualification remain
 open. Next optimization should isolate a narrower frequent scalar operation
 and retain exact rounding/NI/reference fallback semantics.
+
+
+### Guarded generated scalar multiply experiment
+
+Patch 0032 adds generated-WASM `ps_muls0/ps_muls1` for non-Rc nearest
+rounding, with FPU available, no pending program/DSI exception, finite A
+lanes and a normal finite selected C lane. It implements normal-input
+Force25Bit as exact i64 masks/add (including exponent carry), then f64
+multiply and nearest conversion. Both raw results must reach the smallest
+normal float threshold and both converted lanes must remain normal.
+Otherwise it calls the reference helper before any architectural write.
+Both lane results are retained before stores, preserving FA/FC destination
+aliases. Success writes the original normal FPRF classification; Rc, other
+rounding modes, subnormals, zeros and exceptional results use reference.
+Multiply/add remains on reference, preserving fused behavior.
+
+Builder and runtime selection require exact patch-0032 provenance and the
+3,072-case scalar status matrix. Runtime-selection tests pass for missing
+hash, changed patch and incomplete scalar case evidence. Initial test
+exposed an unhelpful missing-file error for absent hash; the guard now
+rejects missing evidence before reading the expected patch.
+
+Isolated `work/double-dash-guarded-scalar-mul-core` configuration succeeded
+with broad direct scalar dispatch disabled. Build 84749 is linking after
+compiling the changed native source, with all prior patch checks passing.
+Arithmetic, ABI and browser race qualification remain pending; no default
+promotion. Control server 97270 is intact, with no owned browser test tab
+left open.
