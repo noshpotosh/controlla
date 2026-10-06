@@ -2325,3 +2325,23 @@ not directly comparable to the earlier profiling-disabled 30.33 FPS interval.
 Next qualification should measure this same core with profiling disabled and
 then calibrate sampling overhead/bias before using these timings to justify
 an arithmetic optimization. No candidate promotion follows from this sample.
+
+### Timing core with profiling disabled
+
+The same `2bf63d4d` binary, default compilation policy and saved `4630560c`
+Luigi Circuit checkpoint were tested with `ppcprof` omitted. Native checkpoint
+generation was 1 at both ends. In 47.898710 seconds it presented 1637 frames:
+34.1763 FPS and 57.0158% native simulation speed. FP timing samples, total ns
+and maximum ns stayed zero at both ends, verifying that the opt-in sampler
+does not read its clock while disabled. No browser console errors were seen.
+Local evidence: `work/double-dash-fp-timing-off-race-{a,b}.json` and PNG.
+The race is paused; the original saved checkpoint remains unchanged.
+
+The preceding profiling-enabled sample was 25.2702 FPS (42.1593% speed).
+These sequential, single intervals suggest material profiling overhead, but
+do not isolate the new sampler from existing block profiling and FP opcode
+attribution, or control host load and exact native time windows. Neither this
+comparison nor the earlier 30.33 FPS status-core sample establishes a speed
+improvement from the timing patch. Full-speed gameplay remains unqualified.
+Performance decisions should use profiling-disabled measurements; sampled
+helper timing needs overhead calibration before exclusive-cost attribution.
