@@ -2213,3 +2213,18 @@ errors occurred. Local ignored evidence:
 and neutral release, not mini-turbo timing, full races, physical phone motion
 or full-speed fidelity. The session is paused and its original saved race
 checkpoint remains untouched.
+
+### RAM bounds-check hoisting live-race sample
+
+An opt-in `fastmemhoist=1` fresh status-core browser restored the saved Luigi
+Circuit race (native load generation 1). Grouped RAM check codegen counters
+were nonzero: groups 5493, fast 13966, slow 2880 at sample start. These are
+emission counters, not dynamic runtime execution counts, despite their name.
+The idle-player race interval presented 1275 frames over 44.197065 seconds:
+28.8481 FPS, native time advancing at 48.1337% of wall time. No captured console
+errors occurred. Local ignored evidence is
+`work/double-dash-hoist-race-{a,b}.json` and `.png`. No matching default-policy
+idle race interval has yet been measured; this cannot establish an improvement.
+The policy remains diagnostic-only, with grouped memory safety/differential
+qualification and repeated matched race comparisons required before promotion.
+The race is paused, and the saved gameplay record remains untouched.
