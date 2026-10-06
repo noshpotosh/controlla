@@ -3447,3 +3447,23 @@ be an undrained queue. Next compare software stepping and inspect image
 ownership/load-state rendering rather than treating metadata refresh as a
 pixel fix. Evidence work/double-dash-step-refresh-{one,two}.{json,png}.
 Tab58 preserved paused; server37396 remains live. Goal remains incomplete.
+
+### Software stepped reference requires post-load settling
+
+Tab59 on the same ff4928b core/software backend restored the original
+checkpoint while paused. First exact step ended at ticks105871523977,
+matching WebGPU, but image was flat green. Second ended105879632079 and
+showed corrupted pixels. This demonstrates that immediately stepped
+post-load images are not valid references in either backend. Core's
+Callback_NewField already waits for AsyncRequests' queue to empty before
+stopping the frame step; no missing native queue barrier was established.
+
+Ten additional explicit single-frame operations (12 total) produced a
+valid software race image: track, riders, HUD/minimap, race time21:593.
+Final native frame765, ticks105960713435; last step764→765 was exact1.
+This supplies a deterministic settled reference endpoint, not an arbitrary
+wall-time resume and not proof of full renderer fidelity. Next advance
+WebGPU exactly12 frames from the same paused checkpoint and compare final
+ticks/image. Evidence work/double-dash-software-step-{one,two,twelve}.
+{json,png}. Tab59 preserved paused; previousWebGPUtab58 closed. Server37396
+remains live. No production/default change; full goal incomplete.
