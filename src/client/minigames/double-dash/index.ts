@@ -12,6 +12,7 @@ export const doubleDash: GameDescriptor<DoubleDashState> = {
   defaultMode: 'free-play',
   instructions: [
     'Tilt your phone to steer. Hold Accelerate; hold Drift through corners.',
+    'Press Brake to slow down; when stopped, use it to reverse.',
     'Use the menu arrows and Accelerate to select racers and tracks. Brake goes back.',
     'On Start / Swap, press up to start or pause; press down to swap riders.',
     'Choose multiplayer in the game for up to four phones. End game returns to the room (one-hour session limit).',
@@ -37,7 +38,7 @@ export const doubleDash: GameDescriptor<DoubleDashState> = {
         required: true,
         prefer: 'button',
         held: true,
-        label: 'Brake / Back',
+        label: 'Brake / Reverse',
       },
       drift: { required: true, prefer: 'button', held: true, label: 'Drift' },
       item: { required: true, prefer: 'button', held: true, label: 'Item' },

@@ -3640,3 +3640,23 @@ images alone; native pad polling/application/presentation timing needs
 further investigation. Evidence work/double-dash-brake-interval-
 {before,ten,thirty,ninety}.{json,png}. Tab61 paused/fullscreen at1372;
 server99074 live. Full goal remains incomplete.
+
+### B-button source trace and controller wording
+
+Native DolphinWeb_GetPadStatus copies analogA and analogB separately
+from the mutex-protected controller snapshot, then maps INPUT_B to
+PAD_BUTTON_B. SI_DeviceGCController::GetData packs the button status and
+analog channels according to controller mode; no A/B substitution was
+found in this trace. This source inspection does not establish when game
+code consumes SI results or explain the initial ten-frame speed rise.
+
+Nintendo original instruction booklet identifies B as brake/reverse:
+press during racing to brake, and when stopped to back up. Primary booklet
+scan mirror https://snolli.fr/dwl/gamelist/docs/Mario%20kart%20double%20dash.pdf
+and transcribed scan https://manualzz.com/doc/22422561/nintendo-mario-kart-double-dash-video-game-instruction-bo...
+The ordinary room descriptor/controller layout and standalone phone now
+label the button Brake / Reverse and room instructions explain reversing
+from a stop; menu-back instruction remains. No input mapping or native
+physics changed.11 room/integration tests and6 controller/motion tests
+passed. Browser stop/reverse behavior, timing and full fidelity remain
+unverified.

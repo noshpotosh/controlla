@@ -69,7 +69,7 @@
     {
       "name": "brake",
       "type": "button",
-      "label": "Brake / Back",
+      "label": "Brake / Reverse",
       "rect": {
         "x": 20,
         "y": 6,
