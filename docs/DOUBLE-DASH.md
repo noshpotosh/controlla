@@ -2183,3 +2183,19 @@ earlier e65 attract checkpoint remains separate. Local paused evidence:
 `work/double-dash-luigi-circuit-checkpoint.{json,png}`. Browser tab 31 is
 preserved for controlled driving checks and this new gameplay checkpoint can
 support more relevant performance comparisons after verifying restoration.
+
+### Live race restore, left steering and rider swap
+
+The 18:58:43 status-core race checkpoint restored successfully. While paused,
+the frame telemetry still reported load generation 0; after resuming, fresh
+telemetry reported generation 1, confirming native restoration. A 90-frame
+left-steering plus acceleration probe registered native stick 64,128 and
+buttons:100, released at frame 14872, and turned the kart from the grass onto
+the road. A separate 30-frame rider-swap probe registered buttons:10 and
+visibly changed the rear rider from Luigi to Mario. No captured console
+errors occurred. Local ignored evidence:
+`work/double-dash-luigi-steer-left.{json,png}` and
+`work/double-dash-luigi-swap.{json,png}`. The browser is paused for continuation;
+the original saved race record was not overwritten. These checks cover native
+stick steering and rider swap in one race; physical phone tilt, drift, items,
+complete laps and full-speed fidelity remain unqualified.
