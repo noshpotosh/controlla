@@ -3660,3 +3660,17 @@ from a stop; menu-back instruction remains. No input mapping or native
 physics changed.11 room/integration tests and6 controller/motion tests
 passed. Browser stop/reverse behavior, timing and full fidelity remain
 unverified.
+
+### B input from a verified stationary checkpoint
+
+The ongoing low-speed trial was completed and released before restoring
+the original reference. Twelve neutral post-load steps show0mph and
+time00:21:593. Applying B for90 native frames from that stopped state
+produced a changed kart position and3mph/time00:23:085 on grass. Native
+duration and release assertions passed. This confirms B can produce
+motion from a stationary state; the unsigned HUD and still captures do
+not independently prove signed reverse velocity or original braking
+accuracy. Evidence work/double-dash-reverse-{stopped,after}.{json,png}.
+Tab61 remains paused/fullscreen. The earlier low-speed30-frame endpoint
+was15mph and remains insufficient to establish a stop/reverse transition.
+Full fidelity remains incomplete; performance and full races stay priorities.

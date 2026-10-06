@@ -10,7 +10,8 @@ real-time performance and full gameplay fidelity are not ready for release.
 - Checkout: `/Users/nosh/repo/controlla`.
 - Branch: `codex/double-dash`, tracking `origin/codex/double-dash`.
 - Implementation checkpoint before this handoff: `6831248`, pushed to origin.
-  The commit containing this document is the new handoff checkpoint.
+  Initial handoff checkpoint: `4d31aed`, pushed to origin. The latest document
+  checkpoint also records the subsequent stationary B-button trial.
 - Local and recorded remote develop point to `5817ca8`, the additive revert
   removing the experiment from develop. Continue on the feature branch.
 - Origin: `https://github.com/noshpotosh/controlla.git`.
@@ -74,6 +75,10 @@ not contain the playable runtime; preserve this machine's qualified builds.
   reverse transition and hardware-equivalent braking remain unresolved.
   Native source inspection found no A/B substitution. The original booklet
   identifies B as brake/reverse; phone wording now explains both functions.
+- A restored reference plus twelve neutral steps confirmed 0 mph. Holding B
+  for ninety native frames then changed the kart position and reached 3 mph.
+  Duration and release assertions passed. Unsigned speed and still images do
+  not independently establish reverse direction or original braking accuracy.
 
 ## Remaining work in priority order
 
@@ -143,8 +148,8 @@ DOUBLE_DASH_PORT=8082 node scripts/mario-kart/serve.mjs
 Only stop/restart owned processes after checking current identity. Other local
 servers may already occupy ports; preserve the user's normal dev process.
 
-Browser tab 61 is retained for handoff, paused at native frame 1372, ticks
-`109852601435`, after the B-button interval trial. Recheck its existence/state;
+Browser tab 61 is retained for handoff, paused/fullscreen at native frame 1564,
+ticks `106690442308`, after the stationary B-button trial. Recheck its existence/state;
 a missing tab is not a lost source checkpoint. Its query enables
 `rendererdiagnostics=1&pauseprobe=1&framestep=1&probeinputs=1&nativeprobe=1`
 with WebGPU, dual CPU and wasmjit1/jitwarmup700. Native probes require pause;
@@ -179,6 +184,8 @@ Recent local evidence pairs are under `work/`:
 - `double-dash-native-swap-{thirty,neutral}.{json,png}`: exact held/release and swap.
 - `double-dash-native-{steer-left,steer-right,brake-ninety}.{json,png}`: control trials.
 - `double-dash-brake-interval-{before,ten,thirty,ninety}.{json,png}`: interval speeds.
+- `double-dash-reverse-{stopped,after}.{json,png}`: stationary B-button trial;
+  filenames do not establish signed reverse velocity.
 - Direct-block/matched-control race JSON, screenshots and host-load snapshots:
   see the corresponding sections in `DOUBLE-DASH.md`.
 
