@@ -3108,3 +3108,24 @@ Preserved ignored evidence: work/double-dash-current-madd-control-race-
 Owned server 36855 now serves the control on 8082. The ordinary room's
 default candidate remains unchanged. Next work should address the paused
 GPU loop separately and continue measuring the running performance gap.
+
+### Paused-loop timeout hypothesis correction
+
+Inspection of the complete BlockingLoop::Run switch disproves the earlier
+claim that timeout alone consumes the sleep permission and starts spinning.
+STATE_SLEEPING persists after Event::WaitFor returns; the next payload
+returns to that same sleep case without consuming another permission.
+A host C++ harness compiled against the actual Common/BlockingLoop.h,
+Event.h and Flag.h confirmed six callbacks over 550 ms with timeout=100.
+After an explicit Wakeup(), the same return-only payload ran 1,138,858
+callbacks cumulatively over the next 20 ms. AllowSleep then settled the
+loop, with only three further callbacks over 350 ms. Harness exited zero.
+Source and executable are preserved in /tmp/controlla-blocking-loop-pause-
+check.cpp and /tmp/controlla-blocking-loop-pause-check.
+
+This changes the next action: investigate a post-pause Wakeup, not timer
+wakeups. FifoManager::EmulatorState(false) permits sleep once, while RunGpu
+can explicitly Wakeup the dual-core loop. Renewing sleep in the paused
+payload may handle that race, but the browser's observed paused CPU cost
+has not yet been attributed to this loop. No native behavior was changed;
+the qualified current-source control and room default remain intact.
