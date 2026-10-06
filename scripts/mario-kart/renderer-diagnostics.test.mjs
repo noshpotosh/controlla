@@ -171,3 +171,73 @@ test('page departure neutralizes an unfinished held probe', t => {
   diagnostics.observeFrame({ frame: 101 });
   assert.equal(inputs.length, count);
 });
+
+test('native probes ignore host counter offsets and release at stepped native target', async t => {
+  const env = environment(t, '?rendererdiagnostics=1&probeinputs=1&framestep=1&nativeprobe=1');
+  let nativeFrame = 100;
+  const inputs = [];
+  const diagnostics = installRendererDiagnostics({
+    getAdapter: () => ({ loaded: true, async request(type) {
+      if (type === 'controllaNativeProgress') return { available: true, frame: nativeFrame };
+      if (type === 'controllaStepFrame') return { stepped: true, exactSingleFrame: true,
+        frameDelta: 1, after: { available: true, frame: nativeFrame } };
+      return {};
+    } }), getFrame: () => ({ frame: 10000, running: false }),
+    setProbeInput: state => inputs.push(state),
+  });
+  await env.elements.find(element => element.textContent === 'Brake (90 frames)').onclick();
+  diagnostics.observeFrame({ frame: 20000 });
+  assert.equal(inputs.at(-1).mask, 2);
+  const step = env.elements.find(element => element.textContent === 'Step native frame');
+  nativeFrame = 189; await step.listeners.click();
+  assert.equal(inputs.at(-1).mask, 2);
+  nativeFrame = 190; await step.listeners.click();
+  assert.equal(inputs.at(-1), null);
+  await env.intervals[0]();
+  const probe = JSON.parse(env.elements[0].textContent).probe;
+  assert.equal(probe.basis, 'native');
+  assert.equal(probe.startFrame, 100);
+  assert.equal(probe.targetFrame, 190);
+  assert.equal(probe.releasedAtFrame, 190);
+});
+
+test('native probe rejects running sessions and unavailable counters without applying input', async t => {
+  const env = environment(t, '?rendererdiagnostics=1&probeinputs=1&framestep=1&nativeprobe=1');
+  let running = true, requests = 0;
+  const inputs = [];
+  installRendererDiagnostics({ getAdapter: () => ({ loaded: true, async request() { ++requests; return {}; } }),
+    getFrame: () => ({ frame: 100, running }), setProbeInput: state => inputs.push(state) });
+  const brake = env.elements.find(element => element.textContent === 'Brake (90 frames)');
+  await brake.onclick(); assert.equal(requests, 0);
+  running = false; await brake.onclick();
+  assert.equal(requests, 1);
+  assert.ok(inputs.every(state => state === null));
+  await env.intervals[0]();
+  assert.equal(JSON.parse(env.elements[0].textContent).probe.error, 'Native frame counter unavailable.');
+});
+
+test('native probe setup cannot apply input after page departure', async t => {
+  const env = environment(t, '?rendererdiagnostics=1&probeinputs=1&framestep=1&nativeprobe=1');
+  let finish;
+  const inputs = [];
+  installRendererDiagnostics({ getAdapter: () => ({ loaded: true, request() { return new Promise(resolve => { finish = resolve; }); } }),
+    getFrame: () => ({ running: false }), setProbeInput: state => inputs.push(state) });
+  const setup = env.elements.find(element => element.textContent === 'Brake (90 frames)').onclick();
+  env.cleanups.forEach(callback => callback());
+  finish({ available: true, frame: 100 });
+  await setup;
+  assert.ok(inputs.every(state => state === null));
+});
+
+test('resuming cancels a held native trial instead of holding indefinitely', async t => {
+  const env = environment(t, '?rendererdiagnostics=1&probeinputs=1&framestep=1&nativeprobe=1');
+  const inputs = [];
+  const diagnostics = installRendererDiagnostics({ getAdapter: () => ({ loaded: true,
+    async request() { return { available: true, frame: 100 }; } }),
+    getFrame: () => ({ running: false }), setProbeInput: state => inputs.push(state) });
+  await env.elements.find(element => element.textContent === 'Brake (90 frames)').onclick();
+  diagnostics.observeFrame({ running: true, frame: 105 });
+  assert.equal(inputs.at(-1), null);
+  await env.intervals[0]();
+  assert.match(JSON.parse(env.elements[0].textContent).probe.error, /cancelled/);
+});

@@ -14,6 +14,7 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
   let probe = null;
   let pending = false;
   let frameStep = null;
+  let observeNativeFrame = () => {};
   const nativeProgressRequested = new URLSearchParams(location.search).get('pauseprobe') === '1';
   const timer = setInterval(async () => {
     const adapter = getAdapter();
@@ -43,6 +44,7 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
         if (!result?.stepped) throw new Error(result?.error || 'Load and pause the game before stepping.');
         adapter.applyFrame?.(result);
         refreshPresentation?.();
+        observeNativeFrame(result.after);
         step.textContent = result.exactSingleFrame ? 'Stepped one native frame' : `Advanced ${result.frameDelta} native frames`;
       } catch (error) { step.textContent = error.message; }
       finally { step.disabled = false; }
@@ -67,7 +69,15 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
   const controls = document.createElement('details');
   controls.innerHTML = '<summary>Input probe</summary>';
   document.querySelector('.topbar-actions').append(controls);
-  let held = null, targetFrame = 0;
+  let held = null, targetFrame = 0, inputGeneration = 0;
+  const nativeProbe = new URLSearchParams(location.search).get('nativeprobe') === '1';
+  const beginProbe = (name, mask, frames, stickX, startFrame, basis) => {
+    targetFrame = startFrame + frames;
+    held = { connected: true, mask, stickX, stickY: 128, cStickX: 128, cStickY: 128,
+      triggerLeft: 0, triggerRight: mask & 64 ? 255 : 0, analogA: mask & 1 ? 255 : 0, analogB: mask & 2 ? 255 : 0 };
+    probe = { name, requested: { ...held }, basis, startFrame, targetFrame, observations: [], releasedAtFrame: null };
+    setProbeInput(held);
+  };
   const probes = [
     ['Start', 16], ['Confirm', 1], ['Back', 2], ['Up', 256], ['Down', 512], ['Left', 1024], ['Right', 2048],
     ['Accelerate', 1, 300], ['Steer left + gas', 1, 90, 64], ['Steer right + gas', 1, 90, 192],
@@ -79,11 +89,24 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
     button.textContent = `${name} (${frames} frames)`;
     button.onclick = () => {
       if (!getAdapter()?.loaded) return;
-      targetFrame = (getFrame()?.frame ?? 0) + frames;
-      held = { connected: true, mask, stickX, stickY: 128, cStickX: 128, cStickY: 128,
-        triggerLeft: 0, triggerRight: mask & 64 ? 255 : 0, analogA: mask & 1 ? 255 : 0, analogB: mask & 2 ? 255 : 0 };
-      probe = { name, requested: { ...held }, targetFrame, observations: [], releasedAtFrame: null };
-      setProbeInput(held);
+      if (!nativeProbe) return beginProbe(name, mask, frames, stickX, getFrame()?.frame ?? 0, 'host');
+      const generation = ++inputGeneration;
+      held = null; setProbeInput(null);
+      button.disabled = true;
+      return (async () => {
+        try {
+          if (getFrame()?.running !== false || new URLSearchParams(location.search).get('framestep') !== '1')
+            throw new Error('Native input probes require a paused frame-step session.');
+          const progress = await getAdapter().request('controllaNativeProgress');
+          if (generation !== inputGeneration) return;
+          if (getFrame()?.running !== false) throw new Error('Game resumed during native probe setup.');
+          if (!progress?.available || !Number.isSafeInteger(progress.frame))
+            throw new Error('Native frame counter unavailable.');
+          beginProbe(name, mask, frames, stickX, progress.frame, 'native');
+        } catch (error) {
+          if (generation === inputGeneration) probe = { name, basis: 'native', error: error.message };
+        } finally { button.disabled = false; }
+      })();
     };
     controls.append(button);
   }
@@ -91,17 +114,30 @@ export function installRendererDiagnostics({ getAdapter, getFrame, setProbeInput
   // still advance between reports, so this reduces latency, not an exact bound.
   const observeFrame = (frame = getFrame()) => {
     if (!held) return;
+    if (probe.basis === 'native' && frame?.running === true) {
+      probe.error = 'Native input trial cancelled: game resumed.';
+      held = null; setProbeInput(null);
+      return;
+    }
     const pad = frame?.ppcWasmHelperStats?.match(/pad polls:.*? fastsw:[01]/)?.[0];
     if (pad && probe.observations.at(-1)?.pad !== pad) {
       probe.observations.push({ frame: frame.frame, pad });
       if (probe.observations.length > 64) probe.observations.shift();
     }
-    if ((frame?.frame ?? 0) >= targetFrame) {
+    if (probe.basis !== 'native' && (frame?.frame ?? 0) >= targetFrame) {
       probe.releasedAtFrame = frame?.frame ?? 0;
       held = null; setProbeInput(null);
     } else setProbeInput(held);
   };
+  observeNativeFrame = progress => {
+    if (!held || probe.basis !== 'native' || !progress?.available) return;
+    probe.lastNativeFrame = progress.frame;
+    if (progress.frame >= targetFrame) {
+      probe.releasedAtFrame = progress.frame;
+      held = null; setProbeInput(null);
+    }
+  };
   const inputTimer = setInterval(() => observeFrame(), 40);
-  window.addEventListener('pagehide', () => { clearInterval(inputTimer); held = null; setProbeInput(null); }, { once: true });
+  window.addEventListener('pagehide', () => { clearInterval(inputTimer); ++inputGeneration; held = null; setProbeInput(null); }, { once: true });
   return { observeFrame };
 }

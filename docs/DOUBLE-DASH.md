@@ -3558,3 +3558,25 @@ Evidence work/double-dash-release-retest-{accelerate,brake}.{json,png}.
 Tab61 retained paused/fullscreen. Exact native input scheduling, complete
 races, original-reference braking comparisons and performance remain
 unqualified. Full goal stays incomplete.
+
+### Native-counter paused input trials
+
+Opt-in nativeprobe1 with probeinputs1/framestep1 now samples the live
+worker frame counter before applying a probe and bases its target on
+that counter. Host presentation counters cannot release this trial.
+Successful native step replies feed their observed after.frame into
+release logic, recording basis/start/target/lastNative/released counters.
+The40ms heartbeat refreshes held inputs but does not decide duration.
+
+Requires paused host metadata and a live native counter; missing counters
+or running sessions fail without held input. Resuming cancels and clears
+the trial. Generation checks prevent delayed setup applying input after
+page departure or replacement.18 renderer/worker tests passed, covering
+large host offsets, exact target release, missing ABI, running rejection,
+page departure and resume cleanup; serve syntax also passed.
+
+Browser verification remains pending. This coordinates paused diagnostic
+steps, not autonomous native scheduling: native input acceptance at the
+first step and exact sustained button polling still need observation.
+Existing tab61 keeps the previous module until reloaded with nativeprobe1.
+No native rebuild or normal phone-controller change. Full goal incomplete.
