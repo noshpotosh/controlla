@@ -3377,3 +3377,21 @@ single-frame result, running-state rejection and unavailable export.
 Build31433 remains live compiling native wrapper. Browser qualification
 and synchronized renderer comparisons remain pending. Server9743 still
 loads previous injection until restarted; default runtime unchanged.
+
+### Frame-step native build qualification
+
+Build31433 completed. WASM SHA-256
+ff4928b665df4b56510c5fdcc54d5646d5379c1fa8e885601a1e906c889c6359;
+manifest nativeFrameStep=true. Arithmetic checks passed3,744 paired
+differential,12,288 scalar status/exception and1,536 paired status cases
+with profiling off/on; four-port ABI passed. Native loader export
+_ControllaStepFrame is callable and returns0 for an uninitialized core,
+verified by /tmp/controlla-frame-step-export-check.mjs (exit0).
+An initial raw WASM export-name lookup failed because exports are minified;
+loader binds the public function to wasmExports.Ig. No missing export bug
+was established. A stdin Node --input-type attempt failed through inherited
+pthread worker arguments; the file-based harness avoids that issue.
+Actual paused frame advancement, running-state rejection and synchronized
+renderer image qualification remain pending. Server9743 still serves the
+previous control; the isolated frame-step binary is preserved for testing.
+No promotion or completion claim.
