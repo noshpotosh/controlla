@@ -2857,3 +2857,30 @@ gameplay/visual/audio/physical-motion qualification remain open.
 Ignored evidence: `work/double-dash-guarded-scalar-mul-race-{a,b}.json`
 and `work/double-dash-guarded-scalar-mul-race.png`. Tab 45 closed after
 evidence capture to release workers. Checkpoint remains available.
+
+
+### Exact-product scalar multiply/add feasibility
+
+`node scripts/mario-kart/check-exact-scalar-madd.mjs` extracts the current
+reference Force25Bit function and checks its normal-input bit rounding
+against integer masks/add. It constructs two million deterministic vectors
+with normal float A/B and normal double C, then compares separate double
+multiply/add against `std::fma` with compiler contraction disabled.
+Conservative guards require the product within normal float magnitude,
+a raw sum at least the smallest normal float, a normal converted sum and
+no single-precision even tie (mask 0x1fffffff / value 0x10000000).
+
+1,212,043 eligible vectors matched bit-for-bit both in double and converted
+float; 787,957 random vectors were rejected. An additional known reference
+tie fixture (50.0, float 0xbc88cc38, float 0x1b1c72a0) was explicitly
+rejected by the tie guard. The initial test incorrectly required random
+ties despite their rarity; the known fixture now supplies required tie
+coverage. This is host feasibility evidence, not native WASM qualification
+or an exhaustive proof. It suggests a generated path may safely avoid the
+software FMA for exact-product cases while retaining reference on ties,
+extended A precision, exceptional inputs and subnormal/overflow products.
+
+No generated multiply/add change has been made yet. Build and room
+defaults are unchanged. Next work is to implement conservative guards,
+compare the actual generated code to the interpreter including the known
+tie and aliases, then measure the race.
