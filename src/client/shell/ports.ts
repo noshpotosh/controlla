@@ -7,7 +7,6 @@ import type {
   Widget,
   Permission,
 } from '../controls/api.ts';
-import type { Point } from '../../core/types.ts';
 import type { Identity, Role, Player, Venue } from '../../shared/room.ts';
 import type { RawMotionSample } from '../controls/motion/trace.ts';
 import type { ScreenPort } from '../game-screen/port.ts';
@@ -94,9 +93,7 @@ export interface ShellView {
   readonly inputEpoch: number;
   readonly D: number;
   readonly limitingVenue: string | null;
-  readonly adjustingAim: boolean;
-  readonly sensitivity: number;
-  readonly sensitivityRange: Readonly<{ min: number; max: number }>;
+  readonly settingsOpen: boolean;
   readonly motionEnabled: boolean;
   readonly motionStatus: MotionStatus;
   readonly sensorHz: number;
@@ -119,11 +116,8 @@ export interface HostActions {
 }
 export interface PhoneActions {
   enableMotion(this: void): Promise<void>;
-  beginAdjustAim(this: void): void;
-  finishAdjustAim(this: void): void;
-  setSensitivity(this: void, value: number): void;
-  recenter(this: void): void;
-  previewPoint(this: void): Point;
+  openSettings(this: void): void;
+  closeSettings(this: void): void;
   motionPortFor(
     this: void,
     widget: Widget,

@@ -99,3 +99,48 @@
     animation: none;
   }
 }
+
+.ctl-settings-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--ctl-space-4);
+  padding: var(--ctl-space-4);
+  overflow: auto;
+}
+.ctl-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ctl-space-4);
+  text-align: center;
+}
+.ctl-settings h1 {
+  font-size: 32px;
+}
+.ctl-settings__range {
+  display: grid;
+  gap: 12px;
+  text-align: left;
+  font-weight: 700;
+}
+.ctl-settings__range input {
+  width: 100%;
+  accent-color: var(--ctl-accent);
+  touch-action: pan-x;
+}
+.ctl-settings__ends {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ctl-ink-muted);
+}
+.ctl-settings button,
+.ctl-settings__done {
+  padding: var(--ctl-space-4);
+  border: 1px solid var(--ctl-line);
+  border-radius: var(--ctl-radius-lg);
+}
+.ctl-settings__done {
+  min-height: 90px;
+  font-size: 24px;
+}

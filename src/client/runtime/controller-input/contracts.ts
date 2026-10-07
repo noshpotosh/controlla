@@ -14,4 +14,5 @@ export interface InputEffects {
       | { type: 'press'; press: Omit<Press, 'playerId'> },
   ): void;
   haptic(ms: number): void;
+  settingsChanged?(values: Readonly<Record<string, number>>): void;
 }

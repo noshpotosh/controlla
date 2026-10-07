@@ -91,6 +91,7 @@ export const pointerMetadata: MotionMetadata<PointerConfig> = {
   type: 'pointer',
   description: 'Aim by pointing the phone',
   calibration: { recenter: true },
+  settings: { sensitivity: { default: 1.35, min: 0.6, max: 6, step: 0.1 } },
   channel: 'value',
   kind: 'vector',
   throttle: false,

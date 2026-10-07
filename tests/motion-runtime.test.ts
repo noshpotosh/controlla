@@ -210,7 +210,7 @@ void test('page suspension defeats config and diagnostics starts; pageshow resto
   p.invoke('pageHide');
   p.config(p.runtime.view.config!);
   p.f.motion.start();
-  p.runtime.beginAdjustAim();
+  p.runtime.openSettings();
   assert.equal(p.f.counts().starts, 1);
   p.advance(3000);
   const count = p.frames.length;

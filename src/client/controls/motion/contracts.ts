@@ -66,6 +66,7 @@ export type MotionControlCommand = MotionCommand extends infer C
     : never
   : never;
 export interface MotionControlState {
+  readonly settings?: Readonly<Record<string, number>>;
   readonly held: boolean;
   readonly activations: number;
   readonly point: Readonly<{ x: number; y: number }>;

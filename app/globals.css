@@ -400,19 +400,7 @@ footer {
   min-height: 90px;
   font-size: 24px !important;
 }
-.sensitivity {
-  display: grid;
-  gap: 12px;
-  text-align: left;
-  font-weight: 700;
-}
-.sensitivity-ends {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  font-weight: 400;
-  opacity: 0.75;
-}
+
 .results-list {
   display: grid;
   gap: 12px;

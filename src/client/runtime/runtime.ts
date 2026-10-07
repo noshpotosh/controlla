@@ -20,7 +20,6 @@ import { Motion } from '../controls/motion/provider.ts';
 import type { MotionControlPort } from '../controls/motion/contracts.ts';
 import type { MotionStatus } from '../controls/motion/contracts.ts';
 import type { ControlPort, ControllerConfig, Widget } from '../controls/api.ts';
-import { DEFAULT_GAIN } from '../controls/motion/pointer.ts';
 import { ControllerInput } from './controller-input/controller-input.ts';
 
 import type { Channel, Message } from '../engine/messages.ts';
@@ -47,9 +46,8 @@ export interface RuntimeView {
   limitingVenue: string | null;
   telemetry: Message | null;
   links: Record<string, LinkStats>;
-  /** The aim settings panel (sensitivity, recenter) is open. */
-  adjustingAim: boolean;
-  sensitivity: number;
+  /** The controls-owned settings panel is open. */
+  settingsOpen: boolean;
   motionEnabled: boolean;
   motionStatus: MotionStatus;
   sensorHz: number;
@@ -58,8 +56,7 @@ export interface RuntimeView {
   wakeLock: boolean;
   controllerPath: 'venue' | 'direct-to-session';
 }
-// Pointer sensitivity is a property of the player and phone, not the room.
-const POINTER_GAIN_KEY = 'controlla:pointer-gain';
+const CONTROL_SETTINGS_KEY = 'controlla:control-settings';
 export interface JoinOptions {
   role: Role;
   room?: string;
@@ -127,8 +124,7 @@ export class Runtime {
     limitingVenue: null,
     telemetry: null,
     links: {},
-    adjustingAim: false,
-    sensitivity: DEFAULT_GAIN,
+    settingsOpen: false,
     motionEnabled: false,
     motionStatus: 'prompt',
     sensorHz: 0,
@@ -251,6 +247,14 @@ export class Runtime {
         frame: (data) => this.router.sendFrame(data),
         reliable: (message) => this.sendUp(message),
         haptic: (ms) => navigator.vibrate?.(ms),
+        settingsChanged: (values) => {
+          try {
+            localStorage.setItem(CONTROL_SETTINGS_KEY, JSON.stringify(values));
+          } catch {
+            /* Preferences remain in memory when storage is unavailable. */
+          }
+          this.notify();
+        },
       },
     );
     this.motion = motion;
@@ -360,11 +364,8 @@ export class Runtime {
         `controlla:resume:${identity.role}:${identity.room}:${identity.venueId}`,
         JSON.stringify(identity),
       );
-      if (identity.role === 'controller') {
-        const stored = localStorage.getItem(POINTER_GAIN_KEY);
-        if (stored) this.input.setSensitivity(Number(stored));
-        this.view.sensitivity = this.input.getSnapshot().sensitivity;
-      }
+      if (identity.role === 'controller')
+        this.input.restoreSettings(localStorage.getItem(CONTROL_SETTINGS_KEY));
     } catch {
       /* Private browsing can disallow storage. */
     }
@@ -541,11 +542,7 @@ export class Runtime {
     );
     const input = this.input.getSnapshot();
     this.view.inputEpoch = input.epoch;
-    this.view.adjustingAim = input.adjustingAim;
-    this.view.sensitivity = input.sensitivity;
-  }
-  previewPoint() {
-    return this.input.previewPoint();
+    this.view.settingsOpen = input.settingsOpen;
   }
   motionPortFor(widget: Widget, generation: number): MotionControlPort {
     this.syncInput();
@@ -570,33 +567,18 @@ export class Runtime {
     this.syncInput();
     this.input.haptic(ms);
   }
-  beginAdjustAim() {
+  openSettings() {
     if (!this.view.motionEnabled) {
-      this.warn('Tap Enable motion before adjusting your aim.');
+      this.warn('Tap Enable motion before opening controller settings.');
       return;
     }
     this.view.warning = '';
-    this.input.beginAdjustAim();
+    this.input.openSettings();
     this.motion.start();
     this.notify();
   }
-  finishAdjustAim() {
-    this.input.finishAdjustAim();
-    this.notify();
-  }
-  /** Screen widths per radian of turn; takes effect immediately. */
-  setSensitivity(gain: number) {
-    this.input.setSensitivity(gain);
-    this.view.sensitivity = this.input.getSnapshot().sensitivity;
-    try {
-      localStorage.setItem(POINTER_GAIN_KEY, String(this.view.sensitivity));
-    } catch {
-      /* Private browsing can disallow storage; the setting lasts this session. */
-    }
-    this.notify();
-  }
-  recenter() {
-    this.input.recenter();
+  closeSettings() {
+    this.input.closeSettings();
     this.notify();
   }
   startGame(id: string, mode: string) {

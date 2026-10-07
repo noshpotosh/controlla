@@ -215,8 +215,12 @@ void test('end and dispose are idempotent terminal barriers for timers, controls
     port.haptic();
     f.timers[0].callback();
     f.input.tick(f.motion);
-    f.input.recenter();
-    f.input.setSensitivity(4);
+    f.input
+      .motionPortFor(f.config.widgets[0], f.config.generation)
+      .command({ type: 'recenter' });
+    f.input
+      .motionPortFor(f.config.widgets[0], f.config.generation)
+      .command({ type: 'sensitivity', value: 4 });
     f.input.setPoint({ x: 1, y: 1 });
     assert.deepEqual(f.input.getSnapshot(), state);
     assert.equal(f.messages.length, 1);
@@ -286,7 +290,9 @@ void test('recentering makes the current tilt level', () => {
   const f = fixture(config);
   f.input.tick(f.motion);
   assert.ok(Math.abs(f.frames.at(-1)!.x - 0.4) < 0.001);
-  f.input.recenter();
+  f.input
+    .motionPortFor(f.config.widgets[0], f.config.generation)
+    .command({ type: 'recenter' });
   f.at(1700);
   f.input.tick({ ...f.motion, at: 1700, sequence: 2 });
   assert.ok(Math.abs(f.frames.at(-1)!.x) < 0.001);
@@ -306,7 +312,9 @@ void test('pointer sampling and recovery preserve position, press anchoring and 
   const config = configuration();
   config.motion.pointer ??= {};
   const f = fixture(config);
-  f.input.setSensitivity(3);
+  f.input
+    .motionPortFor(f.config.widgets[0], f.config.generation)
+    .command({ type: 'sensitivity', value: 3 });
   f.input.tick(f.motion);
   for (let n = 1; n <= 10; n++) {
     f.at(1000 + n * 20);
@@ -341,7 +349,9 @@ void test('pointer sampling and recovery preserve position, press anchoring and 
     f.input.previewPoint(),
   );
   assert.equal(f.input.getSnapshot().sensitivity, 3);
-  f.input.recenter();
+  f.input
+    .motionPortFor(f.config.widgets[0], f.config.generation)
+    .command({ type: 'recenter' });
   assert.equal(f.input.getSnapshot().recenters, 1);
   assert.deepEqual(f.input.previewPoint(), { x: 0.5, y: 0.5 });
 });
@@ -370,13 +380,13 @@ void test('configuration and aim settings remain input-owned detached projection
     false,
   );
   assert.equal(h.input.getConfiguration()!.schemaVersion, 2);
-  h.input.beginAdjustAim();
-  assert.equal(h.input.getSnapshot().adjustingAim, true);
-  h.input.finishAdjustAim();
-  assert.equal(h.input.getSnapshot().adjustingAim, false);
+  h.input.openSettings();
+  assert.equal(h.input.getSnapshot().settingsOpen, true);
+  h.input.closeSettings();
+  assert.equal(h.input.getSnapshot().settingsOpen, false);
   h.input.dispose();
-  h.input.beginAdjustAim();
-  assert.equal(h.input.getSnapshot().adjustingAim, false);
+  h.input.openSettings();
+  assert.equal(h.input.getSnapshot().settingsOpen, false);
   assert.equal(h.input.configure(configuration()), false);
 });
 function swingFixture(config = configuration()) {
@@ -594,7 +604,9 @@ void test('the host can keep the pointer inside the play field', () => {
   for (let i = 0; i < 60; i++) f.sample([1, 0, -2]);
   const p = f.input.previewPoint();
   assert.ok(Math.abs(p.x - 0.9) < 1e-6 && Math.abs(p.y - 0.3) < 1e-6);
-  f.input.recenter();
+  f.input
+    .motionPortFor(f.config.widgets[0], f.config.generation)
+    .command({ type: 'recenter' });
   assert.deepEqual(f.input.previewPoint(), { x: 0.5, y: 0.55 });
 });
 
@@ -692,4 +704,35 @@ void test('a current-schema configuration cannot reintroduce a retired widget', 
     assert.deepEqual(f.input.getConfiguration(), previous);
   }
   f.input.dispose();
+});
+
+void test('scoped settings commands clamp, persist across reconfiguration, and reject retired callbacks', () => {
+  const config = configuration();
+  config.motion.pointer = {};
+  const f = fixture(config);
+  const current = f.input.getConfiguration()!;
+  const port = f.input.motionPortFor(current.widgets[0], current.generation);
+  port.command({ type: 'sensitivity', value: 99 });
+  assert.equal(port.getSnapshot().settings?.sensitivity, 6);
+  assert.equal(
+    Reflect.set(port.getSnapshot().settings!, 'sensitivity', 99),
+    false,
+  );
+  const before = f.input.getSnapshot().recenters;
+  port.command({ type: 'recenter' });
+  assert.equal(f.input.getSnapshot().recenters, before + 1);
+  current.generation++;
+  assert.equal(f.input.configure(current), true);
+  port.command({ type: 'sensitivity', value: 0.6 });
+  port.command({ type: 'recenter' });
+  assert.equal(f.input.getSnapshot().sensitivity, 6);
+  assert.equal(f.input.getSnapshot().recenters, before + 1);
+  f.input.restoreSettings('{"sensitivity":2.5}');
+  assert.equal(f.input.getSnapshot().sensitivity, 2.5);
+  for (const json of ['bad JSON', '{"sensitivity":"bad"}', 'null'])
+    f.input.restoreSettings(json);
+  assert.equal(f.input.getSnapshot().sensitivity, 2.5);
+  f.input.dispose();
+  f.input.restoreSettings('{"sensitivity":0.6}');
+  assert.equal(f.input.getSnapshot().sensitivity, 2.5);
 });

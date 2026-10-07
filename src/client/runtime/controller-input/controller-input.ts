@@ -17,7 +17,6 @@ import {
   parseControlValue,
   valueFitsEnvelope,
 } from '../../controls/value.ts';
-import { clampGain } from '../../controls/motion/pointer.ts';
 import { MotionControls } from '../../controls/motion/composition.ts';
 import { motionBindings } from '../../controls/motion/configuration.ts';
 import { motionDefinitionFor } from '../../controls/motion/registry.ts';
@@ -32,7 +31,7 @@ const MAX_BACKDATE_MS = 400;
 export class ControllerInput {
   private config: ControllerConfig | null = null;
   private active = false;
-  private adjustingAim = false;
+  private settingsOpen = false;
   private terminal = false;
   private epoch = 0;
   private lastSend = 0;
@@ -45,7 +44,6 @@ export class ControllerInput {
   private edgeTimes = [0, 0, 0, 0];
   private motionControls: MotionControls;
   private recenters = 0;
-  private sensitivity = 1.35;
   private sendRate = 60;
   private widgetLastSent = new Map<string, number>();
   private widgetPending = new Map<
@@ -69,6 +67,7 @@ export class ControllerInput {
         activation: (action, value, capture) =>
           this.action(action, value, this.config?.generation, capture),
         haptic: (ms) => this.haptic(ms),
+        settingsChanged: (values) => this.effects.settingsChanged?.(values),
       },
     );
   }
@@ -76,9 +75,9 @@ export class ControllerInput {
   getSnapshot() {
     return Object.freeze({
       epoch: this.epoch,
-      adjustingAim: this.adjustingAim,
+      settingsOpen: this.settingsOpen,
       point: Object.freeze(this.previewPoint()),
-      sensitivity: this.sensitivity,
+      sensitivity: this.motionControls.getSettings().sensitivity,
       recenters: this.recenters,
       motion: this.motionControls.getSnapshot(),
     });
@@ -87,11 +86,11 @@ export class ControllerInput {
   getConfiguration() {
     return this.config ? structuredClone(this.config) : null;
   }
-  beginAdjustAim() {
-    if (!this.terminal) this.adjustingAim = true;
+  openSettings() {
+    if (!this.terminal) this.settingsOpen = true;
   }
-  finishAdjustAim() {
-    if (!this.terminal) this.adjustingAim = false;
+  closeSettings() {
+    if (!this.terminal) this.settingsOpen = false;
   }
   configure(config: ControllerConfig) {
     if (
@@ -114,11 +113,6 @@ export class ControllerInput {
     )
       return false;
     this.config = structuredClone(config);
-    this.motionControls.commandAll({
-      type: 'sensitivity',
-      value: this.sensitivity,
-      at: this.environment.localTime(),
-    });
     if (changed) {
       this.clearWidgetInput(true);
       this.edges = [0, 0, 0, 0];
@@ -160,14 +154,8 @@ export class ControllerInput {
     this.motionControls.dispose();
     this.terminal = true;
   }
-  setSensitivity(gain: number) {
-    if (this.terminal) return;
-    this.sensitivity = clampGain(gain);
-    this.motionControls.commandAll({
-      type: 'sensitivity',
-      value: this.sensitivity,
-      at: this.environment.localTime(),
-    });
+  restoreSettings(json: string | null) {
+    this.motionControls.restoreSettings(json);
   }
   /** Commands and observation belong to one named action, configuration and epoch. */
   motionPortFor(widget: Widget, generation: number): MotionControlPort {
@@ -201,10 +189,12 @@ export class ControllerInput {
         return Object.freeze({
           ...snapshot.inputs[action],
           point: snapshot.point,
+          settings: this.motionControls.getSettings(action),
         });
       },
       command: (command) => {
         if (!valid()) return;
+        if (command.type === 'recenter') this.recenters++;
         this.motionControls.command(action, {
           ...command,
           at: this.environment.localTime(),
@@ -213,16 +203,6 @@ export class ControllerInput {
           this.latestPoint = { ...this.motionControls.getSnapshot().point };
       },
     };
-  }
-  recenter() {
-    if (this.terminal) return;
-    this.motionControls.commandAll({
-      type: 'recenter',
-      at: this.environment.localTime(),
-    });
-    if (this.motionControls.getSnapshot().vector)
-      this.latestPoint = { ...this.motionControls.getSnapshot().point };
-    this.recenters++;
   }
   tick(motion: MotionSnapshot) {
     if (!this.active || this.terminal || !this.config) return;

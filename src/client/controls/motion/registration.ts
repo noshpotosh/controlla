@@ -60,6 +60,10 @@ export interface MotionDefinition<P extends object> {
   kind: OutputKind;
   throttle: boolean;
   calibration?: { recenter: boolean };
+  settings?: Record<
+    string,
+    { default: number; min: number; max: number; step: number }
+  >;
   transport: { motionVector: boolean; pressSlots: 0 | 1 };
   availability(capabilities: Readonly<Capabilities>): Availability;
   validateConfig(value: unknown): Validated<P>;

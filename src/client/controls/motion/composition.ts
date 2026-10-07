@@ -9,7 +9,7 @@ import type {
   MotionOutput,
   ValidatedMotionSample,
 } from './registration.ts';
-import { motionDefinitionFor } from './registry.ts';
+import { motionDefinitionFor, motionDefinitions } from './registry.ts';
 
 export interface MotionBinding {
   action: string;
@@ -32,6 +32,7 @@ export interface MotionEffects {
     capture: { at: number; aim?: Vector },
   ): void;
   haptic(ms: number): void;
+  settingsChanged?(values: Readonly<Record<string, number>>): void;
 }
 export interface MotionControlsSnapshot {
   readonly point: Readonly<Vector>;
@@ -46,6 +47,64 @@ export class MotionControls {
   private point: Vector = { x: 0.5, y: 0.5 };
   private confidence = 1;
   private disposed = false;
+  private readonly settingDefinitions = Object.assign(
+    {},
+    ...motionDefinitions.map((definition) => definition.settings ?? {}),
+  ) as NonNullable<MotionDefinition<object>['settings']>;
+  private readonly settings: Record<string, number> = Object.fromEntries(
+    Object.entries(this.settingDefinitions).map(([key, setting]) => [
+      key,
+      setting.default,
+    ]),
+  );
+  getSettings(action?: string): Readonly<Record<string, number>> {
+    const supported =
+      action === undefined
+        ? this.settingDefinitions
+        : (this.inputs.find((input) => input.action === action)?.definition
+            .settings ?? {});
+    return Object.freeze(
+      Object.fromEntries(
+        Object.keys(supported).map((key) => [key, this.settings[key]]),
+      ),
+    );
+  }
+  restoreSettings(json: string | null): void {
+    if (!json || this.disposed) return;
+    try {
+      const values: unknown = JSON.parse(json);
+      if (!values || typeof values !== 'object' || Array.isArray(values))
+        return;
+      for (const [key, value] of Object.entries(values))
+        if (typeof value === 'number') this.setSetting(key, value);
+    } catch {
+      /* Invalid saved preferences retain the current settings. */
+    }
+  }
+  private setSetting(key: string, value: number): boolean {
+    const setting = Object.hasOwn(this.settingDefinitions, key)
+      ? this.settingDefinitions[key]
+      : undefined;
+    if (!setting || this.disposed) return false;
+    this.settings[key] = Number.isFinite(value)
+      ? Math.max(setting.min, Math.min(setting.max, value))
+      : setting.default;
+    this.applySettings();
+    this.effects.settingsChanged?.(this.getSettings());
+    return true;
+  }
+  private applySettings(): void {
+    for (const input of this.inputs)
+      for (const key of Object.keys(input.definition.settings ?? {}))
+        this.outputs(
+          input,
+          input.processor.command({
+            type: key,
+            value: this.settings[key],
+            at: this.clocks.localTime(),
+          } as MotionCommand),
+        );
+  }
   constructor(
     private readonly clocks: MotionClocks,
     private readonly effects: MotionEffects,
@@ -98,6 +157,7 @@ export class MotionControls {
       ];
     });
     this.cancel(); // Project configured bounds/neutral values before the first sample.
+    this.applySettings();
     for (const input of old)
       if (!this.inputs.some((current) => current.processor === input.processor))
         input.processor.dispose();
@@ -138,10 +198,17 @@ export class MotionControls {
   command(action: string, command: MotionCommand): void {
     if (this.disposed) return;
     const input = this.inputs.find((candidate) => candidate.action === action);
-    if (input) this.outputs(input, input.processor.command(command));
+    if (!input) return;
+    if ('value' in command && input.definition.settings?.[command.type]) {
+      this.setSetting(command.type, command.value);
+      return;
+    }
+    this.outputs(input, input.processor.command(command));
   }
   commandAll(command: MotionCommand): void {
     if (this.disposed) return;
+    if ('value' in command && this.setSetting(command.type, command.value))
+      return;
     // Calibration moves the vector before dependent gestures recapture it.
     for (const input of this.ordered())
       this.outputs(input, input.processor.command(command));

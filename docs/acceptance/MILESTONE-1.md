@@ -356,3 +356,31 @@ their controller-resolution and gameplay regressions.
 Checkpoint 2 remains open for generic controls-owned settings/calibration and
 remaining input-specific shell/runtime settings adapters. Browser smoke and
 physical-device evidence remain unverified, as do all later milestone checkpoints.
+
+
+## Checkpoint 2h: controls-owned settings and calibration
+
+Moved aim instructions, sensitivity range and recenter controls into registered
+controls presentation. Pure metadata supplies settings ranges/defaults and
+calibration availability. The shell opens/closes a generic panel and supplies
+scoped ports; its sensitivity, sensitivityRange, previewPoint and recenter
+adapters are removed. Controller menu motion enablement uses the configured
+motion map rather than named input branches.
+
+Controls composition owns numeric preference validation, clamping, immutable
+observation, restoration and reapplication after configuration changes. The input
+collaborator routes commands with receipt timestamps. Runtime persists the generic
+map under controlla:control-settings, without migration of the unreleased old
+pointer-gain key. Retired ports cannot adjust preferences or recenter replacement
+controllers. Tests now use the same scoped settings commands as presentation.
+
+Validation: npm test 410/410; game:test 139/139; typecheck, lint and production
+build passed. Focused input/composition/runtime suite 33/33. Logs:
+/private/tmp/settings-{tests,games,build,focused}.log. Typecheck initially caught
+an inferred optional numeric-map key; the final controls-owned frozen map fixes
+that issue. Registration/metadata parity and architecture gates pass.
+
+Checkpoint 2 implementation is complete. Required browser smoke remains pending,
+including settings/calibration and touch fallback; physical sensor tuning remains
+unverified. Checkpoints 3–6, feedback/haptics, hosted-network evidence and final
+integration acceptance remain open. Continue with timing policy and fixed roles.

@@ -144,8 +144,8 @@ there). Surfaces use React ComponentType, existing ControlPort and a captured
 MotionControlPort for command/observation. Commands omit `at`; the input owner
 dates them on receipt. The port binds widget identity, generation, config ID and
 input epoch; stale ports expose neutral immutable state and accept no commands.
-This replaces the proposed unscoped command callback; settings migration will
-use the same scoped interface. Current surface and proposed settings contracts:
+This replaces the proposed unscoped command callback. Surfaces and settings
+use the same scoped interface. Implemented presentation contracts:
 
 ```ts
 export interface MotionSurfaceProps {
@@ -154,20 +154,22 @@ export interface MotionSurfaceProps {
   motion?: MotionControlPort;
 }
 export interface MotionSettingsProps {
-  action: string;
+  widget: Widget;
   motion: MotionControlPort;
-  status: Readonly<Record<string, string | number | boolean | null>>;
 }
-export interface MotionPresentation {
-  type: MotionInput;
-  Surface?: React.ComponentType<MotionSurfaceProps>;
-  Settings?: React.ComponentType<MotionSettingsProps>;
-}
+export const motionSettings: Partial<
+  Record<MotionInput, React.ComponentType<MotionSettingsProps>>
+>;
 ```
 
 Controls own surfaces, calibration and settings. The shell receives a generic
 controls surface/settings slot and a bounded phone feedback view, never chopCount
 or holdAim. Captured ports/commands retire with config and input epochs.
+MotionControlState exposes an optional frozen numeric settings map. Pure metadata
+declares numeric settings (default/min/max/step) and recenter availability; controls
+composition clamps, restores and reapplies preferences. Runtime stores the generic
+map under `controlla:control-settings`; the unreleased pointer-gain key is retired.
+The shell exposes only settingsOpen/openSettings/closeSettings plus scoped ports.
 
 Replace per-input ControllerConfig.sensors flags with the generic registered
 settings map `motion: Partial<Record<MotionInput, Record<string, unknown>>>` in

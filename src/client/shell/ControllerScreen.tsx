@@ -1,8 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { RotateCcw } from 'lucide-react';
+import { ControllerSettings } from '../controls/motion-views/Settings.tsx';
 import { ControllerSurface } from '../controls/ControllerSurface.tsx';
 import { useImmersive } from '../controls/kit/immersive.ts';
 import { ControllerMenu, StatusToast } from './ControllerMenu.tsx';
@@ -74,46 +73,15 @@ export function ControllerScreen({
         </div>
       ) : panelOpen && Panel ? (
         <Panel motion={motion} onClose={() => setPanelOpen(false)} />
-      ) : v.adjustingAim ? (
-        <div className="calibrate">
-          <span className="eyebrow lime">AIM SETTINGS</span>
-          <h1>Adjust your aim.</h1>
-          <p className="note">
-            Hold your phone flat like a remote, screen facing up. Swivel its top
-            edge left or right to move sideways; tip the top edge up or down to
-            move vertically. Slow turns are precise; quick flicks go further.
-            Push past an edge to re-center.
-          </p>
-          <div className="sensitivity">
-            <span id="sensitivity">Sensitivity</span>
-            <Slider
-              aria-labelledby="sensitivity"
-              min={v.sensitivityRange.min}
-              max={v.sensitivityRange.max}
-              step={0.1}
-              value={[v.sensitivity]}
-              onValueChange={(value) =>
-                phone.setSensitivity(Array.isArray(value) ? value[0] : value)
-              }
-            />
-            <div className="sensitivity-ends">
-              <span>More movement</span>
-              <span>Less movement</span>
-            </div>
-          </div>
-          <Button variant="outline" onClick={() => phone.recenter()}>
-            <RotateCcw />
-            Recenter
-          </Button>
-          {panel && (
-            <Button variant="outline" onClick={() => setPanelOpen(true)}>
-              {panel.label}
-            </Button>
-          )}
-          <Button className="action" onClick={() => phone.finishAdjustAim()}>
-            Done
-          </Button>
-        </div>
+      ) : v.settingsOpen && v.config ? (
+        <ControllerSettings
+          key={`${v.config.configId}:${v.config.generation}:${v.inputEpoch}`}
+          config={v.config}
+          motionPortFor={(widget) =>
+            phone.motionPortFor(widget, v.config!.generation)
+          }
+          onClose={phone.closeSettings}
+        />
       ) : !v.config ? (
         <div className="controller-waiting">
           <p className="note">Waiting for your controller layout…</p>
