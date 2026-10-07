@@ -1,8 +1,11 @@
-# Roadmap 2: from platform to game factory
+# Roadmap: from platform to game factory
 
-> **Superseded.** This document is kept for history. The current roadmap is [ROADMAP_FINAL.md](ROADMAP_FINAL.md).
-
-Status: proposed, 2026-10-06. Audited against `develop` at `f16b540`.
+Status: proposed, 2026-10-06. This is the single roadmap. It merges and
+supersedes [ROADMAP.md](ROADMAP.md) (code audit of `develop` at `5817ca8`) and
+[ROADMAP2.md](ROADMAP2.md) (stage plan, audited at `f16b540`). The stages and
+goals come from ROADMAP2; the file-level audit and the early hardening work
+come from ROADMAP. Where the two disagreed, [Decisions](#decisions) records
+which position was kept.
 
 ## The goal
 
@@ -59,12 +62,25 @@ controller library and motion core are strong. Hosting, phone feedback, the
 TV experience, a shared visual standard and internet-grade networking are
 missing.
 
+### Distance to a self-contained core
+
+Rough distance to each structural goal (estimates from the audit detail
+below, not measurements):
+
+| Goal                                   | Estimate |
+| -------------------------------------- | -------- |
+| A game is self-contained               | 85%      |
+| Touch controls are self-contained      | 90%      |
+| Motion inputs are self-contained       | 40%      |
+| Shell and controllers are separated    | 70%      |
+| Tests keep games and inputs consistent | 50%      |
+
 ### What works
 
 | Area              | Today                                                                                                                                                                                                                                         |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Game contract     | `GameDescriptor` in [api/index.ts](../src/client/api/index.ts): rules, renderer, state validation and controller requirements in one object. Registration is one line in [catalog.ts](../src/client/minigames/catalog.ts).                    |
-| Authoring harness | `/dev/game-harness` runs a game with simulated players, no rooms or phones. Colocated game tests run in `npm run game:test`.                                                                                                                  |
+| Authoring harness | `/dev/game-harness` runs a game with simulated players, no rooms or phones. `npm run game:test` runs `tests/architecture-*.test.ts`.                                                                                                          |
 | Touch controls    | Six library controls (`button`, `dpad`, `stick`, `aim-pad`, `swipe-pad`, `hold-meter`), each a folder with definition, gesture logic, view and styles. `npm run control:new` scaffolds one. Layout designer, gallery and phone preview exist. |
 | Motion core       | Gyro "air mouse" pointer with soft dead zone, acceleration curve and gyro bias learning; gravity-corrected orientation; compass-anchored drift repayment; swing detection with aim lock; Motion Lab recording and trace replay.               |
 | Session           | Placements convert to session points in a ledger with duplicate-safe round records.                                                                                                                                                           |
@@ -87,6 +103,82 @@ missing.
 | TV                   | The host screen is a web dashboard with a sidebar and a mouse-driven game picker. Joining needs a role choice, a 5-character room code, a 4-character screen code and a name.                                                                                                                                                                                                         |
 | Look                 | Three visual languages (the lime "arcade" shell, the graphite controller, each game's own art). Neon Harvest draws with Canvas 2D; Whack-a-Mole draws with three.js and copies each frame into a 2D canvas. Countdown and results are plain text.                                                                                                                                     |
 | Authoring            | No game scaffolder, no game brief format, no conformance suite beyond architecture tests, no bots.                                                                                                                                                                                                                                                                                    |
+
+### Audit detail
+
+File-level findings behind the tables above. Each one is picked up by a named
+work item in the stages.
+
+#### 1. Can a new game be added without touching the underlying APIs?
+
+**Mostly yes, if the game uses inputs that already exist. No, if it needs a new motion input.**
+
+What already works:
+
+- A game is one folder under [`src/client/minigames/`](../src/client/minigames/) exporting a `GameDescriptor` from the [author API](../src/client/api/index.ts), registered with one line in [`catalog.ts`](../src/client/minigames/catalog.ts).
+- [`tests/architecture-boundaries.test.ts`](../tests/architecture-boundaries.test.ts) enforces that a game imports only its own folder and the author API, and that the catalog is the only production importer of a game.
+- The shell, game screen and `GameCanvas` have no per-game branches.
+- A headless [harness](../src/client/devtools/game-harness/harness.ts) and the `/dev/game-harness` page run a game with simulated players.
+
+What a new game still has to touch outside its folder:
+
+| Touch point                                                                                                                                  | Why                                                               |
+| -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| [`scripts/production-boundary.ts`](../scripts/production-boundary.ts), [`tests/developer-bundle.test.ts`](../tests/developer-bundle.test.ts) | Hardcoded list of each game's three files                         |
+| [`tests/engine-round.test.ts`](../tests/engine-round.test.ts) (line 221)                                                                     | Hardcoded list of catalog IDs                                     |
+| [`tests/live-catalog.test.ts`](../tests/live-catalog.test.ts) (line 137)                                                                     | Hardcoded stat keys per game                                      |
+| [`src/client/runtime/browser/sounds.ts`](../src/client/runtime/browser/sounds.ts)                                                            | Sound cues live in one core table; a new cue is a core edit       |
+| [`src/client/controls/layouts/`](../src/client/controls/layouts/)                                                                            | A new layout if no existing one fits (made in the designer; fine) |
+| [`vite.config.ts`](../vite.config.ts)                                                                                                        | Only if the game adds a lazily loaded dependency, as three.js did |
+
+Evidence from history: merging Whack-a-Mole (`ebc4979..389bda6`) changed about 75 files outside its own folder. Nearly all of that was the new `chop` input and anchored aim, not game registration. The game-facing core changes were small: `arbitrationMs` and `localPressing` in the API, about 30 lines in the engine and about 30 in the game screen.
+
+Limits in the game contract that the [backlog](MINIGAMES.md) will hit:
+
+- **Fixed-duration rounds only.** `RoundRunner` ends at `startAt + durationMs`; a game cannot end early or run turns (Bowling, Golf, Darts).
+- **One controller layout per game.** No per-player roles (Jam Session, Bomb Squad).
+- **No game-to-phone channel.** A game cannot vibrate or message one player's phone.
+- **No game scaffold.** `control:new` exists; there is no `game:new`.
+
+#### 2. Are controllers self-contained and reusable?
+
+**Touch controls: yes. Motion inputs and four legacy widgets: no.**
+
+- Six library controls (`button`, `dpad`, `stick`, `aim-pad`, `swipe-pad`, `hold-meter`) each live in a folder with a definition, logic, view and styles. They talk only to a `ControlPort`, are registered in `registry.ts` and `views.ts`, and are scaffolded by `npm run control:new`. Games name them and never draw them. See the [controls README](../src/client/controls/README.md).
+- Motion inputs (`pointer`, `tilt`, `shake`, `chop`) have no definition. Each is spread over about ten places:
+  - [`src/client/controls/motion/`](../src/client/controls/motion/) (algorithms)
+  - [`controller-input.ts`](../src/client/runtime/controller-input/controller-input.ts) (per-type branches in a 556-line class)
+  - `ControllerConfig.sensors` in [`controls/api.ts`](../src/client/controls/api.ts) (a fixed struct with one field per sensor)
+  - `available()` in [`resolve.ts`](../src/client/controls/resolve.ts) and the `legacy` table in [`registry.ts`](../src/client/controls/registry.ts)
+  - `SensorTile.tsx`, `shell/LegacyWidget.tsx`, `shell/ports.ts`, `runtime.ts`, `shell/runtime-adapter.ts`, `app/globals.css`
+- `jolt` is wanted by five backlog games and would repeat that whole path.
+- `slider`, `dial`, `text` and `draw-canvas` exist only in [`shell/LegacyWidget.tsx`](../src/client/shell/LegacyWidget.tsx). They are not registered and fail the layout resolver, so no game can use them yet.
+- Transport caps a controller at four press slots and one motion vector (`pointer` or `tilt`).
+
+#### 3. Is the shell separated from the controllers, and the reverse?
+
+**Controllers do not depend on the shell (enforced). The shell still contains controller code.**
+
+- `shell/LegacyWidget.tsx` (319 lines) implements the chop tile, pointer preview, slider, dial, text and draw canvas, with their CSS in `app/globals.css`.
+- `PhoneActions` in [`shell/ports.ts`](../src/client/shell/ports.ts) has input-specific members: `chopCount`, `holdAim`, `previewPoint`. Each new motion input widens the shell port, the runtime and the adapter.
+- `ControllerScreen.tsx` owns the aim-calibration UI, and `ControllerMenu.tsx` reads `config.sensors.pointer` and `tilt` directly.
+- Shell to engine, screen and runtime is clean: views get frozen snapshots and narrow ports, checked by tests.
+
+#### 4. Deterministic tests
+
+**The framework is well covered; consistency across games and across inputs is not.**
+
+- Present: 45 test files, import-graph enforcement, seeded game randomness (seed derived from `startAt`), and two loops over the catalog ([`architecture-harness.test.ts`](../tests/architecture-harness.test.ts) line 30, [`live-catalog.test.ts`](../tests/live-catalog.test.ts) line 141).
+- Missing: a shared conformance suite for games. Each game's test hand-rolls its own fixture and reaches private state with `Reflect.get`. The same invariants are rewritten per game: isolated snapshots, `isState` accepts its own snapshot, every player appears in `finalize` once, 8-player state stays under 40 KiB, disconnect and reconnect.
+- Missing: a replay check that the same seed and input script produce identical snapshots twice.
+- Missing: a shared conformance suite for controls (value shape matches `kind`, release and cancel neutralise, `rotateOutput` round-trips).
+- `npm run game:test` runs `tests/architecture-*.test.ts`, which its name does not suggest.
+
+#### 5. Other gaps
+
+- Docs are stale: [`AUTHORING.md`](architecture/AUTHORING.md) calls Neon Harvest the sole game; [`MINIGAMES.md`](MINIGAMES.md) lists Latency Lab and Tilt Rally as built, but they were removed.
+- There is no CODEOWNERS file or written rule for what counts as core.
+- Large local files (such as disc images) in the repository root are not ignored; a stray `git add` would commit them.
 
 ### Open branches that matter
 
@@ -122,6 +214,18 @@ flowchart LR
   S4 --> S6["Stage 6<br/>Game production"]
 ```
 
+### Core and ownership
+
+- **Core** is `src/client/{api,engine,runtime,transport,game-screen,shell}`
+  and `src/shared`. A core change needs both reviewers, enforced by
+  `.github/CODEOWNERS` (Stage 0). Game and control folders need one.
+- The lanes meet in two files. Lane A owns
+  [`controls/api.ts`](../src/client/controls/api.ts); Lane B owns the
+  [author API](../src/client/api/index.ts). A change to either is reviewed by
+  the other lane.
+- Contract changes are agreed as an API shape by both people before either
+  lane implements them.
+
 ---
 
 ## Stage 0: Stabilize and decide
@@ -136,14 +240,22 @@ flowchart LR
       branches already merged. (S)
 - [ ] Remove the untracked `src/layouts/` and the test layout so the suite is
       green; refresh the README, which still calls Neon Harvest the only game. (S)
+- [ ] Define core (see [Core and ownership](#core-and-ownership)) and add
+      `.github/CODEOWNERS` so core changes need both reviewers. (S)
+- [ ] Ignore large local binaries, such as disc images in the repository
+      root, in `.gitignore`. (S)
+- [ ] Refresh the stale docs: [AUTHORING.md](architecture/AUTHORING.md) (calls
+      Neon Harvest the sole game), [MINIGAMES.md](MINIGAMES.md) (lists the
+      removed Latency Lab and Tilt Rally as built) and [INPUTS.md](INPUTS.md).
+      Rename `npm run game:test` to say what it runs. (S)
 - [ ] Draft the game brief template (see
       [The game standard](#the-game-standard)) so contract work in Stage 1
       builds toward it. (S)
 - [ ] Assemble the device kit: an iPhone, an Android phone, a TV with Game
       Mode, and a phone plan with cellular data for internet tests. (S)
 
-**Gate:** tests green on `develop`; every decision has a status; both people
-can run a session on the device kit.
+**Gate:** tests green on `develop`; CODEOWNERS is in place; every decision
+has a status; both people can run a session on the device kit.
 
 ---
 
@@ -393,18 +505,45 @@ type PhonePanel =
 
 #### Lane B work items
 
-- [ ] **Game-defined length, progress label and safety cap. (M)**
+- [ ] **Game-defined length, progress label and safety cap. (M)** Extend
+      `RoundRunner` in [`round.ts`](../src/client/engine/round.ts), which today
+      ends only at `startAt + durationMs`, and the settling tests.
 - [ ] **Turn mode with active-player routing and shot clock. (M)**
 - [ ] **Teams and formats in context, outcomes and the point policy. (M)**
 - [ ] **`phoneView` contract, validation, per-player routing and reconnect
       refresh. (M)** Rendering on the phone is Stage 2.
 - [ ] **Phone reactions on presentation events. (S)**
-- [ ] **Game-owned layouts, sounds and asset manifest. (M)**
+- [ ] **Game-owned layouts, sounds and asset manifest. (M)** A descriptor
+      declares its cues; [`sounds.ts`](../src/client/runtime/browser/sounds.ts)
+      keeps only shared ones.
+- [ ] **Per-role controller requirements. (S)** A descriptor gives controller
+      requirements per role. The session already resolves one configuration per
+      player, so the change is in `controllerSpec()` in
+      [`engine/input.ts`](../src/client/engine/input.ts) and the descriptor
+      type. Lane A reviews the resolver side.
 - [ ] **Practice and ready-up phase. (S)**
 - [ ] **Descriptor tags and themed intro and results data. (S)**
 - [ ] **Contract examples.** A test-only Bowling-shaped game (sequential
       turns, until-done, frames) and a hidden-role game (reveal and vote panels)
       prove the contract in the harness. (S)
+- [ ] **Remove hardcoded game lists. (S)** Derive them from the catalog or the
+      directory in [`scripts/production-boundary.ts`](../scripts/production-boundary.ts),
+      [`tests/developer-bundle.test.ts`](../tests/developer-bundle.test.ts) and
+      [`tests/engine-round.test.ts`](../tests/engine-round.test.ts). Replace
+      `statKeys` in [`tests/live-catalog.test.ts`](../tests/live-catalog.test.ts)
+      with a descriptor-declared stats list.
+- [ ] **Game conformance suite v1 and scenario helper. (M)**
+      `tests/kit/game-conformance.ts`, run for every catalog entry: lifecycle,
+      snapshot isolation, `isState`, outcomes, the 8-player size budget,
+      disconnect and reconnect, and a determinism replay. Reuse `GameHarness`,
+      `driveSimulatedPlayers` in
+      [`simulation.ts`](../src/client/devtools/game-harness/simulation.ts) and
+      `snapshotPolicy`. A scenario helper replaces the `Reflect.get` fixtures
+      in both game tests. Doing this first means every contract change above
+      lands under test. Stage 3 extends the suite to the full standard.
+- [ ] **Minimal `npm run game:new`. (S)** Modelled on
+      [`scripts/new-control.ts`](../scripts/new-control.ts): descriptor, game,
+      renderer, test and catalog line. Stage 3 extends it to the stage kit.
 
 ### Stage 1 gate
 
@@ -416,6 +555,11 @@ type PhonePanel =
 - The two contract example games run in the harness: one ends after its
   frames with turns routed correctly, one shows private roles and collects
   votes.
+- Conformance v1 passes for every catalog game.
+- **Dry run of the factory test.** One person adds a small throwaway game
+  using only `game:new`, an existing layout and the conformance suite. The
+  diff stays inside the game folder plus one catalog line (decision D14). If
+  it does not, fix the leak before Stage 2.
 
 ---
 
@@ -556,7 +700,21 @@ against recorded traces, so every tuning change is compared with the last.
 - [ ] **Port `pointer`, `tilt`, `shake` and `chop` to library inputs with
       trace tests and live gallery previews. (M)**
 - [ ] **Port the remaining legacy touch inputs (`slider`, `dial`, `text`,
-      `draw-canvas`) to the library. (M)**
+      `draw-canvas`) to the library. (M)** Use `control:new`; delete
+      [`shell/LegacyWidget.tsx`](../src/client/shell/LegacyWidget.tsx); move
+      their CSS out of `app/globals.css`.
+- [ ] **Move controller code out of the shell. (M)** Replace
+      `PhoneActions.chopCount`, `holdAim` and `previewPoint` in
+      [`shell/ports.ts`](../src/client/shell/ports.ts) with a generic
+      per-control local-state and feedback port. Move `ChopTile` and
+      `PointerPreview` into controls. `ControllerMenu.tsx` stops reading
+      `config.sensors.pointer` and `tilt` directly; `ControllerConfig.sensors`
+      becomes a generic map.
+- [ ] **Control conformance suite. (S)** Loops over every touch and motion
+      definition: value shape matches `kind`, release and cancel neutralise,
+      `rotateOutput` round-trips.
+- [ ] **Boundary tests. (S)** The shell contains no control implementations,
+      and shell ports name no input type.
 - [ ] **Input wire v2. (M)**
 - [ ] **Aim test in Motion Lab. (S)**
 - [ ] **Countdown recenter, absolute pitch, remembered TV direction, compass
@@ -649,8 +807,8 @@ directly.
 ### Stage 2 gate
 
 - Every input in the input glossary, touch and motion, has a definition, live
-  gallery preview and tests. No motion type is named in the resolver or the
-  phone input loop.
+  gallery preview and tests. No motion type is named in the resolver, the
+  phone input loop or the shell ports, and the boundary tests enforce it.
 - After 10 minutes of play under the `cellular` profile, the cursor still
   lines up with where the phone points, without anyone pressing Recenter. The
   aim test's numbers set the exact threshold.
@@ -686,13 +844,14 @@ every game looks related and a new game starts from a scaffold.
 - [ ] **Design system. (M)** One set of tokens and components shared by the TV
       shell, phone shell, phone panels and game HUDs, in the house style chosen
       in D6. Themed intro, countdown, results and podium.
-- [ ] **Game scaffolder. (M)** `npm run game:new <id>` creates a game folder
+- [ ] **Game scaffolder. (M)** Extend the Stage 1 `npm run game:new <id>` so
+      it creates a game folder
       with descriptor, model, rules, a renderer on the stage kit, a layout, a
       sound list, a simple bot and tests.
 - [ ] **Bots. (S)** Each game ships a simple bot for testing, odd team sizes
       and the conformance suite.
-- [ ] **Conformance suite. (M)** Described under
-      [The game standard](#the-game-standard).
+- [ ] **Full conformance suite. (M)** Extend the Stage 1 suite to everything
+      listed under [The game standard](#the-game-standard).
 - [ ] **Game standard document and `build-minigame` skill. (M)** The skill
       takes a brief, scaffolds, builds on the kit, runs conformance and opens
       the harness.
@@ -778,6 +937,9 @@ keeps a consistent feel within it:
 - **Lane B:** touch, rhythm, and word and draw games (Brawl, Basketball,
   Saber Slash, Jam Session, Shape Flash).
 
+Target Practice, Basketball, Saber Slash and Brawl need no new inputs, so
+they are the first picks. Core changes still go through the CODEOWNERS rule.
+
 Every game follows the same path: brief, skill, harness, phone playtest under
 `cellular`, conformance, merge. Record new ideas with the `add-minigame-idea`
 skill in [MINIGAMES.md](MINIGAMES.md).
@@ -847,8 +1009,17 @@ and fair, and to skip motion games for players whose phones are touch-only.
 
 ### Conformance suite
 
+The suite arrives in two steps. Version 1 (Stage 1) covers the first four
+items; the full suite (Stage 3) covers the rest, which depend on bots, the
+phone contract and the stage kit.
+
 Every game must pass, automatically:
 
+- Keeps snapshots isolated, and its `isState` accepts its own snapshot.
+- Replays deterministically: the same seed and input script produce identical
+  snapshots twice.
+- Puts every player in the final outcomes exactly once.
+- Keeps 8-player state under the snapshot size budget (40 KiB today).
 - Runs with bots at 1, 2 and 8 players (or its declared range) and in each
   format it declares.
 - Survives a player disconnecting and reconnecting mid-round.
@@ -880,17 +1051,30 @@ for 2–8 players or declares its range.
 
 ## Decisions
 
-| #   | Decision                        | Options                                                      | Recommendation                                                                             | Status |
-| --- | ------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------ |
-| D1  | Who owns which lane             | Either person on A or B                                      | Whoever prefers device and network debugging takes Lane A                                  | Open   |
-| D2  | Metagame first                  | Playlist, board, gauntlet                                    | Party playlist; board after 8+ games                                                       | Open   |
-| D3  | Where game rules run            | Edge room service, host browser                              | Edge room service, confirmed by Stage 1 measurements                                       | Open   |
-| D4  | Screen timing                   | Shared delay set by the worst link, per-screen freshness     | Per-screen freshness with lag-compensated judging                                          | Open   |
-| D5  | Rendering standard              | three.js kit, Canvas 2D, PixiJS                              | three.js stage kit; Canvas 2D for prototypes                                               | Open   |
-| D6  | House art style                 | One shared style, per-game styles                            | One style and palette, with per-game accents                                               | Open   |
-| D7  | Default press fairness window   | 200 ms, 60–80 ms                                             | 80 ms; games opt into longer                                                               | Open   |
-| D8  | Hosting provider                | Cloudflare Workers with Durable Objects, Fly.io, a small VPS | Pick the one that runs D3's choice cheapest at hobby scale; verify prices at decision time | Open   |
-| D9  | Routes onto TVs                 | Laptop over HDMI, Android TV app, Cast receiver              | HDMI and smart TV browser first, Android TV app in Stage 5, Cast after a spike             | Open   |
-| D10 | Native controller               | Browser only, study, commit                                  | Browser; study in Stage 5                                                                  | Open   |
-| D11 | Double Dash                     | Continue on `develop`, park                                  | Park                                                                                       | Open   |
-| D12 | Same-room play with no internet | Supported, not supported                                     | Not a goal; the internet is the default, and a same-network path is only a speed-up        | Open   |
+"Settled" rows were resolved when the two roadmaps were merged on 2026-10-06:
+ROADMAP2's position was kept and ROADMAP's is listed as the rejected option.
+Either person can reopen one.
+
+| #   | Decision                                                                          | Options                                                                                     | Recommendation                                                                                                                                      | Status  |
+| --- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| D1  | Who owns which lane                                                               | Either person on A or B                                                                     | Whoever prefers device and network debugging takes Lane A                                                                                           | Open    |
+| D2  | Metagame first                                                                    | Playlist, board, gauntlet                                                                   | Party playlist; board after 8+ games                                                                                                                | Open    |
+| D3  | Where game rules run                                                              | Edge room service, host browser                                                             | Edge room service, confirmed by Stage 1 measurements                                                                                                | Open    |
+| D4  | Screen timing                                                                     | Shared delay set by the worst link, per-screen freshness                                    | Per-screen freshness with lag-compensated judging                                                                                                   | Open    |
+| D5  | Rendering standard                                                                | three.js kit, Canvas 2D, PixiJS; or leave three.js game-owned until a second 3D game exists | three.js stage kit; Canvas 2D for prototypes. Rejected: game-owned until a second 3D game                                                           | Settled |
+| D6  | House art style                                                                   | One shared style, per-game styles                                                           | One style and palette, with per-game accents                                                                                                        | Open    |
+| D7  | Default press fairness window                                                     | 200 ms, 60–80 ms                                                                            | 80 ms; games opt into longer                                                                                                                        | Open    |
+| D8  | Hosting provider                                                                  | Cloudflare Workers with Durable Objects, Fly.io, a small VPS                                | Pick the one that runs D3's choice cheapest at hobby scale; verify prices at decision time                                                          | Open    |
+| D9  | Routes onto TVs                                                                   | Laptop over HDMI, Android TV app, Cast receiver                                             | HDMI and smart TV browser first, Android TV app in Stage 5, Cast after a spike                                                                      | Open    |
+| D10 | Native controller                                                                 | Browser only, study, commit                                                                 | Browser; study in Stage 5                                                                                                                           | Open    |
+| D11 | Double Dash                                                                       | Continue on `develop`, park                                                                 | Park                                                                                                                                                | Open    |
+| D12 | Same-room play with no internet                                                   | Supported, not supported                                                                    | Not a goal; the internet is the default, and a same-network path is only a speed-up                                                                 | Open    |
+| D13 | Is the partner a human or an agent? This sets how detailed each work item must be | Human, agent                                                                                | Write for whichever is true; an agent needs a brief and a named passing test per item                                                               | Open    |
+| D14 | Diff allowed in the Stage 1 dry run and the Stage 4 factory test                  | Game folder and catalog line only; also one layout JSON                                     | Game folder plus one catalog line. Layouts live in the game folder after Stage 1, so no separate allowance is needed                                | Open    |
+| D15 | Depth of the motion-input refactor                                                | Full definition seam; relocate controller code only and build `jolt` by hand                | Full definition seam in Stage 2. Rejected: relocate only, add the seam at the third new motion input                                                | Settled |
+| D16 | How much a game can put on a phone                                                | Full `PhoneView` with panels; haptics, a status line and an enabled state                   | Full `PhoneView`, including panels and layout switches. Games still never draw controls. Rejected: haptics and status line only                     | Settled |
+| D17 | Wire protocol changes                                                             | Bump as stages need, with backward compatibility in Stage 5; one bump, then freeze          | Bumps in Stage 1 (snapshots, redundant input) and Stage 2 (input wire v2), owned by Lane A. Rejected: one bump, then freeze                         | Settled |
+| D18 | Legacy `slider`                                                                   | Port, delete                                                                                | Port with `dial`, `text` and `draw-canvas`. Rejected: delete                                                                                        | Settled |
+| D19 | What "turns" means                                                                | Early end, untimed rounds, engine-routed turns                                              | `until-done` rounds with a safety cap, plus a `sequential` mode where the framework routes the active player. Rejected: turn order stays game logic | Settled |
+| D20 | Per-player controls                                                               | Fixed per round, swappable mid-round                                                        | Per-role layouts, and a game may switch a phone's layout mid-round through `phoneView.layout`. Rejected: fixed per round                            | Settled |
+| D21 | Which games are next                                                              | Any from the [backlog](MINIGAMES.md)                                                        | Bowling and Bomb Squad as the Stage 4 factory test, then the no-new-input games in Stage 6                                                          | Open    |

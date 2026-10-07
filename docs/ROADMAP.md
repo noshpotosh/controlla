@@ -1,5 +1,7 @@
 # Audit and roadmap: stabilise the core, then split by minigame
 
+> **Superseded.** This document is kept for history. The current roadmap is [ROADMAP_FINAL.md](ROADMAP_FINAL.md).
+
 Audited `develop` at `5817ca8` on 2026-10-06, by reading the code and git history. The test suite was not run for this audit, so pass/fail status is unverified.
 
 The goal: freeze the shell, game screen, engine and input plumbing so two people can split the remaining work by minigame, with reusable controllers and deterministic tests that keep games and inputs consistent.
