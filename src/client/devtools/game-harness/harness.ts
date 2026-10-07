@@ -183,13 +183,17 @@ export class GameHarness<S extends object = object> {
     });
     return this.loading;
   }
-  setValue(playerId: string, name: string, value: unknown) {
+  setValue(playerId: string, name: string, value: unknown, time = this.time) {
     if (
       this.disposed ||
       !this.runner.loaded ||
       !['countdown', 'running'].includes(this.phase) ||
       this.time >= this.endAt ||
-      !this.runner.enabledFor(playerId, this.time) ||
+      !Number.isFinite(time) ||
+      time < 0 ||
+      time > this.time + 100 ||
+      this.time - time > 2000 ||
+      !this.runner.enabledFor(playerId, time) ||
       !this.players.some((p) => p.id === playerId && p.connected)
     )
       return;
@@ -199,7 +203,7 @@ export class GameHarness<S extends object = object> {
     if (!widget) return;
     (this.values[playerId] ??= {})[name] = {
       value: structuredClone(value),
-      time: this.time,
+      time,
     };
     if (
       widget.space === 'normalized' &&
@@ -229,7 +233,21 @@ export class GameHarness<S extends object = object> {
       const value = this.values[playerId]?.[name]?.value;
       if (value !== undefined) action.value = structuredClone(value);
     }
-    this.runner.input(action, this.time);
+    return this.input(action);
+  }
+  /** Inject a timestamped semantic activation at the current receipt clock. */
+  input(action: Action): boolean {
+    return this.runner.input(action, this.time);
+  }
+  /** Advance through the finite deadline and final drain; never force a result. */
+  finish(drive?: (harness: GameHarness<S>) => void): void {
+    if (!this.runner.loaded || this.disposed) return;
+    while (['countdown', 'running', 'settling'].includes(this.phase)) {
+      const remaining = this.endAt + 200 - this.time;
+      if (remaining <= 0)
+        throw new Error('Round did not complete at its deadline.');
+      this.advance(Math.min(20, remaining), drive);
+    }
   }
   advance(milliseconds: number, drive?: (harness: GameHarness<S>) => void) {
     if (!this.runner.loaded || this.disposed) return;

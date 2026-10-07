@@ -556,3 +556,32 @@ Checkpoint 5 remains open: timestamped scenario schedules/public helpers, replac
 private-state scenarios where possible, every catalog game/mode/player count and
 representative peak eight-player state/envelope budgets. Scaffolding, catalog-derived
 bundle checks and browser/evidence closure follow in checkpoint 6.
+
+
+## Checkpoint 5b: timestamped scenarios and catalog-wide conformance
+
+Added development-only detached ScenarioStep fixtures and runScenario. Receipt
+`at` is independent of value `capturedAt` and Action.time. Stable ordering preserves
+simultaneous fixture order; due steps apply before the receipt tick. Helpers use
+public load/input/advance/disconnect/reconnect/abort APIs. finish advances through
+the actual finite authority deadline and final drain without forcing results,
+stopping at early completion when requested. Backward/nonfinite timelines reject;
+a stopped/disposed clock cannot loop. Fixtures detach before asynchronous load.
+No harness scenario test manipulates private runner/game state.
+
+Shared conformance derives all cases from catalog modes and player bounds: both
+production games, standard mode, counts 1–8 (16 cases, each replayed twice).
+Mixed capabilities, generic semantic input, disconnect/reconnect, fixed assignments,
+all eligible outcomes, detached snapshots, delayed displays and exactly-once awards
+are covered. Replay compares authoritative snapshot digests, complete outcomes,
+progress and observed peak sizes. Game-specific scoring stays out of the common
+suite. Every simulation tick inspects state/envelope size; the engine retains its
+own validation. Representative eight-player peak evidence: Neon Harvest state
+17413 bytes/envelope 35452; Whack-a-Mole state 9987/envelope 29783, below 40/47 KiB.
+These are observed fixture peaks, not a claim about all possible gameplay.
+
+Focused validation: 5/5 scenario tests and 16/16 conformance cases pass. Conformance
+includes 32 complete production rounds and took 157 seconds standalone. Logs:
+/private/tmp/scenario-final-focused.log and /private/tmp/conformance-focused.log.
+Integrated validation: npm test 466/466; game:test 189/189; typecheck, lint and production build passed. Logs: /private/tmp/scenario-{tests,games,typecheck,lint,build}.log. Checkpoint 5 implementation is complete; continue checkpoint 6 scaffolding, catalog-derived bundle evidence, documentation inventory and browser smoke/completion audit.
+No browser, physical sensor, vibration or hosted-network evidence is claimed.
