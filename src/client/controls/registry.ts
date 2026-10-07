@@ -64,5 +64,4 @@ export const recommendedSizeOf = (type: WidgetType) =>
 export const usesPressSlot = (type: WidgetType) =>
   channelOf(type).channel !== 'value';
 
-/** InputFrame carries four timestamped press slots. */
-export const PRESS_SLOTS = 4;
+export { PRESS_SLOTS } from './motion/registration.ts';

@@ -14,6 +14,7 @@ import {
   recommendedSizeOf,
   usesPressSlot,
 } from '../registry.ts';
+import { motionMetadata } from '../motion/metadata-registry.ts';
 import { isSideways } from './rotation.ts';
 
 import { isControlName, isMotion, menuRect } from './schema.ts';
@@ -72,11 +73,15 @@ export function validateLayout(layout: ControllerLayout): LayoutIssue[] {
   });
   const presses =
     layout.items.filter((item) => usesPressSlot(item.type)).length +
-    (layout.motion.shake ? 1 : 0) +
-    (layout.motion.chop ? 1 : 0);
+    motionMetadata.reduce(
+      (count, definition) =>
+        count +
+        (layout.motion[definition.type] ? definition.transport.pressSlots : 0),
+      0,
+    );
   if (presses > PRESS_SLOTS)
     issues.push({
-      message: `${presses} press inputs (shake and chop count); a controller carries at most ${PRESS_SLOTS}.`,
+      message: `${presses} press inputs (motion activations count); a controller carries at most ${PRESS_SLOTS}.`,
     });
   return issues;
 }

@@ -28,11 +28,10 @@ export function ControllerMenu({
   const [open, setOpen] = useState(false),
     me = v.identity,
     player = v.roster.players.find((p) => p.id === me?.id),
-    pointer = v.config?.sensors.pointer.enabled,
-    aimed = !!(pointer || v.config?.sensors.tilt.enabled),
+    pointer = v.config?.motion.pointer,
+    aimed = !!(pointer || v.config?.motion.tilt),
     needsMotion =
-      !v.motionEnabled &&
-      !!(v.config?.sensors.pointer.enabled || v.config?.sensors.tilt.enabled);
+      !v.motionEnabled && !!(v.config?.motion.pointer || v.config?.motion.tilt);
   return (
     <>
       <button

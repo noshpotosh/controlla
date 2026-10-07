@@ -151,19 +151,16 @@ void test('permission denial chooses stick per player, never a dead pointer', ()
   const c = defaultCapabilities();
   c.sensors.gyro = { present: true, permission: 'denied' };
   const config = resolveConfig(pointerSpec, c, 4);
-  assert.equal(config.sensors.pointer.enabled, false);
+  assert.equal(!!config.motion.pointer, false);
   assert.equal(config.widgets[0].type, 'stick');
   assert.equal(config.widgets[0].space, 'normalized');
   assert.equal(resolveConfig(steeringSpec, c, 5).widgets[0].space, 'signed');
   assert.equal(config.substitutions.length, 1);
   c.sensors.gyro.permission = 'granted';
   c.sensors.accel = { present: true, permission: 'granted' };
-  assert.equal(resolveConfig(pointerSpec, c, 5).sensors.pointer.enabled, true);
-  assert.equal(
-    resolveConfig(steeringSpec, c, 6).sensors.pointer.enabled,
-    false,
-  );
-  assert.equal(resolveConfig(steeringSpec, c, 6).sensors.tilt.enabled, true);
+  assert.equal(!!resolveConfig(pointerSpec, c, 5).motion.pointer, true);
+  assert.equal(!!resolveConfig(steeringSpec, c, 6).motion.pointer, false);
+  assert.equal(!!resolveConfig(steeringSpec, c, 6).motion.tilt, true);
 });
 void test('required motion without fallback gives an actionable failure', () => {
   assert.throws(

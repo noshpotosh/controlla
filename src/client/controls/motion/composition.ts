@@ -1,4 +1,5 @@
 /** Headless controls-owned composition. No transport, browser effects or input names. */
+import { PRESS_SLOTS } from './registration.ts';
 import type { ControlValue, Vector, WidgetType } from '../api.ts';
 import type {
   MotionClocks,
@@ -17,6 +18,7 @@ export interface MotionBinding {
 }
 interface BoundInput {
   action: string;
+  config: object;
   definition: MotionDefinition<object>;
   processor: MotionInputProcessor<object>;
   held: boolean;
@@ -61,8 +63,6 @@ export class MotionControls {
       prepared.some((input) => input === null) ||
       new Set(bindings.map((binding) => binding.action)).size !==
         bindings.length ||
-      new Set(bindings.map((binding) => binding.type)).size !==
-        bindings.length ||
       prepared.reduce(
         (sum, input) => sum + Number(input?.definition.transport.motionVector),
         0,
@@ -70,7 +70,7 @@ export class MotionControls {
       prepared.reduce(
         (sum, input) => sum + (input?.definition.transport.pressSlots ?? 0),
         0,
-      ) > 4
+      ) > PRESS_SLOTS
     )
       return false;
     this.cancel();
@@ -78,7 +78,9 @@ export class MotionControls {
     this.inputs = prepared.flatMap((input) => {
       if (!input) return [];
       const existing = old.find(
-        (candidate) => candidate.definition.type === input.definition.type,
+        (candidate) =>
+          candidate.action === input.binding.action &&
+          candidate.definition.type === input.definition.type,
       );
       const processor =
         existing?.processor ?? input.definition.create(this.clocks);
@@ -86,6 +88,7 @@ export class MotionControls {
       return [
         {
           action: input.binding.action,
+          config: input.config,
           definition: input.definition,
           processor,
           held: false,
@@ -116,6 +119,18 @@ export class MotionControls {
         ),
       ),
     });
+  }
+  frameRate(refreshRate: number): number {
+    const config = this.inputs.find(
+      (input) => input.definition.transport.motionVector,
+    )?.config;
+    const rate = config && 'rateHz' in config ? config.rateHz : undefined;
+    return typeof rate === 'number' && Number.isFinite(rate) && rate > 0
+      ? Math.min(
+          rate,
+          Number.isFinite(refreshRate) && refreshRate > 0 ? refreshRate : 60,
+        )
+      : 60;
   }
   has(action: string) {
     return this.inputs.some((input) => input.action === action);

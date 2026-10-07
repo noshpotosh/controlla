@@ -2,17 +2,11 @@
 // Left rail: touch controls to place (drag onto the phone, or click to drop
 // one in the first free spot), and the motion inputs this layout switches on.
 import type { WidgetType, MotionInput } from '../../controls/api.ts';
+import { motionDefinitionFor } from '../../controls/motion/metadata-registry.ts';
 import { definitions } from '../../controls/registry.ts';
 
 import { MOTION } from '../../controls/layout/schema.ts';
 import { DRAG_TYPE } from './Canvas.tsx';
-
-const MOTION_HELP: Record<MotionInput, string> = {
-  pointer: 'Aim by pointing the phone',
-  tilt: 'Steer by tilting the phone',
-  shake: 'A shake counts as a press',
-  chop: 'Hold its button to lock aim; a swing counts as a press',
-};
 
 export function Palette({
   motion,
@@ -55,7 +49,7 @@ export function Palette({
               onChange={(e) => onMotion(m, e.target.checked)}
             />
             <strong>{m}</strong>
-            <small>{MOTION_HELP[m]}</small>
+            <small>{motionDefinitionFor(m)?.description}</small>
           </label>
         ))}
         <p className="dz-muted dz-small">

@@ -95,7 +95,7 @@ function fixture(role: Role = 'host') {
     });
   const config = (generation = 7): Message => ({
     type: 'config',
-    config: { schemaVersion: 1, generation },
+    config: { schemaVersion: 2, generation },
   });
   const local = role === 'host' ? 'local' : 'phone';
   const ready = () => {

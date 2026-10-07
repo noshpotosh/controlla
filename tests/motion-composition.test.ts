@@ -87,7 +87,7 @@ void test('generic composition routes held capture, timestamps and haptics and r
   motion.motion.dispose();
 });
 
-void test('composition rejects ambiguous actions, repeated inputs, vector conflicts and unknown types atomically', () => {
+void test('composition rejects ambiguous actions, vector conflicts and unknown types atomically', () => {
   const controls = new MotionControls(
     { localTime: () => 0, authorityTime: (at) => at },
     { activation() {}, haptic() {} },
@@ -101,10 +101,7 @@ void test('composition rejects ambiguous actions, repeated inputs, vector confli
       { action: 'a', type: 'shake' as const, config: {} },
       { action: 'a', type: 'chop' as const, config: {} },
     ],
-    [
-      { action: 'a', type: 'shake' as const, config: {} },
-      { action: 'b', type: 'shake' as const, config: {} },
-    ],
+
     [{ action: 'a', type: 'button' as const, config: {} }],
   ])
     assert.equal(controls.configure(bindings), false);
@@ -129,4 +126,36 @@ void test('configuration projects pointer bounds before a sample arrives', () =>
   );
   assert.deepEqual(controls.getSnapshot().point, { x: 0.7, y: 0.5 });
   controls.dispose();
+});
+
+void test('repeated motion bindings retain independent processors when reordered', async () => {
+  const motion = motionFixture();
+  await motion.motion.enable();
+  let now = 700;
+  const fired: string[] = [];
+  const controls = new MotionControls(
+    { localTime: () => now, authorityTime: (at) => at },
+    { activation: (action) => fired.push(action), haptic() {} },
+  );
+  const bindings = ['first', 'second'].map((action) => ({
+    action,
+    type: 'shake' as const,
+    config: {},
+  }));
+  assert.equal(controls.configure(bindings), true);
+  const feed = () => {
+    motion.advance(700);
+    motion.emit({ accelerationIncludingGravity: { x: 40, y: 0, z: 0 } });
+    controls.process(motion.motion.getSnapshot());
+  };
+  feed();
+  assert.deepEqual(fired, ['first', 'second']);
+  assert.equal(controls.configure([...bindings].reverse()), true);
+  now += 700;
+  feed();
+  assert.deepEqual(fired, ['first', 'second', 'second', 'first']);
+  assert.equal(controls.getSnapshot().inputs.first.activations, 2);
+  assert.equal(controls.getSnapshot().inputs.second.activations, 2);
+  controls.dispose();
+  motion.motion.dispose();
 });

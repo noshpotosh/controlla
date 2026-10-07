@@ -169,6 +169,10 @@ Replace per-input ControllerConfig.sensors flags with the generic registered
 settings map `motion: Partial<Record<MotionInput, Record<string, unknown>>>` in
 ControllerConfig schema 2. A present entry enables that registered input; absent
 means disabled. Each definition validates its entry and produces its own defaults.
+Game requirements supply registered settings through `InputRequirement.motion`.
+Resolution validates/defaults each settings object; repeated actions using a type
+must agree on its canonical settings. Registration also supplies a description and
+optional recenter calibration metadata for generic designer/layout consumers.
 No compatibility projection for old sensor flags is required. Keep non-motion
 config fields and binary transport unchanged. Saved layout schema 2 remains a
 local authoring format: missing motion.jolt normalizes to false. Reject obsolete

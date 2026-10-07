@@ -260,3 +260,38 @@ and motion UI to controls-owned presentation; retire obsolete widgets and legacy
 container/CSS; register jolt through the same metadata/processing/presentation seams
 and prove production ingress. No older-client support is required. Later lifecycle,
 roles, feedback/sound, deterministic harness/conformance and scaffolding work remains.
+
+
+## Checkpoint 2e: registered configuration and live directional jolt
+
+Resolved configurations now use schema 2 and the generic registered motion settings
+map. Protocol 5 coordinates this incompatible migration across clients/signaling;
+existing reload guidance and stopped retries remain. No older-client projection
+is retained. Game input requirements pass settings through `motion`; Whack-a-Mole
+retains its existing play-field bounds and default anchoring. Registry metadata
+supplies descriptions, recenter affordances, vector and activation capacity.
+Layout schema 2 remains unchanged; missing newer saved-layout toggles default off.
+
+Jolt joins both metadata and processor registries. Its pure metadata is separated
+from processor construction, preserving authority/UI dependency boundaries. A
+production-path test resolves a required jolt without a button substitute, emits
+a directional payload and same-time press edge from the actual phone runtime,
+and proves authority accepts exactly one semantic activation despite a duplicate.
+Unavailable devices fail explicitly. Repeated motion bindings own distinct
+processors across reordering; conflicting per-type settings fail resolution.
+Atomic rejection tests cover obsolete schema, unknown/unmatched settings,
+invalid jolt configuration and missing enabled settings.
+
+Validation: full suite 405/405; game:test 139/139; typecheck, lint and production
+build passed. Logs: /private/tmp/schema2-{tests,games,build}.log. Integrated checks
+caught a motion dependency on the broad controls registry and an incomplete
+relocated layout fixture. Kept the narrow boundary and copied pure metadata into
+the fixture. A proposed shared constant in api.ts violated its declarations-only
+contract; moved it into motion registration and reexported it from the registry.
+No architecture gate was weakened to admit those dependencies.
+
+Remaining checkpoint 2 work: scoped generic command ports, controls-owned motion
+surfaces/settings, removal of input-specific shell adapters and obsolete widgets,
+then legacy container/CSS retirement. Later lifecycle/roles, feedback/sound,
+deterministic harness/conformance and scaffold checkpoints remain open. Browser,
+physical sensor/haptic tuning and hosted-network evidence are still unverified.

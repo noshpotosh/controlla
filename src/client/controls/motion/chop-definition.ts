@@ -8,6 +8,7 @@ const parse = (value: unknown) =>
     : undefined;
 export const chopMetadata: MotionMetadata<Record<string, never>> = {
   type: 'chop',
+  description: 'Hold its button to lock aim; a swing counts as a press',
   channel: 'both',
   kind: 'press',
   throttle: false,

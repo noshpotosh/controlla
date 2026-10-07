@@ -24,7 +24,7 @@ export const whackAMole: GameDescriptor<WhackState> = {
         prefer: 'pointer',
         fallback: 'aim-pad',
         label: 'Aim',
-        bounds: AIM_BOUNDS,
+        motion: { bounds: AIM_BOUNDS },
       },
       whack: {
         required: true,

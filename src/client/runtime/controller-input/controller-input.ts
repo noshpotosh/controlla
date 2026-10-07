@@ -96,7 +96,7 @@ export class ControllerInput {
     if (
       this.terminal ||
       !config ||
-      config.schemaVersion !== 1 ||
+      config.schemaVersion !== 2 ||
       !Array.isArray(config.widgets) ||
       config.widgets.length > 24
     )
@@ -104,9 +104,11 @@ export class ControllerInput {
     const changed =
       this.config?.generation !== config.generation ||
       this.config?.configId !== config.configId;
+    const bindings = motionBindings(config);
     if (
-      (changed || JSON.stringify(this.config) !== JSON.stringify(config)) &&
-      !this.motionControls.configure(motionBindings(config))
+      !bindings ||
+      ((changed || JSON.stringify(this.config) !== JSON.stringify(config)) &&
+        !this.motionControls.configure(bindings))
     )
       return false;
     this.config = structuredClone(config);
@@ -122,7 +124,7 @@ export class ControllerInput {
       this.buttonState = 0;
       this.seq = 0;
       this.nextSend = 0;
-      this.latestPoint = config.sensors.pointer.enabled
+      this.latestPoint = this.motionControls.getSnapshot().vector
         ? { ...this.motionControls.getSnapshot().point }
         : config.widgets.some((w) => w.space === 'normalized')
           ? { x: 0.5, y: 0.5 }
@@ -132,9 +134,7 @@ export class ControllerInput {
   }
   setRefreshRate(refreshRate: number) {
     if (this.terminal) return;
-    this.sendRate = this.config?.sensors.pointer.enabled
-      ? Math.min(this.config.sensors.pointer.rateHz, refreshRate)
-      : 60;
+    this.sendRate = this.motionControls.frameRate(refreshRate);
   }
   setActive(active: boolean) {
     if (this.terminal || active === this.active) return;
@@ -399,7 +399,7 @@ export class ControllerInput {
     // Retiring a held touch control also retires its legacy continuous frame.
     // Its old unmount callback is deliberately inert and cannot send a release.
     const config = this.config;
-    if (!config?.sensors.pointer.enabled && !config?.sensors.tilt.enabled) {
+    if (!this.motionControls.getSnapshot().vector) {
       this.latestPoint = config?.widgets.some(
         (widget) => widget.space === 'normalized',
       )

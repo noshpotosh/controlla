@@ -1238,6 +1238,8 @@ function assertControllerInputBoundary(overrides = new Map<string, string>()) {
     'src/client/controls/value.ts',
     'src/client/controls/layout/rotation.ts',
     ...[
+      'jolt',
+      'jolt-definition',
       'metadata-registry',
       'pointer-definition',
       'accelerometer-definition',

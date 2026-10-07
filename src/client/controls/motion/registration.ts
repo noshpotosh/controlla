@@ -59,10 +59,12 @@ export interface MotionInputProcessor<P extends object> {
   dispose(): void;
 }
 export interface MotionDefinition<P extends object> {
-  type: MotionInput | 'jolt';
+  type: MotionInput;
+  description: string;
   channel: Channel;
   kind: OutputKind;
   throttle: boolean;
+  calibration?: { recenter: boolean };
   transport: { motionVector: boolean; pressSlots: 0 | 1 };
   availability(capabilities: Readonly<Capabilities>): Availability;
   validateConfig(value: unknown): Validated<P>;
@@ -76,3 +78,6 @@ export type MotionMetadata<P extends object> = Omit<
   MotionDefinition<P>,
   'create'
 >;
+
+/** InputFrame carries four timestamped press slots, shared by touch and motion. */
+export const PRESS_SLOTS = 4;

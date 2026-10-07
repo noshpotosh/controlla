@@ -89,6 +89,8 @@ const parse = (value: unknown) =>
     : undefined;
 export const pointerMetadata: MotionMetadata<PointerConfig> = {
   type: 'pointer',
+  description: 'Aim by pointing the phone',
+  calibration: { recenter: true },
   channel: 'value',
   kind: 'vector',
   throttle: false,

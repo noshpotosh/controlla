@@ -87,35 +87,36 @@ export function resolveConfig(
       `${spec.name}: only one binary motion vector is supported; conflicting actions: ${motionWidgets.map((widget) => `${widget.action} (${widget.type})`).join(', ')}.`,
     );
   const types = widgets.map((w) => w.type);
-  const pointer = motionWidgets.find((widget) => widget.type === 'pointer')
-    ? spec.inputs[motionWidgets[0].action]
-    : undefined;
-  const bounds = pointer?.bounds;
+  const motion: ControllerConfig['motion'] = {};
+  for (const widget of widgets) {
+    const definition = motionDefinitionFor(widget.type);
+    if (!definition) continue;
+    const validated = definition.validateConfig(
+      spec.inputs[widget.action].motion ?? {},
+    );
+    if (!validated.ok)
+      throw new Error(`${spec.name}: ${widget.action}: ${validated.reason}`);
+    const settings = { ...validated.value };
+    if (
+      motion[definition.type] &&
+      JSON.stringify(motion[definition.type]) !== JSON.stringify(settings)
+    )
+      throw new Error(
+        `${spec.name}: conflicting settings for repeated ${definition.type} inputs.`,
+      );
+    motion[definition.type] = settings;
+  }
   if (types.filter(usesPressSlot).length > PRESS_SLOTS)
     throw new Error(
       `${spec.name} needs more than ${PRESS_SLOTS} press controls.`,
     );
   return {
-    schemaVersion: 1,
-    configId: spec.id + '-v1',
+    schemaVersion: 2,
+    configId: spec.id + '-v2',
     generation,
     orientation: layout.orientation,
     menu: layout.menu,
-    sensors: {
-      pointer: {
-        enabled: types.includes('pointer'),
-        rateHz: 60,
-        ...(bounds ? { bounds: { ...bounds } } : {}),
-        ...(pointer?.anchor === false ? { anchor: false as const } : {}),
-      },
-      tilt: { enabled: types.includes('tilt') },
-      shake: {
-        enabled: types.includes('shake'),
-        thresholdG: 1.8,
-      },
-      chop: { enabled: types.includes('chop') },
-      accel: { enabled: false },
-    },
+    motion,
     haptics: { enabled: c.vibration },
     substitutions,
     widgets,

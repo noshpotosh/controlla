@@ -14,8 +14,18 @@ void test('regenerated catalogs load after layout creation and deletion from the
   try {
     await mkdir(catalog, { recursive: true });
     await mkdir(join(controls, 'layout'));
+    await mkdir(join(controls, 'motion'));
     await writeFile(join(fixture, 'package.json'), '{"type":"module"}');
-    for (const file of ['api.ts', 'layout/schema.ts'])
+    for (const file of [
+      'api.ts',
+      'layout/schema.ts',
+      'motion/registration.ts',
+      'motion/metadata-registry.ts',
+      'motion/pointer-definition.ts',
+      'motion/accelerometer-definition.ts',
+      'motion/chop-definition.ts',
+      'motion/jolt-definition.ts',
+    ])
       await cp(resolve('src/client/controls', file), join(controls, file));
     const probe = {
       ...layouts['aim-and-pulse'],

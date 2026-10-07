@@ -52,6 +52,8 @@ export const validateShakeConfig = (value: unknown): Validated<ShakeConfig> => {
 };
 export const tiltMetadata: MotionMetadata<Record<string, never>> = {
   type: 'tilt',
+  description: 'Steer by tilting the phone',
+  calibration: { recenter: true },
   channel: 'value',
   kind: 'vector',
   throttle: false,
@@ -63,6 +65,7 @@ export const tiltMetadata: MotionMetadata<Record<string, never>> = {
 };
 export const shakeMetadata: MotionMetadata<ShakeConfig> = {
   type: 'shake',
+  description: 'A shake counts as a press',
   channel: 'both',
   kind: 'press',
   throttle: false,

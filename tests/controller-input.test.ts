@@ -17,11 +17,11 @@ const widgets: Widget[] = [
   { id: 'other', action: 'other', type: 'stick', label: 'Other' },
   { id: 'fire', action: 'fire', type: 'button', label: 'Fire' },
   { id: 'hold', action: 'hold', type: 'hold-meter', label: 'Hold' },
-  { id: 'shake', action: 'shake', type: 'shake', label: 'Shake' },
+  { id: 'shake', action: 'shake', type: 'button', label: 'Shake' },
 ];
 function configuration(): ControllerConfig {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     configId: 'test',
     generation: 1,
     orientation: 'any',
@@ -29,15 +29,25 @@ function configuration(): ControllerConfig {
     widgets: structuredClone(widgets),
     substitutions: [],
     haptics: { enabled: true },
-    sensors: {
-      pointer: { enabled: false, rateHz: 60 },
-      tilt: { enabled: false },
-      shake: { enabled: false, thresholdG: 0.1 },
-      accel: { enabled: false },
-    },
+    motion: {},
   };
 }
 function fixture(config = configuration()) {
+  // Resolved configurations pair enabled motion settings with the named motion widget.
+  if (config.motion.pointer && config.widgets[0]?.type === 'aim-pad')
+    config.widgets[0].type = 'pointer';
+  else if (config.motion.tilt && config.widgets[0]?.type === 'aim-pad') {
+    config.widgets[0].type = 'tilt';
+    config.widgets[0].space = 'signed';
+  }
+
+  if (config.motion.shake)
+    config.widgets.find((widget) => widget.id === 'shake')!.type = 'shake';
+  for (const type of Object.keys(config.motion) as Array<
+    keyof ControllerConfig['motion']
+  >)
+    if (!config.widgets.some((widget) => widget.type === type))
+      config.widgets.push({ id: type, type, action: type, label: type });
   let now = 1000;
   const timers: { at: number; callback(): void; canceled: boolean }[] = [];
   const messages: Parameters<InputEffects['reliable']>[0][] = [],
@@ -256,8 +266,8 @@ void test('binary cadence stays at 60Hz, wraps sequences, and skips missed frame
 });
 void test('motion freshness neutralizes tilt and consumes each shake sample only once', () => {
   const config = configuration();
-  config.sensors.tilt.enabled = true;
-  config.sensors.shake.enabled = true;
+  config.motion.tilt = {};
+  config.motion.shake = { thresholdG: 0.1 };
   const f = fixture(config);
   const motion = { ...f.motion, gravity: [0, 0, 20] };
   f.input.tick(motion);
@@ -272,7 +282,7 @@ void test('motion freshness neutralizes tilt and consumes each shake sample only
 });
 void test('recentering makes the current tilt level', () => {
   const config = configuration();
-  config.sensors.tilt.enabled = true;
+  config.motion.tilt = {};
   const f = fixture(config);
   f.input.tick(f.motion);
   assert.ok(Math.abs(f.frames.at(-1)!.x - 0.4) < 0.001);
@@ -294,7 +304,7 @@ void test('recentering makes the current tilt level', () => {
 });
 void test('pointer sampling and recovery preserve position, press anchoring and player settings', () => {
   const config = configuration();
-  config.sensors.pointer.enabled = true;
+  config.motion.pointer ??= {};
   const f = fixture(config);
   f.input.setSensitivity(3);
   f.input.tick(f.motion);
@@ -359,7 +369,7 @@ void test('configuration and aim settings remain input-owned detached projection
     } as unknown as ControllerConfig),
     false,
   );
-  assert.equal(h.input.getConfiguration()!.schemaVersion, 1);
+  assert.equal(h.input.getConfiguration()!.schemaVersion, 2);
   h.input.beginAdjustAim();
   assert.equal(h.input.getSnapshot().adjustingAim, true);
   h.input.finishAdjustAim();
@@ -370,8 +380,8 @@ void test('configuration and aim settings remain input-owned detached projection
   assert.equal(h.input.configure(configuration()), false);
 });
 function swingFixture(config = configuration()) {
-  config.sensors.pointer.enabled = true;
-  config.sensors.chop = { enabled: true };
+  config.motion.pointer ??= {};
+  config.motion.chop = {};
   config.widgets = [
     {
       id: 'aim',
@@ -489,7 +499,7 @@ void test('a punch-like jolt whacks, and releasing mid-swing ignores the rebound
 
 void test('the swing button does nothing unless the host enables chop, and retiring lets go', () => {
   const config = configuration();
-  config.sensors.pointer.enabled = true;
+  config.motion.pointer ??= {};
   config.widgets = [
     { id: 'whack', action: 'whack', type: 'chop', label: 'Whack' },
   ];
@@ -546,7 +556,7 @@ void test('frames show the swing button held while the aim is locked', () => {
 void test('aim is anchored unless the configuration opts out, winning back a turn made while locked', () => {
   const run = (anchor: boolean) => {
     const config = configuration();
-    if (!anchor) config.sensors.pointer.anchor = false;
+    if (!anchor) config.motion.pointer = { anchor: false };
     const f = swingFixture(config);
     for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
     f.input.holdAim(true);
@@ -569,11 +579,13 @@ void test('aim is anchored unless the configuration opts out, winning back a tur
 
 void test('the host can keep the pointer inside the play field', () => {
   const config = configuration();
-  config.sensors.pointer.bounds = {
-    left: 0.1,
-    top: 0.3,
-    right: 0.9,
-    bottom: 0.8,
+  config.motion.pointer = {
+    bounds: {
+      left: 0.1,
+      top: 0.3,
+      right: 0.9,
+      bottom: 0.8,
+    },
   };
   const f = swingFixture(config);
   for (let i = 0; i < 60; i++) f.sample([1, 0, -2]);
@@ -581,4 +593,35 @@ void test('the host can keep the pointer inside the play field', () => {
   assert.ok(Math.abs(p.x - 0.9) < 1e-6 && Math.abs(p.y - 0.3) < 1e-6);
   f.input.recenter();
   assert.deepEqual(f.input.previewPoint(), { x: 0.5, y: 0.55 });
+});
+
+void test('registered configuration rejects obsolete schema and unmatched or invalid settings atomically', () => {
+  const f = fixture();
+  const previous = f.input.getConfiguration();
+  for (const config of [
+    { ...configuration(), schemaVersion: 1 },
+    { ...configuration(), motion: { unknown: {} } },
+    { ...configuration(), motion: { shake: {} } },
+    { ...configuration(), motion: null },
+    {
+      ...configuration(),
+      widgets: [
+        { id: 'impulse', action: 'impulse', label: 'Impulse', type: 'jolt' },
+      ],
+      motion: { jolt: { triggerG: -1 } },
+    },
+    {
+      ...configuration(),
+      widgets: [
+        { id: 'impulse', action: 'impulse', label: 'Impulse', type: 'jolt' },
+      ],
+    },
+  ]) {
+    assert.equal(
+      f.input.configure(config as unknown as ControllerConfig),
+      false,
+    );
+    assert.deepEqual(f.input.getConfiguration(), previous);
+  }
+  f.input.dispose();
 });
