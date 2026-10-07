@@ -17,6 +17,7 @@ import type { ScreenPort, ScreenFrame } from '../game-screen/port.ts';
 import type { Progress, ReadonlyDeep, RoundSnapshot } from '../api/index.ts';
 import { SessionAuthority } from '../engine/session.ts';
 import { Motion } from '../controls/motion/provider.ts';
+import type { MotionControlPort } from '../controls/motion/contracts.ts';
 import type { MotionStatus } from '../controls/motion/contracts.ts';
 import type { ControlPort, ControllerConfig, Widget } from '../controls/api.ts';
 import { DEFAULT_GAIN } from '../controls/motion/pointer.ts';
@@ -546,11 +547,9 @@ export class Runtime {
   previewPoint() {
     return this.input.previewPoint();
   }
-  chopCount() {
-    return this.input.getSnapshot().chops;
-  }
-  holdAim(down: boolean) {
-    this.input.holdAim(down);
+  motionPortFor(widget: Widget, generation: number): MotionControlPort {
+    this.syncInput();
+    return this.input.motionPortFor(widget, generation);
   }
   setPoint(point: Point) {
     this.input.setPoint(point);

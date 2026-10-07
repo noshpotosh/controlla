@@ -126,14 +126,11 @@ export function ControllerScreen({
           widgets={v.config.widgets}
           accent={accent}
           portFor={(w) => phone.portFor(w, v.config!.generation)}
+          motionPortFor={(w) => phone.motionPortFor(w, v.config!.generation)}
           fallback={(w) => (
             <LegacyWidget
               widget={w}
               port={phone.portFor(w, v.config!.generation)}
-              previewPoint={phone.previewPoint}
-              chopCount={phone.chopCount}
-              holdAim={phone.holdAim}
-              sensorHz={v.sensorHz}
             />
           )}
         >

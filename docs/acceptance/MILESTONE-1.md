@@ -295,3 +295,34 @@ surfaces/settings, removal of input-specific shell adapters and obsolete widgets
 then legacy container/CSS retirement. Later lifecycle/roles, feedback/sound,
 deterministic harness/conformance and scaffold checkpoints remain open. Browser,
 physical sensor/haptic tuning and hosted-network evidence are still unverified.
+
+
+## Checkpoint 2f: scoped motion presentation ports
+
+Moved pointer preview, tilt/shake hints, chop tile and jolt hint into the controls
+presentation registry. ControllerSurface renders registered motion surfaces;
+the shell no longer selects motion types or passes chopCount/holdAim. Those
+runtime and input-owner adapters are removed. Input observation now exposes
+generic action state, and MotionControlPort provides commands plus detached,
+frozen held/activation/point state for a named widget.
+
+Ports capture identity by value, configuration ID/generation and input epoch.
+Retired ports ignore commands and expose neutral state. The input owner supplies
+command timestamps; retained views cannot backdate commands. Cancel/lost capture
+and unmount cancel gestures without the normal release grace or activation.
+Adapter close blocks retained commands and observations as well. Existing swing
+capture, grace, timestamps, repeated swings and rebound tests use the generic port.
+
+Validation: full suite 406/406 and game:test 139/139; production build passed.
+Added adapter-close coverage and strengthened the disabled-motion fixture after
+those integrated gates: focused input/adapter suite 29/29; typecheck and lint pass.
+Logs: /private/tmp/motion-ports-{tests,games,build,focused,input}.log.
+Boundary checks initially caught a shell contract reaching registration.ts;
+commands/ports now live in declarations-only motion/contracts.ts. Registration
+reexports these types for processors. The original strict boundaries remain.
+
+This saves a coherent intermediate migration. Settings/calibration still have
+input-specific shell members and UI. Obsolete widgets and their legacy container
+remain pending retirement. Motion surface classes temporarily retain existing
+styling; move their styles into controls before deleting legacy-exclusive CSS.
+All later milestone checkpoints and browser/device/network evidence remain open.

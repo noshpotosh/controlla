@@ -4,6 +4,7 @@ import type {
   ControllerConfig,
   Widget,
 } from '../../controls/api.ts';
+import type { MotionControlPort } from '../../controls/motion/contracts.ts';
 import type { MotionSnapshot } from '../../controls/motion/contracts.ts';
 import {
   channelOf,
@@ -78,8 +79,7 @@ export class ControllerInput {
       point: Object.freeze(this.previewPoint()),
       sensitivity: this.sensitivity,
       recenters: this.recenters,
-      chops: this.motionStateForType('chop')?.activations ?? 0,
-      aimHeld: this.motionStateForType('chop')?.held ?? false,
+      motion: this.motionControls.getSnapshot(),
     });
   }
 
@@ -167,34 +167,50 @@ export class ControllerInput {
       at: this.environment.localTime(),
     });
   }
-  private motionStateForType(type: Widget['type']) {
-    const action = this.config?.widgets.find(
-      (widget) => widget.type === type,
-    )?.action;
-    return action
-      ? this.motionControls.getSnapshot().inputs[action]
-      : undefined;
-  }
-  /** Transitional presentation adapter; replaced by action-scoped generic commands. */
-  holdAim(down: boolean) {
-    const widget = this.config?.widgets.find(
-      (widget) => widget.type === 'chop',
-    );
-    if (widget)
-      this.motionCommand(widget.action, {
-        type: 'press',
-        down,
-        at: this.environment.localTime(),
-      });
-  }
-  motionCommand(
-    action: string,
-    command: import('../../controls/motion/registration.ts').MotionCommand,
-  ) {
-    if (this.terminal || !this.active) return;
-    this.motionControls.command(action, command);
-    if (this.motionControls.getSnapshot().vector)
-      this.latestPoint = { ...this.motionControls.getSnapshot().point };
+  /** Commands and observation belong to one named action, configuration and epoch. */
+  motionPortFor(widget: Widget, generation: number): MotionControlPort {
+    const epoch = this.epoch,
+      configId = this.config?.configId,
+      action = widget.action,
+      id = widget.id,
+      type = widget.type;
+    const valid = () =>
+      !this.terminal &&
+      this.active &&
+      epoch === this.epoch &&
+      this.config?.generation === generation &&
+      this.config.configId === configId &&
+      this.config.widgets.some(
+        (candidate) =>
+          candidate.id === id &&
+          candidate.action === action &&
+          candidate.type === type,
+      ) &&
+      this.motionControls.has(action);
+    const retired = Object.freeze({
+      held: false,
+      activations: 0,
+      point: Object.freeze({ x: 0.5, y: 0.5 }),
+    });
+    return {
+      getSnapshot: () => {
+        if (!valid()) return retired;
+        const snapshot = this.motionControls.getSnapshot();
+        return Object.freeze({
+          ...snapshot.inputs[action],
+          point: snapshot.point,
+        });
+      },
+      command: (command) => {
+        if (!valid()) return;
+        this.motionControls.command(action, {
+          ...command,
+          at: this.environment.localTime(),
+        });
+        if (this.motionControls.getSnapshot().vector)
+          this.latestPoint = { ...this.motionControls.getSnapshot().point };
+      },
+    };
   }
   recenter() {
     if (this.terminal) return;

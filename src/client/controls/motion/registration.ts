@@ -1,3 +1,11 @@
+import type { AimLockPolicy, MotionCommand } from './contracts.ts';
+export type {
+  AimLockPolicy,
+  MotionCommand,
+  MotionControlCommand,
+  MotionControlState,
+  MotionControlPort,
+} from './contracts.ts';
 /** Pure semantic motion contracts. Presentation is registered separately. */
 import type {
   Capabilities,
@@ -22,19 +30,6 @@ export interface MotionClocks {
 export interface ValidatedMotionSample extends MotionSnapshot {
   readonly linearAcceleration: Vec3 | null;
 }
-export interface AimLockPolicy {
-  rate: number;
-  calmMs: number;
-  maxMs: number;
-  lookbackMs: number;
-}
-export type MotionCommand =
-  | { type: 'press'; down: boolean; at: number }
-  | { type: 'cancel'; at: number }
-  | { type: 'recenter'; at: number }
-  | { type: 'sensitivity'; value: number; at: number }
-  | { type: 'aim-lock'; at: number; policy: AimLockPolicy }
-  | { type: 'aim-release'; at: number; immediate?: true };
 export type MotionOutput =
   | { type: 'value'; value: ControlValue; at: number; confidence?: number }
   | {

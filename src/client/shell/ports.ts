@@ -1,3 +1,4 @@
+import type { MotionControlPort } from '../controls/motion/contracts.ts';
 import type { MotionStatus } from '../controls/motion/contracts.ts';
 /** Application UI contracts; no runtime, transport, React or game implementation. */
 import type {
@@ -123,10 +124,11 @@ export interface PhoneActions {
   setSensitivity(this: void, value: number): void;
   recenter(this: void): void;
   previewPoint(this: void): Point;
-  /** Swings recognised so far, for on-phone feedback. */
-  chopCount(this: void): number;
-  /** Holds or releases the swing button, which freezes the aim while held. */
-  holdAim(this: void, down: boolean): void;
+  motionPortFor(
+    this: void,
+    widget: Widget,
+    generation: number,
+  ): MotionControlPort;
   portFor(this: void, widget: Widget, generation: number): ControlPort;
 }
 /** Observation only; samples are detached and subscriptions retire with the session. */

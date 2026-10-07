@@ -206,8 +206,20 @@ export function adaptRuntime(runtime: Runtime): ShellSession {
       recenter: () => active(() => runtime.recenter()),
       previewPoint: () =>
         closed ? { x: 0.5, y: 0.5 } : runtime.previewPoint(),
-      chopCount: () => (closed ? 0 : runtime.chopCount()),
-      holdAim: (down) => active(() => runtime.holdAim(down)),
+      motionPortFor(widget, generation) {
+        const port = runtime.motionPortFor(widget, generation);
+        return {
+          getSnapshot: () =>
+            closed
+              ? Object.freeze({
+                  held: false,
+                  activations: 0,
+                  point: Object.freeze({ x: 0.5, y: 0.5 }),
+                })
+              : port.getSnapshot(),
+          command: (command) => active(() => port.command(command)),
+        };
+      },
       portFor(widget, generation) {
         const port = runtime.portFor(widget, generation);
         return {

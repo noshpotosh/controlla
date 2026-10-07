@@ -412,7 +412,7 @@ void test('without the swing button held, motion only aims and never whacks', ()
   for (const pitch of [-3, -8, -3, 0]) f.sample([pitch, 0, 0]);
   assert.equal(f.presses().length, 0);
   assert.notDeepEqual(f.input.previewPoint(), before, 'the swing aims');
-  assert.equal(f.input.getSnapshot().chops, 0);
+  assert.equal(f.input.getSnapshot().motion.inputs.whack?.activations ?? 0, 0);
 });
 
 void test('holding the swing button freezes the aim, and a swing whacks there', () => {
@@ -424,8 +424,8 @@ void test('holding the swing button freezes the aim, and a swing whacks there', 
   assert.ok(aimed.x > 0.55);
   // The thumb press jolts the phone; the aim comes from just before it.
   f.sample([0, 0, -2]);
-  f.input.holdAim(true);
-  assert.equal(f.input.getSnapshot().aimHeld, true);
+  motionPress(f.input, true);
+  assert.equal(f.input.getSnapshot().motion.inputs.whack?.held ?? false, true);
   assert.ok(Math.abs(f.input.previewPoint().x - aimed.x) < 0.01);
   // Waving the phone around while held never moves the aim.
   for (let i = 0; i < 4; i++) f.sample([0.6, 0.5, -0.6]);
@@ -455,7 +455,7 @@ void test('holding the swing button freezes the aim, and a swing whacks there', 
     Math.abs((press.press.value as number) - Math.hypot(9, 1) / 10) < 1e-9,
   );
   assert.deepEqual(f.vibrations, [20]);
-  assert.equal(f.input.getSnapshot().chops, 1);
+  assert.equal(f.input.getSnapshot().motion.inputs.whack?.activations ?? 0, 1);
   // The rebound neither moves the aim nor whacks again.
   for (const pitch of [6, 4, -3, 0]) f.sample([pitch, 0, 0]);
   assert.equal(f.presses().length, 1);
@@ -468,7 +468,7 @@ void test('holding the swing button freezes the aim, and a swing whacks there', 
   for (const pitch of [-2, -7, 0]) f.sample([pitch, 0, 0]);
   assert.equal(f.presses().length, 2);
   // Released and settled: aiming works again from where it was.
-  f.input.holdAim(false);
+  motionPress(f.input, false);
   for (let i = 0; i < 12; i++) f.sample([0, 0, 0]);
   for (let i = 0; i < 6; i++) f.sample([0, 0, -0.4]);
   assert.ok(f.input.previewPoint().x > press.press.x);
@@ -477,7 +477,7 @@ void test('holding the swing button freezes the aim, and a swing whacks there', 
 void test('a punch-like jolt whacks, and releasing mid-swing ignores the rebound', () => {
   const f = swingFixture();
   for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
-  f.input.holdAim(true);
+  motionPress(f.input, true);
   const held = f.input.previewPoint();
   f.sample([0.2, 0, 0], [0, 0, 9.81 * 1.4]);
   f.sample([0.3, 0, 0], [0, 0, 9.81 * 2.2]);
@@ -486,7 +486,7 @@ void test('a punch-like jolt whacks, and releasing mid-swing ignores the rebound
   assert.ok(press.type === 'press');
   assert.deepEqual({ x: press.press.x, y: press.press.y }, held);
   // Let go straight away while the phone is still swinging back.
-  f.input.holdAim(false);
+  motionPress(f.input, false);
   const released = f.input.previewPoint();
   f.sample([6, 0, 0]);
   f.sample([5, 0, 0]);
@@ -501,11 +501,11 @@ void test('the swing button does nothing unless the host enables chop, and retir
   const config = configuration();
   config.motion.pointer ??= {};
   config.widgets = [
-    { id: 'whack', action: 'whack', type: 'chop', label: 'Whack' },
+    { id: 'whack', action: 'whack', type: 'button', label: 'Whack' },
   ];
   const f = fixture(config);
-  f.input.holdAim(true);
-  assert.equal(f.input.getSnapshot().aimHeld, false);
+  motionPress(f.input, true);
+  assert.equal(f.input.getSnapshot().motion.inputs.whack?.held ?? false, false);
   for (const [i, pitch] of [-3, -8, -3].entries())
     f.input.tick({
       ...f.motion,
@@ -515,19 +515,22 @@ void test('the swing button does nothing unless the host enables chop, and retir
     });
   assert.equal(f.messages.filter((m) => m.type === 'press').length, 0);
   const swing = swingFixture();
-  swing.input.holdAim(true);
+  motionPress(swing.input, true);
   swing.input.setActive(false);
-  assert.equal(swing.input.getSnapshot().aimHeld, false);
+  assert.equal(
+    swing.input.getSnapshot().motion.inputs.whack?.held ?? false,
+    false,
+  );
 });
 
 void test('a swing recognised just after letting go still whacks, but a later one does not', () => {
   const f = swingFixture();
   for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
-  f.input.holdAim(true);
+  motionPress(f.input, true);
   const held = f.input.previewPoint();
   // The thumb lifts as the swing begins; it is recognised a sample later.
   f.sample([-2, 0, 0]);
-  f.input.holdAim(false);
+  motionPress(f.input, false);
   f.sample([-8, 0, 0]);
   assert.equal(f.presses().length, 1);
   const [press] = f.presses();
@@ -546,10 +549,10 @@ void test('frames show the swing button held while the aim is locked', () => {
     return f.frames.at(-1)!.buttons;
   };
   assert.equal(buttons(), 0);
-  f.input.holdAim(true);
+  motionPress(f.input, true);
   // The chop is the only press control, so it owns slot 0.
   assert.equal(buttons(), 1);
-  f.input.holdAim(false);
+  motionPress(f.input, false);
   assert.equal(buttons(), 0);
 });
 
@@ -559,10 +562,10 @@ void test('aim is anchored unless the configuration opts out, winning back a tur
     if (!anchor) config.motion.pointer = { anchor: false };
     const f = swingFixture(config);
     for (let i = 0; i < 6; i++) f.sample([0, 0, 0]);
-    f.input.holdAim(true);
+    motionPress(f.input, true);
     // Turning right while the aim is locked.
     for (let i = 0; i < 10; i++) f.sample([0, 0, -0.6]);
-    f.input.holdAim(false);
+    motionPress(f.input, false);
     for (let i = 0; i < 10; i++) f.sample([0, 0, 0]);
     const released = f.input.previewPoint();
     for (let i = 0; i < 10; i++) f.sample([0, 0, -0.4]);
@@ -624,4 +627,55 @@ void test('registered configuration rejects obsolete schema and unmatched or inv
     assert.deepEqual(f.input.getConfiguration(), previous);
   }
   f.input.dispose();
+});
+
+function motionPress(input: ControllerInput, down: boolean) {
+  const config = input.getConfiguration()!;
+  const widget = config.widgets.find(
+    (candidate) => candidate.action === 'whack',
+  );
+  if (widget)
+    input
+      .motionPortFor(widget, config.generation)
+      .command({ type: 'press', down });
+}
+
+void test('motion ports bind detached identity and retire commands and observation with configuration and epochs', () => {
+  const f = swingFixture();
+  const config = f.input.getConfiguration()!;
+  const widget = config.widgets[1];
+  const port = f.input.motionPortFor(widget, config.generation);
+  widget.action = 'another';
+  port.command({ type: 'press', down: true });
+  assert.equal(port.getSnapshot().held, true);
+  assert.equal(Reflect.set(port.getSnapshot(), 'held', false), false);
+  assert.equal(Reflect.set(port.getSnapshot().point, 'x', 99), false);
+  port.command({ type: 'cancel' });
+  assert.equal(port.getSnapshot().held, false);
+  for (const pitch of [-3, -8, -3, 0]) f.sample([pitch, 0, 0]);
+  assert.equal(
+    f.presses().length,
+    0,
+    'cancellation cannot become an activation',
+  );
+  f.input.setActive(false);
+  f.input.setActive(true);
+  port.command({ type: 'press', down: true });
+  assert.equal(port.getSnapshot().held, false);
+  assert.equal(f.input.getSnapshot().motion.inputs.whack.held, false);
+  const current = f.input.getConfiguration()!;
+  const replacement = f.input.motionPortFor(
+    current.widgets[1],
+    current.generation,
+  );
+  replacement.command({ type: 'press', down: true });
+  assert.equal(replacement.getSnapshot().held, true);
+  current.configId = 'replacement'; // Same generation still retires the previous configuration.
+  f.input.configure(current);
+  replacement.command({ type: 'press', down: true });
+  assert.equal(replacement.getSnapshot().held, false);
+  assert.equal(f.input.getSnapshot().motion.inputs.whack.held, false);
+  f.input.dispose();
+  replacement.command({ type: 'recenter' });
+  assert.equal(replacement.getSnapshot().activations, 0);
 });

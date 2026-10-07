@@ -45,3 +45,32 @@ export interface MotionSnapshot {
     accuracy: number | null;
   }>;
 }
+
+export interface AimLockPolicy {
+  rate: number;
+  calmMs: number;
+  maxMs: number;
+  lookbackMs: number;
+}
+export type MotionCommand =
+  | { type: 'press'; down: boolean; at: number }
+  | { type: 'cancel'; at: number }
+  | { type: 'recenter'; at: number }
+  | { type: 'sensitivity'; value: number; at: number }
+  | { type: 'aim-lock'; at: number; policy: AimLockPolicy }
+  | { type: 'aim-release'; at: number; immediate?: true };
+/** Commands are dated by the input owner, never by a retained view callback. */
+export type MotionControlCommand = MotionCommand extends infer C
+  ? C extends MotionCommand
+    ? Omit<C, 'at'>
+    : never
+  : never;
+export interface MotionControlState {
+  readonly held: boolean;
+  readonly activations: number;
+  readonly point: Readonly<{ x: number; y: number }>;
+}
+export interface MotionControlPort {
+  getSnapshot(this: void): MotionControlState;
+  command(this: void, command: MotionControlCommand): void;
+}

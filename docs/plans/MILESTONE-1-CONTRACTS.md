@@ -140,18 +140,22 @@ controls composition imports the processor registry. Metadata and constructor
 registrations are checked for parity, preserving authority/shell boundaries.
 
 UI registration belongs separately in controls presentation (React is allowed
-there). Its concrete signatures use React ComponentType and existing ControlPort:
+there). Surfaces use React ComponentType, existing ControlPort and a captured
+MotionControlPort for command/observation. Commands omit `at`; the input owner
+dates them on receipt. The port binds widget identity, generation, config ID and
+input epoch; stale ports expose neutral immutable state and accept no commands.
+This replaces the proposed unscoped command callback; settings migration will
+use the same scoped interface. Current surface and proposed settings contracts:
 
 ```ts
 export interface MotionSurfaceProps {
-  action: string;
+  widget: Widget;
   port: ControlPort;
-  command(command: MotionCommand): void;
-  enabled: boolean;
+  motion?: MotionControlPort;
 }
 export interface MotionSettingsProps {
   action: string;
-  command(command: MotionCommand): void;
+  motion: MotionControlPort;
   status: Readonly<Record<string, string | number | boolean | null>>;
 }
 export interface MotionPresentation {

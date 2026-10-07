@@ -3,31 +3,20 @@
 // (src/client/controls) yet. ControllerSurface places each one in its layout cell;
 // port a type by adding it to the library and deleting its branch here.
 import {
-  useEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { Hammer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import type { Widget, ControlPort } from '../controls/api.ts';
-import type { PhoneActions } from './ports.ts';
 const clamp = (x: number) => Math.max(-1, Math.min(1, x));
 export function LegacyWidget({
   widget: w,
   port,
-  previewPoint,
-  chopCount,
-  holdAim,
-  sensorHz,
 }: {
   widget: Widget;
   port: ControlPort;
-  previewPoint: PhoneActions['previewPoint'];
-  chopCount?: PhoneActions['chopCount'];
-  holdAim?: PhoneActions['holdAim'];
-  sensorHz: number;
 }) {
   const [progress, setProgress] = useState(0),
     [text, setText] = useState(''),
@@ -132,36 +121,6 @@ export function LegacyWidget({
         <Button type="submit">Send</Button>
       </form>
     );
-  if (w.type === 'chop')
-    return (
-      <ChopTile
-        label={w.label}
-        port={port}
-        chopCount={chopCount}
-        holdAim={holdAim}
-      />
-    );
-  if (w.type === 'pointer' || w.type === 'tilt' || w.type === 'shake')
-    return (
-      <div className="widget">
-        <span className="widget-glyph">
-          {w.type === 'pointer' ? '⊕' : w.type === 'tilt' ? '↔' : '↯'}
-        </span>
-        {w.type === 'pointer' ? (
-          <PointerPreview previewPoint={previewPoint} />
-        ) : null}
-        {w.type === 'pointer'
-          ? 'Swivel left/right · Tip the top edge up/down'
-          : w.type === 'tilt'
-            ? 'Tilt to steer'
-            : 'Shake your phone'}
-        <small>
-          {w.type === 'pointer'
-            ? 'Push past an edge or tap Recenter to re-center'
-            : `${Math.round(sensorHz)} motion samples / sec`}
-        </small>
-      </div>
-    );
   return (
     <fieldset
       className="widget"
@@ -190,130 +149,5 @@ export function LegacyWidget({
         <span style={{ transform: `rotate(${angle}rad)` }}>↑</span>
       ) : null}
     </fieldset>
-  );
-}
-
-/**
- * The swing-to-whack input: hold to freeze your aim, then swing. Each recognised
- * swing slams the hammer, so players without vibration (every iPhone) still see
- * that it counted.
- */
-function ChopTile({
-  label,
-  port,
-  chopCount,
-  holdAim,
-}: {
-  label: string;
-  port: ControlPort;
-  chopCount?: PhoneActions['chopCount'];
-  holdAim?: PhoneActions['holdAim'];
-}) {
-  const [hits, setHits] = useState(0),
-    [held, setHeld] = useState(false);
-  const pointer = useRef<number | null>(null);
-  useEffect(() => {
-    if (!chopCount) return;
-    let seen = chopCount(),
-      raf = 0;
-    const poll = () => {
-      const count = chopCount();
-      if (count !== seen) {
-        seen = count;
-        setHits((n) => n + 1);
-      }
-      raf = requestAnimationFrame(poll);
-    };
-    raf = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(raf);
-  }, [chopCount]);
-  // Never leave the aim frozen if the tile goes away mid-hold.
-  useEffect(
-    () => () => {
-      if (pointer.current !== null) holdAim?.(false);
-    },
-    [holdAim],
-  );
-  const release = (e: ReactPointerEvent<HTMLElement>) => {
-    if (pointer.current !== e.pointerId) return;
-    pointer.current = null;
-    setHeld(false);
-    holdAim?.(false);
-  };
-  return (
-    <button
-      type="button"
-      className={held ? 'widget chop-tile is-held' : 'widget chop-tile'}
-      aria-label={`Hold, then swing to ${label}`}
-      aria-pressed={held}
-      onContextMenu={(e) => e.preventDefault()}
-      onPointerDown={(e) => {
-        if (pointer.current !== null) return;
-        pointer.current = e.pointerId;
-        e.currentTarget.setPointerCapture?.(e.pointerId);
-        setHeld(true);
-        holdAim?.(true);
-        port.haptic(8);
-      }}
-      onPointerUp={release}
-      onPointerCancel={release}
-      onLostPointerCapture={release}
-    >
-      <span
-        key={hits}
-        className={hits ? 'chop-tile__hammer is-hit' : 'chop-tile__hammer'}
-      >
-        <Hammer strokeWidth={1.75} />
-      </span>
-      <span className="chop-tile__title">
-        {held ? `Swing to ${label}!` : 'Hold, then swing'}
-      </span>
-      <small>
-        {held
-          ? 'Your aim is locked while you hold'
-          : 'Point at a mole, hold here, then chop like a hammer'}
-      </small>
-    </button>
-  );
-}
-
-function PointerPreview({
-  previewPoint,
-}: {
-  previewPoint: PhoneActions['previewPoint'];
-}) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = ref.current!,
-      ctx = canvas.getContext('2d')!;
-    let raf = 0;
-    const render = () => {
-      const p = previewPoint();
-      ctx.fillStyle = '#181c35';
-      ctx.fillRect(0, 0, 280, 158);
-      ctx.strokeStyle = '#d5ff70';
-      ctx.lineWidth = 2;
-      const x = Math.max(0, Math.min(280, p.x * 280)),
-        y = Math.max(0, Math.min(158, p.y * 158));
-      ctx.beginPath();
-      ctx.arc(x, y, 9, 0, Math.PI * 2);
-      ctx.moveTo(x - 14, y);
-      ctx.lineTo(x + 14, y);
-      ctx.moveTo(x, y - 14);
-      ctx.lineTo(x, y + 14);
-      ctx.stroke();
-      raf = requestAnimationFrame(render);
-    };
-    raf = requestAnimationFrame(render);
-    return () => cancelAnimationFrame(raf);
-  }, [previewPoint]);
-  return (
-    <canvas
-      ref={ref}
-      width={280}
-      height={158}
-      style={{ width: '70%', maxHeight: '45%', objectFit: 'contain' }}
-      aria-label="Local pointer preview"
-    />
   );
 }
