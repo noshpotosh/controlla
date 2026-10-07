@@ -1,6 +1,6 @@
 # Milestone 1 implementation handoff
 
-Status: prerequisite review approved; checkpoints 1–3 implementation validated and saved. Browser evidence remains pending. Continue with checkpoint 4 feedback and game-owned sound.
+Status: prerequisite review approved; checkpoints 1–3 implementation validated and saved. Browser evidence remains pending. Checkpoint 4a game-owned sound is validated; continue with checkpoint 4b bounded phone feedback.
 
 - Baseline: fetched `origin/develop` equals `4a885029d30bab8009ed6854d3aeba13a18166e0` on 2026-10-07.
 - Topic: `codex/milestone-1-foundation-1007`; review target: `develop` (task-specific override of AGENTS.md main default).
@@ -29,7 +29,7 @@ for every connected/current-generation participant; late arrivals wait for the
 next round. Missing capabilities retire readiness; recovery/substitution requires
 a replacement ACK without reassignment. Both production games retain timed/default
 roles. Validation: 424 full tests / 152 game tests, typecheck, lint and build pass.
-Continue checkpoint 4, then replay/conformance, scaffolding and browser evidence.
+Checkpoint 4a declarative sound is saved: 426 full / 154 game tests plus typecheck, lint and build pass. Continue with bounded authenticated feedback, then replay/conformance, scaffolding and browser evidence.
 No physical sensor, vibration or hosted-network verification is claimed.
 
 ## Supplied implementation plan (preserved)

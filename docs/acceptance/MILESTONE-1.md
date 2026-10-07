@@ -459,3 +459,31 @@ rearms before the gesture. Substitution tests send valid discrete dpad vectors.
 Checkpoint 3 implementation is complete. Checkpoints 4–6, final browser smoke,
 physical sensor/haptic tuning and hosted-network evidence remain open. Continue
 with bounded per-player feedback and game-owned sound.
+
+
+## Checkpoint 4a: game-owned declarative sound
+
+Moved Neon Harvest hit and Whack-a-Mole pop/bonk/gold/boom/whiff declarations into
+their own game folders without changing layers, frequencies, offsets, lengths or
+gains. Descriptor sounds uses the public SoundLayer data contract; framework
+prompt/end remain browser-owned and cannot be overridden. New game cues need no
+shared cue registry changes. Playback supplies the displayed snapshot game ID to
+runtime, which projects that descriptor's declarations into shared audio playback.
+Game and browser ownership boundaries stay enforced; audio handles, noise buffers,
+scheduling, hydration deduplication and disposal retain their existing owners.
+
+Sound validation runs before setup/game construction. Cues are bounded to 64
+names of at most 64 characters and 16 KiB JSON; each has one to eight layers.
+Offsets are 0–2 seconds, lengths (0,2], gains [0,1], frequencies 20–20000 Hz,
+and waves/filters must be recognized. Framework cue collisions reject atomically.
+
+Validation: npm test 426/426; game:test 154/154; typecheck, lint and production
+build passed. Focused sound/browser/playback 13/13; final playback ownership
+assertions 7/7. Logs: /private/tmp/sound-{tests,games,typecheck,lint,build,focused,
+playback-final}.log. Tests prove custom descriptor cues work without central edits,
+cross-game kinds stay silent, bounded declarations reject before construction,
+and framework cues retain precedence. Physical audible comparison remains pending.
+
+Checkpoint 4 remains open for bounded authenticated phone feedback, enabled-state
+cancellation/enforcement, status rendering, reconnect restoration and haptics without
+replay. Checkpoints 5–6 and required browser/device/network evidence remain open.

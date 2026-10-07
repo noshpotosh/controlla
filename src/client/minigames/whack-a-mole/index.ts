@@ -1,3 +1,4 @@
+import { sounds } from './sounds.ts';
 import type { GameDescriptor } from '../../api/index.ts';
 import { WhackAMole, isWhackState } from './game.ts';
 import { AIM_BOUNDS, WHACK, type WhackState } from './model.ts';
@@ -36,6 +37,7 @@ export const whackAMole: GameDescriptor<WhackState> = {
     controller: { layout: 'aim-and-whack' },
   },
   presentation: { cursors: false },
+  sounds,
   // A whack is dated to the start of the swing; a short window keeps it snappy
   // while still ordering near-simultaneous whacks on the same mole.
   arbitrationMs: 40,

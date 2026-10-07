@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BrowserResources } from '../src/client/runtime/browser/browser-resources.ts';
 import { isSound, playSound } from '../src/client/runtime/browser/sounds.ts';
+import { sounds as harvestSounds } from '../src/client/minigames/neon-harvest/sounds.ts';
+import { sounds as whackSounds } from '../src/client/minigames/whack-a-mole/sounds.ts';
 import type { BrowserEnvironment } from '../src/client/runtime/browser/contracts.ts';
 
 function deferred<T>() {
@@ -140,7 +142,7 @@ void test('released wake locks can be reacquired and hidden grants are released'
   assert.ok(!w.held.includes(true));
 });
 
-void test('sound cues synthesize built-in kinds and ignore unknown ones', () => {
+void test('sound cues synthesize game-owned layers and keep framework cues independent', () => {
   const made: string[] = [];
   const param = () => ({
     value: 0,
@@ -172,26 +174,30 @@ void test('sound cues synthesize built-in kinds and ignore unknown ones', () => 
       getChannelData: () => new Float32Array(length),
     }),
   } as unknown as AudioContext;
-  for (const kind of [
-    'hit',
-    'prompt',
-    'end',
-    'pop',
-    'bonk',
-    'gold',
-    'boom',
-    'whiff',
-  ])
-    assert.equal(isSound(kind), true, kind);
+  for (const kind of ['prompt', 'end']) assert.equal(isSound(kind), true, kind);
+  assert.equal(isSound('hit'), false);
+  assert.equal(isSound('hit', harvestSounds), true);
+  assert.equal(isSound('hit', whackSounds), false);
+  for (const kind of ['pop', 'bonk', 'gold', 'boom', 'whiff'])
+    assert.equal(isSound(kind, whackSounds), true, kind);
   assert.equal(isSound('toString'), false);
   playSound(audio, 'unknown');
   assert.deepEqual(made, []);
-  playSound(audio, 'bonk');
+  playSound(audio, 'bonk', whackSounds);
   assert.deepEqual(
     made.filter((kind) => kind !== 'gain'),
     ['oscillator', 'noise', 'filter'],
   );
   made.length = 0;
-  playSound(audio, 'hit');
+  playSound(audio, 'hit', harvestSounds);
+  assert.deepEqual(made, ['gain', 'oscillator']);
+  made.length = 0;
+  playSound(audio, 'new-cue', {
+    'new-cue': [{ wave: 'square', from: 440, length: 0.1, gain: 0.2 }],
+  });
+  assert.deepEqual(made, ['gain', 'oscillator']);
+  // Even an invalid override cannot replace a framework cue at playback.
+  made.length = 0;
+  playSound(audio, 'end', { end: [] });
   assert.deepEqual(made, ['gain', 'oscillator']);
 });

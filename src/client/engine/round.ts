@@ -5,6 +5,7 @@ import {
   freezeRoundData,
 } from './round-setup.ts';
 import { timingDuration } from './timing-policy.ts';
+import { validateSounds } from './sound-policy.ts';
 import {
   ARBITRATION_MS,
   arbitrationWindow,
@@ -71,6 +72,7 @@ export class RoundRunner<S extends object = object> {
     if (!descriptor.modes.some((choice) => choice.id === mode))
       throw new Error(`Unknown mode ${mode} for ${descriptor.id}.`);
     timingDuration(descriptor.timing);
+    validateSounds(descriptor.sounds);
     this.timing = structuredClone(descriptor.timing);
     freeze(this.timing);
     this.game = descriptor.create({ mode });

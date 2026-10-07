@@ -291,7 +291,8 @@ export class DisplayPlayback {
         const time =
           event.clock === 'authority' ? authorityTime : presentationTime;
         if (event.time > time) keep.push(event);
-        else if (time - event.time <= 1000) this.effects.playEvent(event);
+        else if (time - event.time <= 1000)
+          this.effects.playEvent(event, snapshot.gameId);
       }
       this.events = keep;
     } else if (['ended', 'unsupported', 'error', 'aborted'].includes(status))

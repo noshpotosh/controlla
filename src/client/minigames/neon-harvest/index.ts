@@ -1,3 +1,4 @@
+import { sounds } from './sounds.ts';
 import type { GameDescriptor } from '../../api/index.ts';
 import { NeonHarvest, isNeonHarvestState } from './game.ts';
 import { HARVEST, type NeonHarvestState } from './model.ts';
@@ -30,6 +31,7 @@ export const neonHarvest: GameDescriptor<NeonHarvestState> = {
     controller: { layout: 'aim-and-pulse' },
   },
   presentation: { cursors: false },
+  sounds,
   create: () => new NeonHarvest(),
   createRenderer: () => new NeonHarvestRenderer(),
   isState: isNeonHarvestState,

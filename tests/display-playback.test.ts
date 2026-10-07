@@ -59,7 +59,14 @@ function fixture() {
       venueStats: (delay) => effects.push(['stats', delay]),
       presented: (...args) => effects.push(['presented', ...args]),
       recoveryWarning: (active) => effects.push(['warning', active]),
-      playEvent: (event) => effects.push(['event', event.id]),
+      playEvent: (event, gameId) => {
+        assert.equal(
+          gameId,
+          'fixture',
+          'cue ownership follows its displayed snapshot',
+        );
+        effects.push(['event', event.id]);
+      },
     },
   );
   const full = (snapshot = state(), id = 1, time = 800, ready = true) =>

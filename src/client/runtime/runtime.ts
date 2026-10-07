@@ -208,7 +208,8 @@ export class Runtime {
             this.notify();
           }
         },
-        playEvent: (event) => this.resources.playEvent(event),
+        playEvent: (event, gameId) =>
+          this.resources.playEvent(event, findGame(gameId)?.sounds),
       },
     );
     this.router = new SessionRouter(

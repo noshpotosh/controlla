@@ -20,6 +20,29 @@ export type ReadonlyDeep<T> = T extends object
   ? { readonly [K in keyof T]: ReadonlyDeep<T[K]> }
   : T;
 
+export type SoundLayer = {
+  from: number;
+  to?: number;
+  /** Seconds after the cue starts. */
+  at?: number;
+  length: number;
+  gain: number;
+} & (
+  | { wave: 'sine' | 'square' | 'sawtooth' | 'triangle' }
+  | {
+      noise: true;
+      filter:
+        | 'lowpass'
+        | 'highpass'
+        | 'bandpass'
+        | 'lowshelf'
+        | 'highshelf'
+        | 'peaking'
+        | 'notch'
+        | 'allpass';
+    }
+);
+
 export interface Outcome {
   playerId: string;
   /** Equal placement means a tie. Lower is better; raw scores stay game-local. */
@@ -181,6 +204,7 @@ export interface GameDescriptor<S extends object = object> {
   controls: ControllerRequirements;
   setup?(context: RoundSetupContext): readonly ParticipantAssignment[];
   presentation: { cursors: boolean };
+  sounds?: Readonly<Record<string, readonly SoundLayer[]>>;
   /**
    * Optional. How long presses wait (ms) so presses from different phones reach
    * `tick` ordered by timestamp. Default and maximum 200; shorter feels more

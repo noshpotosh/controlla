@@ -8,6 +8,7 @@ import type {
 import { kindOf } from '../controls/registry.ts';
 import { isControlName } from '../controls/layout/schema.ts';
 import { isJsonValue } from './json.ts';
+import { validateSounds } from './sound-policy.ts';
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 export const validSeed = (value: unknown): value is number =>
@@ -92,6 +93,7 @@ export function prepareAssignments(
   players: Player[],
   seed: number,
 ): ParticipantAssignment[] {
+  validateSounds(game.sounds);
   if (
     !validSeed(seed) ||
     !game.modes.some((choice) => choice.id === mode) ||

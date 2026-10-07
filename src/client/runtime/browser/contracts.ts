@@ -1,4 +1,4 @@
-import type { PresentationEvent } from '../../api/index.ts';
+import type { PresentationEvent, SoundLayer } from '../../api/index.ts';
 export interface BrowserEnvironment {
   hidden(): boolean;
   listen(
@@ -19,6 +19,9 @@ export interface BrowserResourcePort {
   start(): void;
   unlock(): Promise<void>;
   acquireWake(): Promise<void>;
-  playEvent(event: PresentationEvent): void;
+  playEvent(
+    event: PresentationEvent,
+    sounds?: Readonly<Record<string, readonly SoundLayer[]>>,
+  ): void;
   dispose(): void;
 }
