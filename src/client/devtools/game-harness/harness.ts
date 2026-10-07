@@ -1,3 +1,4 @@
+import { timingDuration } from '../../engine/timing-policy.ts';
 import { SnapshotEncoder, SnapshotTimeline } from '../../engine/replication.ts';
 import { channelOf, usesPressSlot } from '../../controls/registry.ts';
 import type { ControllerConfig } from '../../controls/api.ts';
@@ -134,7 +135,7 @@ export class GameHarness<S extends object = object> {
   get endAt() {
     return this.runner.roundId
       ? this.runner.endAt
-      : 3000 + this.descriptor.durationMs;
+      : 3000 + timingDuration(this.descriptor.timing);
   }
   load(): Promise<void> {
     this.loading ??= Promise.resolve(this.runner.load()).then(() => {

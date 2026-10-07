@@ -54,7 +54,7 @@ function fixture(count = 1, disableSpawn = true) {
       presentationDelay: delay,
       values,
       actions,
-    });
+    }).events;
   return { game, state, tick };
 }
 const sample = (
@@ -128,7 +128,7 @@ void test('Neon Harvest requires readiness and returns isolated snapshots and ti
       values: {},
       actions: [],
     }),
-    [],
+    { events: [] },
   );
 });
 
@@ -537,13 +537,11 @@ void test('prototype-like player IDs remain eligible own keys in snapshots and o
   assert.equal(snapshot.players['__proto__'].collected, 1);
   assert.equal(snapshot.scores['constructor'], 0);
   assert.deepEqual(
-    game
-      .finalize()
-      .map(({ playerId, score, placement }) => ({
-        playerId,
-        score,
-        placement,
-      })),
+    game.finalize().map(({ playerId, score, placement }) => ({
+      playerId,
+      score,
+      placement,
+    })),
     [
       { playerId: '__proto__', score: 10, placement: 1 },
       { playerId: 'constructor', score: 0, placement: 2 },

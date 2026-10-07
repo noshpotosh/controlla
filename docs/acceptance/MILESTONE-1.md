@@ -384,3 +384,40 @@ Checkpoint 2 implementation is complete. Required browser smoke remains pending,
 including settings/calibration and touch fallback; physical sensor tuning remains
 unverified. Checkpoints 3–6, feedback/haptics, hosted-network evidence and final
 integration acceptance remain open. Continue with timing policy and fixed roles.
+
+
+## Checkpoint 3a: timing policy and authoritative completion
+
+Replaced descriptor durationMs with timed/untimed timing policy. Both durations
+are positive finite safe integers, capped at 24 hours; the runner captures an
+immutable policy and always derives a finite safety deadline. Both production
+games retain their original timed durations, arbitration and event behavior.
+Game tick now returns an object with events and optional complete: true.
+
+Running ticks validate results/events/state before latching early completion.
+The effective endAt is the tick time bounded by the original deadline. Latching
+clears held values, removes queued post-cutoff actions and starts the existing
+200 ms settling window. Late discrete input remains eligible only with capture
+before cutoff and receipt strictly before cutoff+200. Settling completion cannot
+extend/restart the deadline; finalize and awards remain exactly once. Abort/error
+paths award no points. Continuous widget/binary updates no longer enter gameplay
+after cutoff, while recovered binary press edges keep the discrete-input path.
+
+Snapshot schema 2 now requires timing and validates cutoff against its duration;
+known catalog games must match their declared policy. Displays preserve reload
+guidance for incompatible schemas. The shell projects timing metadata and labels
+untimed choices without an end countdown; the common start countdown is unchanged.
+
+Validation: npm test 415/415; game:test 144/144; typecheck, lint and production
+build passed. Focused lifecycle suite 28/28, plus 5/5 completion tests after adding
+queued future-action filtering coverage. Logs: /private/tmp/timing-{tests,games,
+build,focused,completion}.log. New fixtures exercise early completion in the
+runner, public harness and production authority; safety timeout, duplicate
+settling requests, cutoff ordering, invalid output and abort are covered. Initial
+failures were fixture expectations for aborted ledger records and a forbidden
+shell contract type dependency; final tests preserve the existing strict boundary.
+
+Checkpoint 3 remains open: deterministic setup seed, frozen assignments and
+per-player requirements, preparation roster freeze, role/round configuration
+metadata, capability substitution, stale ACK and reconnect evidence. Browser
+untimed/settings evidence and all later milestone checkpoints remain pending.

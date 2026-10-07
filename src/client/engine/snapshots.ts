@@ -1,3 +1,4 @@
+import { validRoundTiming, timingDuration } from './timing-policy.ts';
 import type { SnapshotPolicy } from './replication.ts';
 import type { GameDescriptor, RoundSnapshot } from '../api/index.ts';
 
@@ -77,7 +78,8 @@ export function validRoundSnapshot(value: unknown): value is RoundSnapshot {
   const players = s.players as unknown[];
   const playerIds = new Set(players.filter(record).map((p) => p.id));
   if (
-    s.schemaVersion !== 1 ||
+    s.schemaVersion !== 2 ||
+    !validRoundTiming(s.timing) ||
     !text(s.gameId) ||
     !text(s.roundId) ||
     !text(s.mode) ||
@@ -85,6 +87,8 @@ export function validRoundSnapshot(value: unknown): value is RoundSnapshot {
     !finite(s.startAt) ||
     !finite(s.endAt) ||
     s.endAt < s.startAt ||
+    s.endAt - s.startAt >
+      timingDuration(s.timing as import('../api/index.ts').RoundTiming) ||
     !Array.isArray(s.players) ||
     s.players.length < 1 ||
     s.players.length > 8 ||
@@ -165,6 +169,9 @@ export function snapshotPolicy<S extends object>(
       if (
         !validRoundSnapshot(value) ||
         value.gameId !== game.id ||
+        !validRoundTiming(game.timing) ||
+        value.timing.kind !== game.timing.kind ||
+        timingDuration(value.timing) !== timingDuration(game.timing) ||
         !game.modes.some((mode) => mode.id === value.mode) ||
         value.players.length < game.players.min ||
         value.players.length > game.players.max

@@ -210,6 +210,11 @@ export class SessionAuthority {
       const widget = config?.widgets.find((w) => w.action === msg.action);
       if (
         !config ||
+        (this.runner &&
+          !this.pending &&
+          (!['countdown', 'running'].includes(this.runner.phase) ||
+            time >= this.runner.endAt ||
+            msg.time >= this.runner.endAt)) ||
         !widget ||
         channelOf(widget.type).channel === 'press' ||
         msg.generation !== config.generation ||
@@ -304,7 +309,14 @@ export class SessionAuthority {
       stream = new ContinuousBuffer();
       this.streams.set(playerId, stream);
     }
-    stream.push(f, now());
+    if (
+      !this.runner ||
+      this.pending ||
+      (['countdown', 'running'].includes(this.runner.phase) &&
+        f.time < this.runner.endAt &&
+        now() < this.runner.endAt)
+    )
+      stream.push(f, now());
     const prev = this.edges.get(playerId) ?? [0, 0, 0, 0];
     for (let b = 0; b < 4; b++) {
       const delta = (f.edges[b] - prev[b] + 256) % 256;

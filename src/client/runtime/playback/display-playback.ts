@@ -104,7 +104,7 @@ export class DisplayPlayback {
     const snapshot = wire as WireSnapshot<RoundSnapshot<object>>;
     if (
       snapshot?.patch?.schemaVersion !== undefined &&
-      snapshot.patch.schemaVersion !== 1
+      snapshot.patch.schemaVersion !== 2
     ) {
       this.displayProblem = RELOAD_DISPLAY_MESSAGE;
       this.events = [];

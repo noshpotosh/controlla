@@ -33,7 +33,7 @@ function fixture(
     ...buttonProbe,
     id: 'fixture',
     interpolate: undefined,
-    durationMs: 1000,
+    timing: { kind: 'timed', durationMs: 1000 },
     isState: (value): value is { count: number } =>
       !!value &&
       typeof value === 'object' &&
@@ -49,7 +49,7 @@ function fixture(
         },
         tick(input) {
           ticks.push(input);
-          return [];
+          return { events: [] };
         },
         snapshot: () => ({ count: 0 }),
         finalize: () =>
@@ -138,16 +138,19 @@ void test('non-JSON and oversized final states, invalid stats and terminal event
     let final = false;
     const f = fixture({
       tick(input) {
-        return fault === 'event' && input.phase === 'settling'
-          ? [
-              {
-                id: 'invalid',
-                time: input.time,
-                kind: 'hit',
-                clock: 'invalid',
-              } as unknown as PresentationEvent,
-            ]
-          : [];
+        return {
+          events:
+            fault === 'event' && input.phase === 'settling'
+              ? [
+                  {
+                    id: 'invalid',
+                    time: input.time,
+                    kind: 'hit',
+                    clock: 'invalid',
+                  } as unknown as PresentationEvent,
+                ]
+              : [],
+        };
       },
       finalize() {
         final = true;
@@ -246,7 +249,32 @@ void test('catalog snapshots acknowledge unsupported games/modes while rejecting
     ),
     unknown,
   );
-  assert.equal(policy.valid({ ...snapshot, schemaVersion: 2 }), false);
+  assert.equal(policy.valid({ ...snapshot, schemaVersion: 99 }), false);
+  assert.equal(policy.valid({ ...snapshot, timing: undefined }), false);
+  assert.equal(
+    policy.valid({
+      ...snapshot,
+      timing: { kind: 'untimed', safetyDurationMs: Infinity },
+    }),
+    false,
+  );
+  assert.equal(
+    policy.valid({ ...snapshot, endAt: snapshot.startAt + 45001 }),
+    false,
+  );
+  assert.equal(
+    snapshotPolicy(neonHarvest).valid({
+      ...snapshot,
+      timing: { kind: 'untimed', safetyDurationMs: 1000 },
+    }),
+    false,
+  );
+  assert.ok(
+    snapshotPolicy(neonHarvest).valid({
+      ...snapshot,
+      timing: { durationMs: 45000, kind: 'timed' },
+    }),
+  );
   assert.equal(policy.valid({ ...snapshot, state: null }), false);
   assert.equal(
     policy.valid({ ...snapshot, state: { bad: new Date() } }),
@@ -355,7 +383,7 @@ void test('finalization reserves cursor bytes before awarding and keeps complete
     const descriptor: GameDescriptor<{ padding: string }> = {
       ...buttonProbe,
       id: 'cursor-budget',
-      durationMs: 1000,
+      timing: { kind: 'timed', durationMs: 1000 },
       interpolate: undefined,
       isState: (value): value is { padding: string } =>
         !!value &&
@@ -368,7 +396,7 @@ void test('finalization reserves cursor bytes before awarding and keeps complete
         ready: () => true,
         start() {},
         tick(input) {
-          return input.phase === 'settling' ? events : [];
+          return { events: input.phase === 'settling' ? events : [] };
         },
         finalize() {
           finalized = true;

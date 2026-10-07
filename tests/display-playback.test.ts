@@ -9,7 +9,8 @@ import type { SnapshotPolicy } from '../src/client/engine/replication.ts';
 
 function state(roundId = 'a'): RoundSnapshot<object> {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    timing: { kind: 'timed', durationMs: 30000 },
     roundId,
     gameId: 'fixture',
     mode: 'standard',
@@ -40,7 +41,7 @@ function fixture() {
     valid: (value): value is RoundSnapshot<object> =>
       !!value &&
       typeof value === 'object' &&
-      (value as RoundSnapshot).schemaVersion === 1 &&
+      (value as RoundSnapshot).schemaVersion === 2 &&
       typeof (value as RoundSnapshot).roundId === 'string',
     interpolate: (before) => {
       interpolations++;
@@ -166,7 +167,7 @@ void test('phase gates and incompatible snapshots preserve screen statuses witho
   assert.equal(f.playback.advanceFrame(1000, {}).message, 'Load failed');
   f.playback.acceptPhase({ phase: 'running', roundId: 'a' });
   f.playback.acceptSnapshot(
-    { id: 2, time: 900, base: null, patch: { schemaVersion: 2 } },
+    { id: 2, time: 900, base: null, patch: { schemaVersion: 99 } },
     0,
     null,
     1000,

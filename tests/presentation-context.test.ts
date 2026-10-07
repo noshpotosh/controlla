@@ -86,7 +86,8 @@ function snapshot(): RoundSnapshot<NeonHarvestState> {
     pulseReadyAt: 3000,
   };
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    timing: neonHarvest.timing,
     roundId: 'round-a',
     gameId: 'neon-harvest',
     mode: 'standard',

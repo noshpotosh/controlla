@@ -255,7 +255,7 @@ void test('presentation telemetry accepts only current registered markers once p
       return {
         ...game,
         tick(input) {
-          const events = [...game.tick(input)];
+          const events = [...game.tick(input).events];
           if (!emitted) {
             emitted = true;
             events.push({
@@ -266,7 +266,7 @@ void test('presentation telemetry accepts only current registered markers once p
               measure: true,
             });
           }
-          return events;
+          return { events };
         },
       };
     },

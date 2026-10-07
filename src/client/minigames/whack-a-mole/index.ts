@@ -14,7 +14,7 @@ export const whackAMole: GameDescriptor<WhackState> = {
     'Score double in the final ten-second frenzy.',
   ],
   players: { min: 1, max: 8 },
-  durationMs: WHACK.duration,
+  timing: { kind: 'timed', durationMs: WHACK.duration },
   modes: [{ id: 'standard', name: 'Standard' }],
   defaultMode: 'standard',
   controls: {

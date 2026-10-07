@@ -58,7 +58,7 @@ function fixture(count = 1, disableSpawn = true) {
       presentationDelay: delay,
       values: {},
       actions,
-    });
+    }).events;
   return { game, state, tick };
 }
 const whack = (time: number, aim: Point, playerId = 'p0'): Action => ({

@@ -89,11 +89,19 @@ export interface PresentationEvent {
   playerId?: string;
 }
 
+export type RoundTiming =
+  | { kind: 'timed'; durationMs: number }
+  | { kind: 'untimed'; safetyDurationMs: number };
+export interface GameTickResult {
+  events: readonly PresentationEvent[];
+  complete?: true;
+}
+
 export interface GameInstance<S extends object> {
   load(): void | Promise<void>;
   ready(): boolean;
   start(context: GameContext): void;
-  tick(input: GameInput): readonly PresentationEvent[];
+  tick(input: GameInput): GameTickResult;
   /** Called once by the framework after its final input drain. */
   finalize(): Outcome[];
   snapshot(): S;
@@ -111,7 +119,8 @@ export interface RoundProgress {
 export type CompactProgress = RoundProgress;
 
 export interface RoundSnapshot<S extends object = object> {
-  schemaVersion: 1;
+  schemaVersion: 2;
+  timing: RoundTiming;
   mode: string;
   roundId: string;
   gameId: string;
@@ -154,7 +163,7 @@ export interface GameDescriptor<S extends object = object> {
   id: string;
   name: string;
   players: { min: number; max: number };
-  durationMs: number;
+  timing: RoundTiming;
   modes: readonly { id: string; name: string }[];
   defaultMode: string;
   instructions?: readonly string[];

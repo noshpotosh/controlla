@@ -1,3 +1,4 @@
+import { timingDuration } from './timing-policy.ts';
 import {
   ARBITRATION_MS,
   arbitrationWindow,
@@ -13,6 +14,7 @@ import type {
   Point,
   PresentationEvent,
   RoundSnapshot,
+  RoundTiming,
 } from '../api/index.ts';
 import { SessionProgress } from './progress.ts';
 import {
@@ -37,6 +39,7 @@ export class RoundRunner<S extends object = object> {
   players: Player[] = [];
   loaded = false;
   private readonly game: GameInstance<S>;
+  private readonly timing: RoundTiming;
   private loading: Promise<void> | null = null;
   private attemptedLoad = false;
   private disposed = false;
@@ -56,6 +59,9 @@ export class RoundRunner<S extends object = object> {
   ) {
     if (!descriptor.modes.some((choice) => choice.id === mode))
       throw new Error(`Unknown mode ${mode} for ${descriptor.id}.`);
+    timingDuration(descriptor.timing);
+    this.timing = structuredClone(descriptor.timing);
+    freeze(this.timing);
     this.game = descriptor.create({ mode });
   }
   load(): void | Promise<void> {
@@ -97,7 +103,7 @@ export class RoundRunner<S extends object = object> {
     this.players = structuredClone(players);
     this.previousTick = time;
     this.startAt = time + 3000;
-    this.endAt = this.startAt + this.descriptor.durationMs;
+    this.endAt = this.startAt + timingDuration(this.timing);
     this.round = this.progress.open(
       this.descriptor.id,
       players.map((p) => p.id),
@@ -175,7 +181,7 @@ export class RoundRunner<S extends object = object> {
       samples: GameInput['values'],
       actions: Action[],
     ) => {
-      const events = this.game.tick({
+      const result = this.game.tick({
         phase,
         time: at,
         dt: elapsed,
@@ -183,7 +189,20 @@ export class RoundRunner<S extends object = object> {
         values: structuredClone(samples),
         actions: structuredClone(actions),
       });
-      emitted.push(...structuredClone(events));
+      if (
+        !result ||
+        !Array.isArray(result.events) ||
+        (result.complete !== undefined && result.complete !== true) ||
+        !isJsonValue(result, 32 * 1024)
+      )
+        throw new Error('Game returned an invalid tick result.');
+      this.appendEvents(structuredClone(result.events));
+      emitted.push(...structuredClone(result.events));
+      // A completion request may only latch after its state and events validate.
+      this.snapshot();
+      if (this.phase === 'error')
+        throw new Error(this.error ?? 'Invalid tick state.');
+      if (phase === 'running' && result.complete === true) this.settle(at);
     };
     try {
       if (this.phase === 'countdown' && time >= this.startAt)
@@ -234,7 +253,7 @@ export class RoundRunner<S extends object = object> {
         } else {
           if (activeDt > 0)
             rules('running', this.endAt, activeDt, this.held, []);
-          this.phase = 'settling';
+          this.settle(this.endAt);
         }
       }
       if (
@@ -313,6 +332,13 @@ export class RoundRunner<S extends object = object> {
       this.fail(error);
       return [];
     }
+  }
+  private settle(at: number): void {
+    if (this.phase !== 'running') return;
+    this.endAt = Math.min(at, this.endAt);
+    this.actions = this.actions.filter((action) => action.time < this.endAt);
+    this.held = {};
+    this.phase = 'settling';
   }
   private appendEvents(events: PresentationEvent[]): void {
     const byId = new Map(this.events.map((event) => [event.id, event]));
@@ -394,7 +420,8 @@ export class RoundRunner<S extends object = object> {
     cursors: Record<string, Point>,
   ): RoundSnapshot<S> {
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
+      timing: structuredClone(this.timing),
       roundId: this.roundId!,
       gameId: this.descriptor.id,
       mode: this.mode,

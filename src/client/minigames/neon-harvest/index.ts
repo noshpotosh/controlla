@@ -14,7 +14,7 @@ export const neonHarvest: GameDescriptor<NeonHarvestState> = {
     'Score double points in the final ten seconds.',
   ],
   players: { min: 1, max: 8 },
-  durationMs: HARVEST.duration,
+  timing: { kind: 'timed', durationMs: HARVEST.duration },
   modes: [{ id: 'standard', name: 'Standard' }],
   defaultMode: 'standard',
   controls: {

@@ -99,7 +99,8 @@ async function snapshot(): Promise<RoundSnapshot<object>> {
   const state = game.snapshot();
   game.dispose();
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    timing: descriptor.timing,
     roundId: 'round-a',
     gameId: descriptor.id,
     mode: descriptor.defaultMode,
@@ -189,7 +190,7 @@ void test('unsupported games and schema versions show reload guidance; loading a
   assert.equal(runtime.screenPort.advanceFrame().status, 'unsupported');
   receive('snapshot', {
     type: 'snapshot',
-    snapshot: { id: 2, time: 900, base: null, patch: { schemaVersion: 2 } },
+    snapshot: { id: 2, time: 900, base: null, patch: { schemaVersion: 99 } },
   });
   assert.match(runtime.screenPort.advanceFrame().message ?? '', /Reload/);
 });

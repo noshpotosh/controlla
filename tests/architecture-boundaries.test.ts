@@ -668,7 +668,8 @@ void test('screen exposes detached, deeply frozen progress and no completion cap
   const authoritative = session.view();
   const compact = session.compact(['ada', 'bea']);
   const snapshot: RoundSnapshot<NeonHarvestState> = {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    timing: neonHarvest.timing,
     mode: 'standard',
     roundId: 'presentation-probe',
     gameId: neonHarvest.id,
