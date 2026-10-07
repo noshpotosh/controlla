@@ -2,8 +2,16 @@
 
 Audit reference: `develop` at `ef42cdf`, reviewed on 2026-10-07 by reading
 code and configuration. Tests were not run for this documentation revision;
-historical validation is not a current pass. This revision changes no runtime
-APIs and does not complete the implementation milestones below.
+historical validation is not a current pass. That pre-implementation audit is
+preserved below; the current foundation status supersedes its gaps.
+
+Current foundation status (2026-10-07): milestones 0–1 are implemented and verified
+on codex/milestone-1-foundation-1007 from develop 4a885029. Final gates pass:
+470 full tests, 192 game tests, typecheck, lint and production build; scaffold and
+registered-jolt extension proofs pass. See [acceptance](acceptance/MILESTONE-1.md)
+and the [requirement audit](acceptance/MILESTONE-1-AUDIT.md). Browser evidence is
+recorded with physical sensor/haptic and hosted-route limits; those later checks
+remain milestone 2. No deployment, merge or later roadmap milestone is included.
 
 The direction is **finish the foundation, validate hosted play with the existing
 games, establish one unified visual style, experiment with games, and build a
@@ -29,14 +37,16 @@ Confirmed direction:
 Implementation defaults for the foundation: game-owned turn order, per-player
 roles fixed for a round, early completion, untimed presentation with a finite
 safety deadline, and bounded phone feedback. Their exact API signatures and
-migration details must be reviewed in milestone 0; they are not existing APIs.
-Retain protocol 4 unless a demonstrated requirement needs a coordinated bump.
+migration details were reviewed in milestone 0 and implemented in milestone 1.
+The approved coordinated migration uses protocol 5, ControllerConfig 2 and snapshot
+schema 2. The application is unreleased; older-client support is unnecessary.
 
 This roadmap does not authorize a deployment, paid service purchase or public
-launch. Those actions belong to the later hosting implementation. The current
-revision is limited to this document; other roadmap files are not inputs.
+launch. Those actions belong to the later hosting implementation. The original
+roadmap audit was limited to this document; the foundation implementation follows
+the separately approved milestone-1 plan and contract review.
 
-## Current evidence and gaps
+## Historical pre-implementation evidence and gaps
 
 | Area | Existing foundation | Gap to close |
 | --- | --- | --- |
@@ -78,24 +88,24 @@ blockers in its acceptance record. A blocked or unmeasured check is not a pass.
 **Dependencies:** none.
 **Deliverable:** baseline ledger, contract inventory and ownership/review policy.
 
-- [ ] Run and record test, typecheck, lint, build and architecture checks; record
+- [x] Run and record test, typecheck, lint, build and architecture checks; record
   discovery gaps, actual failures and outstanding physical-device evidence.
-- [ ] Assign owners across controller contracts, author API, harness, runtime,
+- [x] Assign owners across controller contracts, author API, harness, runtime,
   transport and presentation. Include controls and harness compatibility in the
   stability policy. Use CODEOWNERS to express ownership; separately verify the
   repository's review enforcement rather than assuming the file requires both reviewers.
-- [ ] Inventory semantic values/actions, coordinate spaces, clocks, freshness,
+- [x] Inventory semantic values/actions, coordinate spaces, clocks, freshness,
   ordering, capability fallback, configuration acknowledgement, reconnect and
   disposal. Document ownership and the production and test entry points.
-- [ ] Review lifecycle, role and feedback API changes together, including migration
+- [x] Review lifecycle, role and feedback API changes together, including migration
   of both existing games and harness parity. Keep turn order game-owned.
-- [ ] Define “freeze” as a stable, versioned contract with reviewed extensions.
+- [x] Define “freeze” as a stable, versioned contract with reviewed extensions.
   Retain the current protocol unless a concrete requirement forces a coordinated
   bump; preserve incompatible-client reload guidance and stopped retries.
 
 **Acceptance evidence — Foundation baseline:** agreed contracts, named owners,
 validation requirements, recorded failures and explicit unverified claims.
-**Open blockers:** owner assignments, baseline execution and API design review.
+**Foundation baseline gate:** complete; verified ownership and actual review-enforcement limits are recorded in the acceptance ledger.
 
 ### 1. Finish the foundation
 
@@ -105,49 +115,49 @@ validation requirements, recorded failures and explicit unverified claims.
 
 Controller inputs:
 
-- [ ] Register motion definitions with availability, configuration, processing
+- [x] Register motion definitions with availability, configuration, processing
   lifecycle, semantic output and phone presentation. Replace per-input runtime
   branching with the agreed registration seam.
-- [ ] Remove input-specific shell ports. Move controller implementations and
+- [x] Remove input-specific shell ports. Move controller implementations and
   calibration presentation into their owning layer behind generic shell interfaces.
-- [ ] Implement `jolt` as proof that the seam works without new input-specific
+- [x] Implement `jolt` as proof that the seam works without new input-specific
   shell members or branches.
-- [ ] Migrate legacy widgets only for committed use cases. Explicitly retire
+- [x] Migrate legacy widgets only for committed use cases. Explicitly retire
   unsupported widgets before deleting their legacy container and CSS.
-- [ ] Add control conformance for output shape, coordinate/rotation behavior,
+- [x] Add control conformance for output shape, coordinate/rotation behavior,
   per-control release semantics, cancellation and lifecycle cleanup.
 
 Game and harness contracts:
 
-- [ ] Add early completion and untimed presentation with a finite safety deadline.
+- [x] Add early completion and untimed presentation with a finite safety deadline.
   Preserve final input draining, settling, abort behavior and exactly-once finalization.
-- [ ] Add per-player role/controller requirements fixed for each round, including
+- [x] Add per-player role/controller requirements fixed for each round, including
   capability resolution and configuration acknowledgement.
-- [ ] Add bounded, round-scoped per-player haptics, short status text and enabled
+- [x] Add bounded, round-scoped per-player haptics, short status text and enabled
   state through shared feedback delivery, with capability fallback and stale-event
   protection. Games never implement their own phone control UI.
-- [ ] Expose replay fixtures for clock, seed, identity, roster, capabilities and
+- [x] Expose replay fixtures for clock, seed, identity, roster, capabilities and
   timestamped inputs. Keep authoritative assertions separate from delayed-display
   assertions. Test fixtures must not leak into production bundles.
-- [ ] Add shared game conformance and supported scenario helpers, replacing private
+- [x] Add shared game conformance and supported scenario helpers, replacing private
   state manipulation where a public fixture can express the behavior.
-- [ ] Add `game:new` with descriptor, implementation, renderer, colocated tests and
+- [x] Add `game:new` with descriptor, implementation, renderer, colocated tests and
   catalog registration. Fix test discovery so generated tests actually run in CI;
   make the game-test command's name and selection agree.
-- [ ] Derive generic catalog and production checks from registration. Keep
+- [x] Derive generic catalog and production checks from registration. Keep
   independent assertions that catch missing production games and leaked developer
   tools; avoid deriving both the expected and actual evidence from the same fixture.
-- [ ] Keep exact game-stat expectations in game-owned tests unless production
+- [x] Keep exact game-stat expectations in game-owned tests unless production
   reporting needs descriptor metadata. Add game-owned sound declarations through
   the shared playback interface.
-- [ ] Update authoring/input documentation as part of the later foundation work,
+- [x] Update authoring/input documentation as part of the later foundation work,
   including extension steps, contracts and validation commands.
 
 **Acceptance evidence — Foundation conformance:** both existing games pass common
 suites; a scaffolded proof game needs only its folder, catalog registration and
 optionally a layout. A new motion input needs no input-specific shell changes.
 Typecheck, lint, build and boundary checks pass with both lanes integrated.
-**Open blockers:** shared suites, test discovery, APIs, migrations and extension proofs.
+**Foundation conformance gate:** complete; integrated gates, browser evidence, both extension proofs and the item-by-item audit are recorded in the acceptance ledger. Physical sensor/haptic and hosted-network checks remain explicitly unverified for milestone 2.
 
 ### 2. Host and validate the existing games
 

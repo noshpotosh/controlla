@@ -1,6 +1,6 @@
 # Milestone 1 implementation handoff
 
-Status: prerequisite review approved; checkpoints 1–5 implementation validated and saved. Checkpoint 6 scaffold integration is validated; live browser evidence and completion audit remain pending.
+Status: milestones 0–1 implementation and required foundation evidence COMPLETE. All six implementation checkpoints, both extension proofs, browser smoke and requirement audit pass. Physical-device and hosted-route evidence remains separately unverified for later hosting acceptance.
 
 - Baseline: fetched `origin/develop` equals `4a885029d30bab8009ed6854d3aeba13a18166e0` on 2026-10-07.
 - Topic: `codex/milestone-1-foundation-1007`; review target: `develop` (task-specific override of AGENTS.md main default).
@@ -184,3 +184,5 @@ After each coherent checkpoint, inspect the staged diff, commit explicit task-ow
 Milestone 1 closes only when both lanes, extension proofs, documentation, and required evidence pass. Hosting, new backlog games, unified art, native delivery, and party-session implementation remain outside this plan.
 
 Checkpoint 6a adds game:new and catalog-derived production evidence. Both games remain independently required; shared tests accept catalog extensions. Main gates: 470 full / 192 game tests; generated-game checkout: 479 full / 201 game tests; typecheck, lint and build pass in both. Browser harness Finish round now respects actual completion and flushes delayed terminal displays; both games pass paused completion smoke. Continue live phone touch fallback, settings/calibration and final requirements audit. Physical sensor/haptic and hosted-network evidence remains separately unverified.
+
+Final resume status supersedes the historical checkpoint instructions above: no milestone-1 implementation remains. Post-audit gates pass (470 full / 192 game tests, typecheck, lint, build). Neon live/peak scenarios are game-owned; the shared room fixture is generic. Live rooms, both harness games, touch fallback and the actual settings/calibration UI have browser evidence with explicit synthetic/physical limits. See acceptance/MILESTONE-1-AUDIT.md and the final acceptance checkpoint. Latest commit and topic push equality are reported in the handoff; preserve this worktree and disposable proofs. Review target remains develop. No merge or deployment is authorized by this task.

@@ -1,6 +1,6 @@
 # Milestone 1 acceptance and contract review
 
-Date: 2026-10-07 (America/Chicago). Milestone remains open.
+Date: 2026-10-07 (America/Chicago). Milestones 0–1 implementation and required foundation evidence are complete. See the final checkpoint below and [requirement audit](MILESTONE-1-AUDIT.md); historical checkpoint limitations remain for provenance. Physical-device/hosted acceptance remains separately unverified.
 
 ## Prerequisite baseline
 
@@ -94,7 +94,7 @@ the approved semantics and be documented with their validation evidence.
 - Checkpoint 1 test discovery is complete (independent of shared API approval).
 - Shared implementation checkpoints 2–6 remain incomplete.
 
-## Remaining work and evidence
+## Prerequisite-only remaining work and evidence (historical)
 
 After user contract review: motion registration and retirement,
 jolt, lifecycle/roles, feedback/sound, replay/conformance, game scaffold and final
@@ -636,3 +636,69 @@ host/remote results and cumulative awards; screenshot:
 repair (/private/tmp/scaffold-browser-{typecheck,lint,build}.log). No new production
 rules changed. Live-room touch/settings/calibration smoke and completion audit
 remain open; physical sensors/haptics and hosted-network evidence remain unverified.
+
+## Checkpoint 6b: browser smoke and completion audit
+
+Prior checkpoint: b60faca, pushed to origin/codex/milestone-1-foundation-1007.
+The full implementation is audited against the supplied plan in
+[MILESTONE-1-AUDIT.md](MILESTONE-1-AUDIT.md). The audit identified and corrected
+one remaining ownership gap: Neon Harvest's live rematch/solo and peak-state
+scenarios now live in its game folder. Their assertions are preserved; shared
+live-catalog checks use participant assignments rather than game state fields.
+The extracted room fixture contains only generic authority/transport mechanics.
+Direct discovery selects the relocated tests automatically, and the actual
+scaffold fixture copies the supporting test fixtures for source typecheck.
+Focused validation: 11/11, /private/tmp/milestone-ownership-focused.log.
+
+Browser smoke used the local frontend on port 3031 and signaling on 8891 with
+exact localhost origins configured. Both production games prepared a default-role
+phone, used their expected touch fallbacks, reached results and returned to a
+startable room. The phone reported round completion; host and phone console
+warning/error logs were empty. Keyboard aim and pulse/whack buttons were exercised;
+these are functional checks, not scoring or physical responsiveness measurements.
+The host background warning appeared while another tab was selected and cleared
+when the host returned to the foreground. No physical latency claim is made.
+
+Motion permission reported granted on this desktop, but no sensor samples arrived.
+The phone explicitly reported unavailable motion and retained touch fallbacks;
+Motion Lab displayed Waiting for motion samples. Actual controls-owned
+ControllerSettings and ControllerCalibration components were therefore exercised
+in a separate disposable browser fixture with an explicitly synthetic port.
+Sensitivity changed from 6 to 5.9, settings and calibration Recenter buttons each
+dispatched commands, Done closed the panel, and reopening retained 5.9. Runtime
+clamping/persistence/retired-port behavior remains covered by controller-input
+tests; this browser fixture makes no sensor/physical calibration claim.
+
+Durable browser evidence: [harness results](evidence/milestone-1/harness-results.jpg),
+[live results](evidence/milestone-1/live-results.jpg),
+[settings/calibration fixture](evidence/milestone-1/settings-calibration.jpg) and
+[phone fallback](evidence/milestone-1/phone-fallback.jpg). Disposable UI fixture:
+/private/tmp/controlla-settings-browser-proof. Copy phone link did not populate
+the automated browser clipboard; navigation of the empty URL was rejected, so
+joining used the ordinary setup form with displayed room/screen codes. No browser
+security bypass was attempted. This clipboard limitation is not a room join failure.
+
+Physical iOS/Android sensors, jolt tuning, real vibration and hosted P2P/TURN/relay
+routes remain unverified. The plan requires recording them separately; they belong
+to later device/hosting acceptance and are not certified by simulation. No hosted
+service was deployed.
+
+Final post-audit acceptance at the completed source tree:
+
+| Gate | Result | Local log |
+| --- | --- | --- |
+| npm test | PASS, 470/470; no skipped/cancelled tests | /private/tmp/milestone-audit-test.log |
+| npm run game:test | PASS, 192/192; no skipped/cancelled tests | /private/tmp/milestone-audit-games.log |
+| npm run typecheck | PASS | /private/tmp/milestone-audit-typecheck.log |
+| npm run lint | PASS | /private/tmp/milestone-audit-lint.log |
+| npm run build | PASS, client/SSR/RSC boundary verified | /private/tmp/milestone-audit-build.log |
+
+The full/game commands took approximately 232 seconds while running concurrently.
+Actual logs include the relocated Neon tests, generated scaffold execution and all
+16 catalog conformance cases. Both eight-player peaks match the audited bounds.
+Build still reports informational unknown route classification; it succeeds.
+No required foundation implementation or evidence remains. Latest commit and
+HEAD/upstream equality are reported in the handoff after the explicit topic push;
+this avoids a self-referential commit ID in the document. Original develop remains
+unchanged; other worktrees and disposable proof checkouts are preserved. No merge
+or deployment is performed. Future hosted/device acceptance is roadmap milestone 2.

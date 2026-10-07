@@ -25,7 +25,9 @@ async function fixture() {
     'dir',
   );
   await mkdir(join(directory, 'scripts/templates'), { recursive: true });
-  await mkdir(join(directory, 'tests'));
+  await cp(join(root, 'tests/fixtures'), join(directory, 'tests/fixtures'), {
+    recursive: true,
+  });
   for (const path of ['src', 'components', 'lib', 'hooks'])
     await cp(join(root, path), join(directory, path), { recursive: true });
   await cp(

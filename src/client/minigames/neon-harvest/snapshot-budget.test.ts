@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { Player } from '../src/client/api/index.ts';
-import { RoundRunner } from '../src/client/engine/round.ts';
-import { SessionProgress } from '../src/client/engine/progress.ts';
+import type { Player } from '../../api/index.ts';
+import { RoundRunner } from '../../engine/round.ts';
+import { SessionProgress } from '../../engine/progress.ts';
 import {
   MAX_ROUND_SNAPSHOT_BYTES,
   snapshotPolicy,
-} from '../src/client/engine/snapshots.ts';
-import { neonHarvest } from '../src/client/minigames/neon-harvest/index.ts';
-import { HARVEST } from '../src/client/minigames/neon-harvest/model.ts';
+} from '../../engine/snapshots.ts';
+import { neonHarvest } from './index.ts';
+import { HARVEST } from './model.ts';
 
 void test('Neon Harvest completes an eight-player round with maximum-length IDs inside the full snapshot budget', (t) => {
   const players: Player[] = Array.from({ length: 8 }, (_, seat) => ({

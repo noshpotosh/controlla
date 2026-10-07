@@ -41,7 +41,7 @@ export function isGameTest(path: string): boolean {
     path.startsWith('src/client/minigames/') ||
     path.startsWith('src/client/devtools/game-harness/') ||
     /^tests\/(architecture-|game-)/.test(path) ||
-    /^tests\/(engine-round|live-catalog|neon-runner|replay|test-discovery)\.test\.tsx?$/.test(
+    /^tests\/(engine-round|live-catalog|replay|test-discovery)\.test\.tsx?$/.test(
       path,
     )
   );
