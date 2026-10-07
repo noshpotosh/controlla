@@ -35,6 +35,8 @@ export interface SessionPorts {
   warning: (message: string) => void;
 }
 export interface SessionDependencies {
+  /** Stable bounded identity source; production creates a fresh session ID. */
+  sessionId?(): string;
   /** Finite authority milliseconds; production uses the monotonic browser clock. */
   now?(): number;
   /** Inject a uint32 source for deterministic round setup/replay. */
@@ -48,7 +50,7 @@ export class SessionAuthority {
   private feedbackLast = new Map<string, number>();
   private feedbackRevision = new Map<string, number>();
   private runner: RoundRunner | null = null;
-  private readonly progress = new SessionProgress();
+  private readonly progress: SessionProgress;
   private selectedGame = defaultGame.id;
   private selectedMode = defaultGame.defaultMode;
   private disposed = false;
@@ -97,6 +99,11 @@ export class SessionAuthority {
     private ports: SessionPorts,
     private readonly dependencies: SessionDependencies = {},
   ) {
+    this.progress = new SessionProgress(
+      this.dependencies.sessionId
+        ? () => this.dependencies.sessionId!()
+        : undefined,
+    );
     this.lastTick = this.readTime() - 1000 / 60;
     this.venueDelays.set(hostId, new Samples());
     this.venueDelays.get(hostId)!.add(0);

@@ -96,11 +96,18 @@ export function reportPlayers(players: readonly Player[]): Player[] {
 }
 
 export class SessionProgress {
-  private readonly id = sessionId();
+  private readonly id: string;
   private nextRound = 0;
   private version = 0;
   private readonly totals = new Map<string, number>();
   private readonly rounds: RoundRecord[] = [];
+
+  constructor(identity: () => string = sessionId) {
+    const id = identity();
+    if (typeof id !== 'string' || !id.trim() || id.length > 128)
+      throw new Error('Invalid session identity.');
+    this.id = id;
+  }
 
   get revision(): number {
     return this.version;

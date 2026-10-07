@@ -47,6 +47,10 @@ export const simulatedPlayers: Player[] = [
   },
 ];
 export interface HarnessOptions {
+  /** Deterministic progress identity; incompatible with an externally owned ledger. */
+  sessionId?: string;
+  /** Initial authority milliseconds; advance owns the clock thereafter. */
+  initialTime?: number;
   players?: Player[];
   progress?: SessionProgress;
   motion?: boolean;
@@ -85,6 +89,12 @@ export class GameHarness<S extends object = object> {
     readonly descriptor: GameDescriptor<S>,
     options: HarnessOptions = {},
   ) {
+    if (options.progress && options.sessionId !== undefined)
+      throw new Error('Supply progress or sessionId, not both.');
+    this.time = options.initialTime ?? 0;
+    if (!Number.isFinite(this.time) || this.time < 0)
+      throw new Error('Invalid harness clock.');
+    this.lastSnapshotAt = this.time - 40;
     this.initialPlayers = structuredClone(options.players ?? simulatedPlayers);
     if (
       this.initialPlayers.length < descriptor.players.min ||
@@ -104,7 +114,11 @@ export class GameHarness<S extends object = object> {
       throw new Error(
         'Presentation delay must cover the remote delay plus one snapshot interval.',
       );
-    this.progress = options.progress ?? new SessionProgress();
+    this.progress =
+      options.progress ??
+      new SessionProgress(
+        options.sessionId === undefined ? undefined : () => options.sessionId!,
+      );
     const seed = options.seed ?? 3000;
     const assignments = prepareAssignments(
       descriptor,
@@ -275,6 +289,11 @@ export class GameHarness<S extends object = object> {
   }
   display(id: 'host' | 'remote'): RoundSnapshot<S> | null {
     return this.displays[id].sample(this.time - this.presentationDelay);
+  }
+  /** Current authority data, detached from both engine state and display delay. */
+  authoritativeSnapshot(): RoundSnapshot<S> | null {
+    const snapshot = this.runner.snapshot(this.local);
+    return snapshot ? structuredClone(snapshot) : null;
   }
   localCursors(venueId: string): Record<string, Point> {
     return Object.fromEntries(

@@ -527,3 +527,32 @@ hosted-network performance.
 Checkpoint 4 implementation is complete. Continue checkpoint 5 replay fixtures,
 identity dependencies, detached authority/display samples and common catalog
 conformance, then checkpoint 6 scaffolding and final browser/evidence audit.
+
+
+## Checkpoint 5a: replay identity and detached authority inspection
+
+SessionProgress accepts a bounded identity factory, evaluated once; production
+keeps fresh UUID/fallback defaults. SessionAuthority now injects that factory
+alongside seed and clock, preserving dependency receiver binding. Harness options
+support sessionId and initialTime; externally owned progress cannot also declare
+identity. Empty/blank or over-128-character IDs and invalid clocks reject before
+round construction. Round reservations retain monotonic suffixes.
+
+Harness authoritativeSnapshot returns detached current data separately from
+host/remote delayed display samples. Tests compare complete snapshots (including
+identity, events and progress) and outcomes across repeated full rounds for both
+production games, prove authority precedes delayed presentation, and mutate nested
+inspection data without affecting subsequent authority. Production authority
+configurations and wire snapshots replay identically without global clock mocks.
+
+Validation: npm test 445/445; game:test 168/168; typecheck, lint and production
+build passed. Focused replay suite 4/4. Logs:
+/private/tmp/replay-foundation-{tests,games,typecheck,lint,build}.log; final focused
+and build logs use replay-foundation-final-{focused,build}.log. Initial type/lint
+checks caught a test import and mixed event/message capture type plus an unbound
+identity callback; corrected checks pass. No physical/device evidence added.
+
+Checkpoint 5 remains open: timestamped scenario schedules/public helpers, replacing
+private-state scenarios where possible, every catalog game/mode/player count and
+representative peak eight-player state/envelope budgets. Scaffolding, catalog-derived
+bundle checks and browser/evidence closure follow in checkpoint 6.
