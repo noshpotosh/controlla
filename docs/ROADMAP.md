@@ -1,151 +1,279 @@
-# Audit and roadmap: stabilise the core, then split by minigame
+# Roadmap: stable foundations to a party-game collection
 
-> **Superseded.** This document is kept for history. The current roadmap is [ROADMAP_FINAL.md](ROADMAP_FINAL.md).
+Audit reference: `develop` at `ef42cdf`, reviewed on 2026-10-07 by reading
+code and configuration. Tests were not run for this documentation revision;
+historical validation is not a current pass. This revision changes no runtime
+APIs and does not complete the implementation milestones below.
 
-Audited `develop` at `5817ca8` on 2026-10-06, by reading the code and git history. The test suite was not run for this audit, so pass/fail status is unverified.
+The direction is **finish the foundation, validate hosted play with the existing
+games, establish one unified visual style, experiment with games, and build a
+party-session metagame**. Investigate standalone phone delivery against the
+hosted baseline without committing to a native app prematurely.
 
-The goal: freeze the shell, game screen, engine and input plumbing so two people can split the remaining work by minigame, with reusable controllers and deterministic tests that keep games and inputs consistent.
+## Decisions and boundaries
 
-## Audit
+Confirmed direction:
 
-Rough distance to each goal (estimates from the findings below, not measurements):
+- Finish the foundation before starting the new-game backlog. Small proof games
+  and input fixtures are foundation validation, not backlog implementation.
+- Make motion inputs registered modules with a shared lifecycle and conformance
+  tests; prove the extension seam with `jolt`.
+- Target private, multi-household hosted playtests first.
+- Choose one unified art direction for the game collection, including its phone
+  controls and display UI.
+- Begin the metagame with a bounded party session, cumulative standings and a
+  final winner. A board-game layer and persistent progression are later work.
+- Compare browser, installable PWA, native wrapper and native app before choosing
+  standalone phone delivery.
 
-| Goal                                   | Estimate |
-| -------------------------------------- | -------- |
-| A game is self-contained               | 85%      |
-| Touch controls are self-contained      | 90%      |
-| Motion inputs are self-contained       | 40%      |
-| Shell and controllers are separated    | 70%      |
-| Tests keep games and inputs consistent | 50%      |
+Implementation defaults for the foundation: game-owned turn order, per-player
+roles fixed for a round, early completion, untimed presentation with a finite
+safety deadline, and bounded phone feedback. Their exact API signatures and
+migration details must be reviewed in milestone 0; they are not existing APIs.
+Retain protocol 4 unless a demonstrated requirement needs a coordinated bump.
 
-### 1. Can a new game be added without touching the underlying APIs?
+This roadmap does not authorize a deployment, paid service purchase or public
+launch. Those actions belong to the later hosting implementation. The current
+revision is limited to this document; other roadmap files are not inputs.
 
-**Mostly yes, if the game uses inputs that already exist. No, if it needs a new motion input.**
+## Current evidence and gaps
 
-What already works:
+| Area | Existing foundation | Gap to close |
+| --- | --- | --- |
+| Game authoring | [Author API](../src/client/api/index.ts), game-owned folders and one [catalog](../src/client/minigames/catalog.ts); Neon Harvest and Whack-a-Mole are registered. [Boundary tests](../tests/architecture-boundaries.test.ts) enforce imports. | Fixed-duration rounds, one controller requirement set per game, no game-to-phone feedback; no `game:new`. Production checks and catalog tests still name individual games. |
+| Touch and motion | Six library touch controls, a control scaffold, validated layouts and capability fallback. | Motion inputs still cross runtime, controls and shell boundaries. Legacy widgets and input-specific shell members prevent a consistent extension path. |
+| Harness | [GameHarness](../src/client/devtools/game-harness/harness.ts) uses the production round runner, controller resolution and snapshot machinery with simulated players and displays. | Simulation does not certify browser permissions, real sensors, the complete input/transport path or physical latency. Replay configuration and shared scenario helpers need a supported interface. |
+| Determinism | Neon Harvest's [game tests](../src/client/minigames/neon-harvest/game.test.ts) repeat a scripted simulation and compare state/outcomes. Recorded motion replay also exists. | Shared conformance across games and modes is missing. Seeds currently derive from round start time; session identity is nondeterministic and must be controlled in full replay tests. |
+| Test discovery | [CI](../.github/workflows/ci.yml) runs typecheck, lint, `npm test` and the production build. | [`npm test`](../package.json) selects only `tests/*.test.ts`, excluding colocated game and harness-controller tests. `game:test` selects architecture tests, not all game tests. |
+| Snapshot limits | [Snapshot validation](../src/client/engine/snapshots.ts) limits game state to **40 KiB** and a complete round snapshot to **47 KiB**. | Shared conformance must enforce both at supported player counts, including eight where supported. Structured-clone success alone is insufficient: live state must be valid bounded JSON. |
+| Visual identity | [Controller design guide](design/CONTROLLER-DESIGN.md) and [tokens](../src/client/controls/tokens.css) already standardize phone controls. | No collection-wide game art direction, design bible or reproducible art pipeline. |
+| Hosting and acceptance | Signaling, WebRTC, WebSocket relay, diagnostics and [device acceptance tooling](acceptance/LOCAL-IPHONE.md) exist. | No current hosted-service configuration or deployment command. Rooms are in memory; server restart or host loss ends play. Real multi-household and route-specific acceptance remains work. |
+| Metagame | [Session progress](../src/client/engine/progress.ts), placement-based awards, round history and standings already exist. | No bounded party-session flow through a playlist to a final winner. |
 
-- A game is one folder under [`src/client/minigames/`](../src/client/minigames/) exporting a `GameDescriptor` from the [author API](../src/client/api/index.ts), registered with one line in [`catalog.ts`](../src/client/minigames/catalog.ts).
-- [`tests/architecture-boundaries.test.ts`](../tests/architecture-boundaries.test.ts) enforces that a game imports only its own folder and the author API, and that the catalog is the only production importer of a game.
-- The shell, game screen and `GameCanvas` have no per-game branches.
-- A headless [harness](../src/client/devtools/game-harness/harness.ts) and the `/dev/game-harness` page run a game with simulated players.
+Conformance must respect each control's behavior. Sticks return to neutral;
+[aim-pad retains its position](../tests/aim-pad.test.ts) after release or cancel.
+Cancellation must not synthesize activation. A universal “neutralize every
+control” rule would break the existing contract.
 
-What a new game still has to touch outside its folder:
+## Delivery and ownership
 
-| Touch point                                                                                                                                  | Why                                                               |
-| -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| [`scripts/production-boundary.ts`](../scripts/production-boundary.ts), [`tests/developer-bundle.test.ts`](../tests/developer-bundle.test.ts) | Hardcoded list of each game's three files                         |
-| [`tests/engine-round.test.ts`](../tests/engine-round.test.ts) (line 221)                                                                     | Hardcoded list of catalog IDs                                     |
-| [`tests/live-catalog.test.ts`](../tests/live-catalog.test.ts) (line 137)                                                                     | Hardcoded stat keys per game                                      |
-| [`src/client/runtime/browser/sounds.ts`](../src/client/runtime/browser/sounds.ts)                                                            | Sound cues live in one core table; a new cue is a core edit       |
-| [`src/client/controls/layouts/`](../src/client/controls/layouts/)                                                                            | A new layout if no existing one fits (made in the designer; fine) |
-| [`vite.config.ts`](../vite.config.ts)                                                                                                        | Only if the game adds a lazily loaded dependency, as three.js did |
+Use accountable roles until named people are assigned in milestone 0:
+**Foundation lead**, **Inputs owner**, **Game kit owner**, **Hosting owner**,
+**Art owner**, **Game owner**, **Phone investigation owner**, and **Session owner**.
+One person may fill several roles. Do not start a milestone without a named
+accountable owner and reviewers for any shared contracts it changes.
 
-Evidence from history: merging Whack-a-Mole (`ebc4979..389bda6`) changed about 75 files outside its own folder. Nearly all of that was the new `chop` input and anchored aim, not game registration. The game-facing core changes were small: `arbitrationMs` and `localPressing` in the API, about 30 lines in the engine and about 30 in the game screen.
+The intended order is 0 → 1 → 2 → 3 → 4 → 6. Milestone 5 can start once the
+hosted baseline in 2 exists and does not block the metagame. Within the foundation,
+inputs and game-kit work can proceed separately after contract ownership and
+interfaces are agreed; integrate and validate both before closing its gate.
 
-Limits in the game contract that the [backlog](MINIGAMES.md) will hit:
+Every milestone remains open until its deliverables and named evidence exist.
+Record build/commit, commands, devices/routes where relevant, results and unresolved
+blockers in its acceptance record. A blocked or unmeasured check is not a pass.
 
-- **Fixed-duration rounds only.** `RoundRunner` ends at `startAt + durationMs`; a game cannot end early or run turns (Bowling, Golf, Darts).
-- **One controller layout per game.** No per-player roles (Jam Session, Bomb Squad).
-- **No game-to-phone channel.** A game cannot vibrate or message one player's phone.
-- **No game scaffold.** `control:new` exists; there is no `game:new`.
+### 0. Establish the baseline and contract decisions
 
-### 2. Are controllers self-contained and reusable?
+**Owner:** Foundation lead, with Inputs and Game kit owners.
+**Dependencies:** none.
+**Deliverable:** baseline ledger, contract inventory and ownership/review policy.
 
-**Touch controls: yes. Motion inputs and four legacy widgets: no.**
+- [ ] Run and record test, typecheck, lint, build and architecture checks; record
+  discovery gaps, actual failures and outstanding physical-device evidence.
+- [ ] Assign owners across controller contracts, author API, harness, runtime,
+  transport and presentation. Include controls and harness compatibility in the
+  stability policy. Use CODEOWNERS to express ownership; separately verify the
+  repository's review enforcement rather than assuming the file requires both reviewers.
+- [ ] Inventory semantic values/actions, coordinate spaces, clocks, freshness,
+  ordering, capability fallback, configuration acknowledgement, reconnect and
+  disposal. Document ownership and the production and test entry points.
+- [ ] Review lifecycle, role and feedback API changes together, including migration
+  of both existing games and harness parity. Keep turn order game-owned.
+- [ ] Define “freeze” as a stable, versioned contract with reviewed extensions.
+  Retain the current protocol unless a concrete requirement forces a coordinated
+  bump; preserve incompatible-client reload guidance and stopped retries.
 
-- Six library controls (`button`, `dpad`, `stick`, `aim-pad`, `swipe-pad`, `hold-meter`) each live in a folder with a definition, logic, view and styles. They talk only to a `ControlPort`, are registered in `registry.ts` and `views.ts`, and are scaffolded by `npm run control:new`. Games name them and never draw them. See the [controls README](../src/client/controls/README.md).
-- Motion inputs (`pointer`, `tilt`, `shake`, `chop`) have no definition. Each is spread over about ten places:
-  - [`src/client/controls/motion/`](../src/client/controls/motion/) (algorithms)
-  - [`controller-input.ts`](../src/client/runtime/controller-input/controller-input.ts) (per-type branches in a 556-line class)
-  - `ControllerConfig.sensors` in [`controls/api.ts`](../src/client/controls/api.ts) (a fixed struct with one field per sensor)
-  - `available()` in [`resolve.ts`](../src/client/controls/resolve.ts) and the `legacy` table in [`registry.ts`](../src/client/controls/registry.ts)
-  - `SensorTile.tsx`, `shell/LegacyWidget.tsx`, `shell/ports.ts`, `runtime.ts`, `shell/runtime-adapter.ts`, `app/globals.css`
-- `jolt` is wanted by five backlog games and would repeat that whole path.
-- `slider`, `dial`, `text` and `draw-canvas` exist only in [`shell/LegacyWidget.tsx`](../src/client/shell/LegacyWidget.tsx). They are not registered and fail the layout resolver, so no game can use them yet.
-- Transport caps a controller at four press slots and one motion vector (`pointer` or `tilt`).
+**Acceptance evidence — Foundation baseline:** agreed contracts, named owners,
+validation requirements, recorded failures and explicit unverified claims.
+**Open blockers:** owner assignments, baseline execution and API design review.
 
-### 3. Is the shell separated from the controllers, and the reverse?
+### 1. Finish the foundation
 
-**Controllers do not depend on the shell (enforced). The shell still contains controller code.**
+**Owners:** Inputs owner and Game kit owner; Foundation lead owns integration.
+**Dependencies:** milestone 0.
+**Deliverable:** standardized input/game contracts, harness, scaffold and conformance suites.
 
-- `shell/LegacyWidget.tsx` (319 lines) implements the chop tile, pointer preview, slider, dial, text and draw canvas, with their CSS in `app/globals.css`.
-- `PhoneActions` in [`shell/ports.ts`](../src/client/shell/ports.ts) has input-specific members: `chopCount`, `holdAim`, `previewPoint`. Each new motion input widens the shell port, the runtime and the adapter.
-- `ControllerScreen.tsx` owns the aim-calibration UI, and `ControllerMenu.tsx` reads `config.sensors.pointer` and `tilt` directly.
-- Shell to engine, screen and runtime is clean: views get frozen snapshots and narrow ports, checked by tests.
+Controller inputs:
 
-### 4. Deterministic tests
+- [ ] Register motion definitions with availability, configuration, processing
+  lifecycle, semantic output and phone presentation. Replace per-input runtime
+  branching with the agreed registration seam.
+- [ ] Remove input-specific shell ports. Move controller implementations and
+  calibration presentation into their owning layer behind generic shell interfaces.
+- [ ] Implement `jolt` as proof that the seam works without new input-specific
+  shell members or branches.
+- [ ] Migrate legacy widgets only for committed use cases. Explicitly retire
+  unsupported widgets before deleting their legacy container and CSS.
+- [ ] Add control conformance for output shape, coordinate/rotation behavior,
+  per-control release semantics, cancellation and lifecycle cleanup.
 
-**The framework is well covered; consistency across games and across inputs is not.**
+Game and harness contracts:
 
-- Present: 45 test files, import-graph enforcement, seeded game randomness (seed derived from `startAt`), and two loops over the catalog ([`architecture-harness.test.ts`](../tests/architecture-harness.test.ts) line 30, [`live-catalog.test.ts`](../tests/live-catalog.test.ts) line 141).
-- Missing: a shared conformance suite for games. Each game's test hand-rolls its own fixture and reaches private state with `Reflect.get`. The same invariants are rewritten per game: isolated snapshots, `isState` accepts its own snapshot, every player appears in `finalize` once, 8-player state stays under 40 KiB, disconnect and reconnect.
-- Missing: a replay check that the same seed and input script produce identical snapshots twice.
-- Missing: a shared conformance suite for controls (value shape matches `kind`, release and cancel neutralise, `rotateOutput` round-trips).
-- `npm run game:test` runs `tests/architecture-*.test.ts`, which its name does not suggest.
+- [ ] Add early completion and untimed presentation with a finite safety deadline.
+  Preserve final input draining, settling, abort behavior and exactly-once finalization.
+- [ ] Add per-player role/controller requirements fixed for each round, including
+  capability resolution and configuration acknowledgement.
+- [ ] Add bounded, round-scoped per-player haptics, short status text and enabled
+  state through shared feedback delivery, with capability fallback and stale-event
+  protection. Games never implement their own phone control UI.
+- [ ] Expose replay fixtures for clock, seed, identity, roster, capabilities and
+  timestamped inputs. Keep authoritative assertions separate from delayed-display
+  assertions. Test fixtures must not leak into production bundles.
+- [ ] Add shared game conformance and supported scenario helpers, replacing private
+  state manipulation where a public fixture can express the behavior.
+- [ ] Add `game:new` with descriptor, implementation, renderer, colocated tests and
+  catalog registration. Fix test discovery so generated tests actually run in CI;
+  make the game-test command's name and selection agree.
+- [ ] Derive generic catalog and production checks from registration. Keep
+  independent assertions that catch missing production games and leaked developer
+  tools; avoid deriving both the expected and actual evidence from the same fixture.
+- [ ] Keep exact game-stat expectations in game-owned tests unless production
+  reporting needs descriptor metadata. Add game-owned sound declarations through
+  the shared playback interface.
+- [ ] Update authoring/input documentation as part of the later foundation work,
+  including extension steps, contracts and validation commands.
 
-### 5. Other gaps
+**Acceptance evidence — Foundation conformance:** both existing games pass common
+suites; a scaffolded proof game needs only its folder, catalog registration and
+optionally a layout. A new motion input needs no input-specific shell changes.
+Typecheck, lint, build and boundary checks pass with both lanes integrated.
+**Open blockers:** shared suites, test discovery, APIs, migrations and extension proofs.
 
-- Docs are stale: [`AUTHORING.md`](architecture/AUTHORING.md) calls Neon Harvest the sole game; [`MINIGAMES.md`](MINIGAMES.md) lists Latency Lab and Tilt Rally as built, but they were removed.
-- There is no CODEOWNERS file or written rule for what counts as core.
-- Large local files (such as disc images) in the repository root are not ignored; a stray `git add` would commit them.
+### 2. Host and validate the existing games
 
-## Roadmap
+**Owner:** Hosting owner, supported by Foundation lead and game owners.
+**Dependencies:** milestone 1.
+**Deliverable:** hosting decision, deployment/rollback runbook and device/route acceptance matrix.
 
-### Phase 0: agree the freeze (both)
+- [ ] Evaluate hosting for the built frontend, persistent WebSocket signaling/relay
+  and TURN. Record configuration, health checks, origin handling, credential
+  handling, operating costs and rollback. Select the provider from this evidence.
+- [ ] Start with private multi-household testing and one signaling instance.
+  Document in-memory rooms and session loss after server restart or host loss;
+  do not imply horizontal scaling, persistence or host migration exists.
+- [ ] Test Neon Harvest and Whack-a-Mole with real iOS/Android controllers, local
+  and remote displays, and confirmed P2P, TURN and WebSocket routes.
+- [ ] Cover joining, denied motion permission, touch fallback, calibration,
+  background/resume, reconnect, rematches and termination.
+- [ ] Record load time, frame pacing, authority/input age, snapshot starvation,
+  physical input-to-display latency and subjective responsiveness separately.
+  Software timestamps do not substitute for physical timing measurements.
+- [ ] Set measurable acceptance budgets before accepting results. Attach device,
+  OS/browser, route and build information to each result; fix blockers or explicitly
+  narrow supported configurations without marking untested routes passed.
 
-- [ ] Define core as `src/client/{api,engine,runtime,transport,game-screen,shell}` and `src/shared`. Add `.github/CODEOWNERS` so core changes need both reviewers; game and control folders need one.
-- [ ] Ignore large local binaries in `.gitignore`.
-- [ ] Settle the open decisions below. Three contract changes are already agreed to go in before the freeze: early round end and turns, per-player controls, and game-to-phone feedback. Agree each one's API shape together before either lane implements it.
+**Acceptance evidence — Hosted current-game matrix:** reproducible deployment and
+repeatable cross-household sessions for the supported matrix. A reachable URL or
+successful automated suite alone does not pass this milestone.
+**Open blockers:** provider choice, budgets, deployment and physical-device/network trials.
 
-### Phase 1: foundation, two parallel lanes
+### 3. Establish one visual style and art pipeline
 
-Work each lane top to bottom. The lanes meet in two files only: [`controls/api.ts`](../src/client/controls/api.ts) (Lane A owns) and the [author API](../src/client/api/index.ts) (Lane B owns).
+**Owner:** Art owner, with Game kit and Inputs owners.
+**Dependencies:** milestone 2.
+**Deliverable:** approved design bible, asset pipeline and reference scenes.
 
-#### Lane A: inputs and phone
+- [ ] Produce candidate style boards and choose one direction for all games before
+  substantial art production.
+- [ ] Cover shape language, palette, player identity, typography, HUD, camera,
+  materials, lighting, animation, effects, sound and accessibility in the bible.
+  Define how phone controls and display UI belong to the same identity.
+- [ ] Define source-asset ownership, provenance, naming, export settings,
+  optimization, runtime budgets and review procedure.
+- [ ] Implement reusable presentation primitives through supported authoring
+  interfaces, preserving game import boundaries.
+- [ ] Apply the pipeline to representative scenes from both existing games.
+  Extract shared 3D infrastructure only where demonstrated reuse warrants it.
 
-Covers the controls library, runtime input and the shell's controller screen.
+**Acceptance evidence — Visual reference review:** approved bible, reproducible
+source-to-runtime pipeline and reference scenes that visibly belong to one collection.
+**Open blockers:** art-direction selection, runtime budgets and pipeline/reference implementation.
 
-- [ ] **Motion input definitions.** Give motion inputs a definition in `src/client/controls/` (availability check, channel, kind, detector factory, on-phone tile). `controller-input.ts` iterates registered motion processors instead of branching per type; `ControllerConfig.sensors` becomes a generic map; `available()` and the `legacy` table move into the definitions. Depth is an open decision (see below).
-- [ ] **Remove input-specific shell members.** Replace `PhoneActions.chopCount`, `holdAim` and `previewPoint` with a generic per-control local-state and feedback port; move `ChopTile` and `PointerPreview` into controls.
-- [ ] **Port legacy widgets.** Move the ones a planned game needs into the library with `control:new`; delete `LegacyWidget.tsx`; move their CSS out of `app/globals.css`.
-- [ ] **Build `jolt`** as proof of what a new motion input now costs.
-- [ ] **Control conformance suite** in `tests/`, looping over every control and motion definition.
-- [ ] **Boundary tests:** the shell contains no control implementations; shell ports name no input type.
-- [ ] **Game-to-phone feedback.** A game returns per-player feedback alongside its presentation events; the phone delivers it. Lane B reviews the author-API addition.
+### 4. Experiment with games
 
-#### Lane B: game kit and screen
+**Owner:** a named Game owner per experiment.
+**Dependencies:** milestones 1–3.
+**Deliverable:** small playable experiments and keep/rework/drop decisions.
 
-Covers the author API, engine edges, tests and tooling.
+- [ ] Choose experiments covering existing inputs, turn-based `jolt` play and
+  asymmetric roles. Select exact games when defining each experiment's brief.
+- [ ] Give each a hypothesis, bounded scope, playtest and keep/rework/drop decision.
+- [ ] Require conformance from the start. Use the approved visual direction;
+  require full art polish only for promoted games.
+- [ ] Route necessary contract extensions through the established review process.
+  Record extension costs so repeated foundation leaks are visible.
 
-- [ ] **Game conformance suite.** `tests/kit/game-conformance.ts`, run for every catalog entry: lifecycle, snapshot isolation, `isState`, outcomes, 8-player budget, disconnect and reconnect, and a determinism replay. Reuse `GameHarness`, `driveSimulatedPlayers` in [`simulation.ts`](../src/client/devtools/game-harness/simulation.ts) and `snapshotPolicy`.
-- [ ] **Scenario helper** for per-game rule tests, replacing the `Reflect.get` fixtures in both game tests.
-- [ ] **Remove hardcoded game lists.** Derive them from the catalog or directory in `scripts/production-boundary.ts`, `tests/developer-bundle.test.ts` and `tests/engine-round.test.ts`; replace `statKeys` with a descriptor-declared stats list.
-- [ ] **`npm run game:new`**, modelled on [`scripts/new-control.ts`](../scripts/new-control.ts), generating descriptor, game, renderer, test and catalog line.
-- [ ] **Game-owned sounds.** Let a descriptor declare its synthesized cues; `sounds.ts` keeps only shared ones.
-- [ ] **Early round end and turns.** Let a game signal completion before `endAt`; extend `RoundRunner` in [`round.ts`](../src/client/engine/round.ts) and the settling tests. Countdown and results screens stay framework-owned.
-- [ ] **Per-player controls.** Let a descriptor give controller requirements per role. The session already resolves one config per player, so the change is in `controllerSpec()` in [`engine/input.ts`](../src/client/engine/input.ts) and the descriptor type. Lane A reviews the resolver side.
-- [ ] **Refresh docs:** `AUTHORING.md`, `MINIGAMES.md`, `INPUTS.md`; rename `game:test`.
+**Acceptance evidence — Game experiment reports:** a small set of demonstrably
+enjoyable games and evidence that additions do not repeatedly reopen the foundation.
+**Open blockers:** experiment selection, implementation and real-player feedback.
 
-### Phase 2: exit check (both)
+### 5. Investigate standalone phone delivery
 
-- [ ] One person adds a small throwaway game using only `game:new`, an existing layout and the conformance suite. The diff must stay inside the game folder plus one catalog line. If it does not, fix the leak before splitting.
+**Owner:** Phone investigation owner, with Inputs and Hosting owners.
+**Dependencies:** milestone 2; may run alongside later art/game work.
+**Deliverable:** option comparison, recommendation and minimal proof of the strongest option.
 
-### Phase 3: games, split by game
+- [ ] Compare browser, installable PWA, native wrapper and native app against the
+  same hosted baseline and device matrix.
+- [ ] Measure pairing friction, sensor behavior, haptics, orientation, background
+  recovery, reconnect, updates and distribution effort.
+- [ ] Reuse semantic controller and protocol contracts; isolate platform-specific
+  sensor adapters instead of forking game/input semantics.
+- [ ] Produce a recommendation supported by measured benefits and maintenance cost.
 
-Each person owns whole games from the [backlog](MINIGAMES.md). First picks that need no new inputs: Target Practice, Basketball, Saber Slash, Brawl. `jolt` games (Bowling, Golf, Chop Shop) follow once Lane A builds it. Core changes go through the CODEOWNERS rule.
+**Acceptance evidence — Phone delivery decision:** evidence-backed recommendation
+and minimal proof. Shipping a native app is a subsequent commitment, not this gate.
+**Open blockers:** comparative trials and proof; no delivery technology is preselected.
 
-## Open decisions
+### 6. Build the party-session metagame
 
-Each has a recommendation; none is settled yet.
+**Owner:** Session owner, with Game kit and Art owners.
+**Dependencies:** milestones 2–4; milestone 5 is not a prerequisite.
+**Deliverable:** bounded party-session flow on existing progress and round history.
 
-| #   | Decision                                                                                                             | Recommendation                                                                             |
-| --- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| 1   | Is the partner a human or an agent? This sets how detailed each lane item must be.                                   | Write for whichever is true; an agent needs a brief and a named passing test per item.     |
-| 2   | What diff is allowed in the Phase 2 exit check?                                                                      | Game folder, one catalog line, optionally one layout JSON.                                 |
-| 3   | May the foundation change the wire protocol (now 4, 47-byte frame, four presses and one motion vector)?              | Allow one bump during the foundation, owned by Lane A, then freeze.                        |
-| 4   | How deep is the motion-input refactor: a full definition seam, or only moving controller code out of the shell?      | Relocate only, build `jolt` by hand, and add the seam if a third new motion input appears. |
-| 5   | Does "turns" mean early end, untimed rounds, or engine-owned turn order?                                             | Early end and untimed rounds with a safety cap; turn order stays game logic.               |
-| 6   | Are per-player controls fixed for the round or swappable mid-round?                                                  | Fixed per round.                                                                           |
-| 7   | How much can a game put on a phone: haptics, a status line, or its own UI?                                           | Haptics plus a short status line and an enabled state. Games never draw controls.          |
-| 8   | Which four to six games are next? This decides whether `jolt`, `dial`, `text` and `draw-canvas` are foundation work. | One existing-input game, one turn-based `jolt` game, one per-role game. Delete `slider`.   |
-| 9   | Should the three.js stage become a shared kit?                                                                       | Leave it game-owned until a second 3D game exists.                                         |
+- [ ] Add session setup, a bounded game playlist, between-round flow, standings
+  and a final winner.
+- [ ] Preserve placement-based awards rather than comparing incompatible raw scores.
+- [ ] Specify ties, aborted rounds, disconnected participants, late joins, rematches
+  and session reset before implementation, with acceptance cases for each.
+- [ ] Keep game selection compatible with player counts and controller capabilities.
+
+**Acceptance evidence — Hosted party-session playthrough:** complete a hosted,
+multi-game session through final results without manual state repair, with automated
+coverage for the agreed session policies. Persistent accounts, unlocks and a board-game
+layer remain future work.
+**Open blockers:** session-policy specification, playlist flow and end-to-end acceptance.
+
+## Validation and completion rules
+
+- Discover all intended tests in CI, including colocated game and harness suites.
+- Run every catalog game and mode through lifecycle, snapshot isolation, validation,
+  supported-player-count, disconnect/reconnect and replay checks. Validate both
+  game-state and full-envelope budgets under representative peak conditions.
+- Compare repeated authoritative snapshots, events and outcomes with identical
+  seeds, clocks and input schedules; control nondeterministic session IDs.
+- Test controls through semantic output and production input ingress, including
+  stale, duplicate, reordered and post-disposal input. Keep transport acceptance
+  distinct from direct harness injection.
+- Retain typecheck, lint, production-build and architecture-boundary checks.
+- Keep visual review, physical-device testing, hosted-network acceptance and
+  subjective fun separate from deterministic correctness.
+- Record failed, skipped and blocked checks explicitly. Close a milestone only
+  when its named evidence meets the exit criteria; attach remaining limitations
+  to supported configurations rather than silently dropping requirements.
+
+Baseline commands to record in milestone 0 are `npm test`, `npm run game:test`,
+`npm run typecheck`, `npm run lint` and `npm run build`, plus explicit execution
+of the currently omitted colocated suites until discovery is fixed. Later work
+must update this list when command selection changes. No runtime tests were run
+or certified by this documentation-only revision.
