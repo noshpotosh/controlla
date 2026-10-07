@@ -1,45 +1,26 @@
+import {
+  tiltMetadata,
+  shakeMetadata,
+  emptyConfig,
+  vector,
+  clamp,
+  validateShakeConfig,
+  type ShakeConfig,
+} from './accelerometer-definition.ts';
+export {
+  validateShakeConfig,
+  type ShakeConfig,
+} from './accelerometer-definition.ts';
 /** Pure accelerometer controls. Sensor permission and sampling remain provider-owned. */
-import type { Capabilities, Vector } from '../api.ts';
+import type { Vector } from '../api.ts';
 import type {
-  Availability,
   MotionClocks,
   MotionCommand,
   MotionDefinition,
   MotionInputProcessor,
   MotionOutput,
-  Validated,
   ValidatedMotionSample,
 } from './registration.ts';
-
-const object = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
-const emptyConfig = (value: unknown): Validated<Record<string, never>> =>
-  object(value) && Object.keys(value).length === 0
-    ? { ok: true, value: {} }
-    : { ok: false, reason: 'Tilt settings must be an empty object.' };
-const availability = (capabilities: Readonly<Capabilities>): Availability =>
-  capabilities.sensors.accel.present &&
-  capabilities.sensors.accel.permission === 'granted'
-    ? { available: true }
-    : { available: false, reason: 'This input requires acceleration access.' };
-const vector = (value: unknown): Vector | undefined =>
-  object(value) &&
-  typeof value.x === 'number' &&
-  typeof value.y === 'number' &&
-  Number.isFinite(value.x) &&
-  Number.isFinite(value.y) &&
-  Math.abs(value.x) <= 1 &&
-  Math.abs(value.y) <= 1
-    ? { x: value.x, y: value.y }
-    : undefined;
-const strength = (value: unknown) =>
-  typeof value === 'number' &&
-  Number.isFinite(value) &&
-  value >= 0 &&
-  value <= 1
-    ? value
-    : undefined;
-const clamp = (value: number) => Math.max(-1, Math.min(1, value));
 
 /** Reject duplicate/reordered samples while allowing sequence restart in a new epoch. */
 class SampleCursor {
@@ -97,7 +78,7 @@ export class TiltProcessor implements MotionInputProcessor<
     if (this.disposed) return [];
     const now = this.clocks.localTime();
     if (!sample.accelFresh || sample.at === null || now - sample.at >= 500)
-      return [{ type: 'value', value: { x: 0, y: 0 }, at: now }];
+      return [{ type: 'value', value: { x: 0, y: 0 }, confidence: 0, at: now }];
     if (!this.cursor.accept(sample, now) || !vector(sample.tilt)) return [];
     this.last = { ...sample.tilt };
     return [
@@ -108,6 +89,7 @@ export class TiltProcessor implements MotionInputProcessor<
           y: clamp(this.last.y - this.zero.y),
         },
         at: sample.at,
+        confidence: 1,
       },
     ];
   }
@@ -130,26 +112,6 @@ export class TiltProcessor implements MotionInputProcessor<
   }
 }
 
-export interface ShakeConfig {
-  thresholdG: number;
-}
-export const validateShakeConfig = (value: unknown): Validated<ShakeConfig> => {
-  if (!object(value) || Object.keys(value).some((key) => key !== 'thresholdG'))
-    return {
-      ok: false,
-      reason: 'Shake settings must contain only thresholdG.',
-    };
-  const thresholdG = value.thresholdG ?? 1.8;
-  return typeof thresholdG === 'number' &&
-    Number.isFinite(thresholdG) &&
-    thresholdG > 0 &&
-    thresholdG <= 8
-    ? { ok: true, value: { thresholdG } }
-    : {
-        ok: false,
-        reason: 'Shake thresholdG must be greater than zero and at most 8.',
-      };
-};
 export class ShakeProcessor implements MotionInputProcessor<ShakeConfig> {
   private cursor = new SampleCursor();
   private config: ShakeConfig = { thresholdG: 1.8 };
@@ -197,26 +159,10 @@ export class ShakeProcessor implements MotionInputProcessor<ShakeConfig> {
   }
 }
 export const tilt: MotionDefinition<Record<string, never>> = {
-  type: 'tilt',
-  channel: 'value',
-  kind: 'vector',
-  throttle: false,
-  transport: { motionVector: true, pressSlots: 0 },
-  availability,
-  validateConfig: emptyConfig,
-  parseValue: vector,
-  parseActivation: vector,
+  ...tiltMetadata,
   create: (clocks) => new TiltProcessor(clocks),
 };
 export const shake: MotionDefinition<ShakeConfig> = {
-  type: 'shake',
-  channel: 'both',
-  kind: 'press',
-  throttle: false,
-  transport: { motionVector: false, pressSlots: 1 },
-  availability,
-  validateConfig: validateShakeConfig,
-  parseValue: strength,
-  parseActivation: strength,
+  ...shakeMetadata,
   create: (clocks) => new ShakeProcessor(clocks),
 };

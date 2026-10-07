@@ -221,3 +221,42 @@ composition and wire it into controller input, then move presentation/settings,
 retire legacy widgets, migrate configuration/protocol and enable jolt via the same
 registry. Checkpoint 2 and all later checkpoints remain open. No physical sensor,
 haptic, browser smoke or hosted-network claims are made by these pure tests.
+
+## Checkpoint 2d: live registered motion processing
+
+ControllerInput now delegates pointer, tilt, shake and chop processing to generic
+controls-owned MotionControls composition. Input-specific detector/history state
+and tick branches have been removed from the runtime collaborator. Composition
+routes aim-lock/release policy, held state, haptic requests and locked-aim
+activation capture. Activation values and atomic press edges share one converted
+captured authority timestamp. Resolution availability, vector capacity and semantic
+validation consume registration metadata.
+
+Metadata-only definitions are separate from processor construction: authority and
+shell can read capability/configuration/output contracts without reaching pointer,
+chop or provider implementations. A parity test checks both registries. Existing
+architecture negative tests still prohibit provider, React and runtime escapes.
+Generic composition tests cover atomic invalid configuration rejection, ambiguous
+bindings, detached immutable state, cancellation/disposal and configured bounds
+before the first sensor sample. All existing live pointer/chop regressions pass.
+
+Initial integrated validation exposed eight failures. Fixed registration metadata
+reaching forbidden processor implementations, preserved valid off-screen pointer
+semantic values, aligned the runtime fixture's two local sensor clocks, supplied
+real core geometry to the disposable control scaffold fixture, and refreshed tilt
+fixture sample timestamps without changing its calibration assertions. Lint also
+caught a test destructuring a factory method; the parity test now enumerates data
+without extracting methods. These were fixed before this checkpoint.
+
+Validation: full suite 402/402; game:test 139/139; focused input/composition/runtime
+suites 27/27; typecheck, lint and production build passed. Logs:
+/private/tmp/live-motion-checkpoint-{tests,build}.log and
+/private/tmp/live-motion-games.log. No browser or physical-device evidence yet.
+
+Remaining checkpoint 2 work: replace the temporary schema-1 motion configuration
+projection with schema 2's registered motion map and protocol 5; replace transitional
+holdAim/chop-count presentation adapters with scoped generic ports; move settings
+and motion UI to controls-owned presentation; retire obsolete widgets and legacy
+container/CSS; register jolt through the same metadata/processing/presentation seams
+and prove production ingress. No older-client support is required. Later lifecycle,
+roles, feedback/sound, deterministic harness/conformance and scaffolding work remains.

@@ -36,7 +36,7 @@ export type MotionCommand =
   | { type: 'aim-lock'; at: number; policy: AimLockPolicy }
   | { type: 'aim-release'; at: number; immediate?: true };
 export type MotionOutput =
-  | { type: 'value'; value: ControlValue; at: number }
+  | { type: 'value'; value: ControlValue; at: number; confidence?: number }
   | {
       type: 'activation';
       value?: ControlValue;
@@ -70,3 +70,9 @@ export interface MotionDefinition<P extends object> {
   parseActivation(value: unknown): ControlValue | undefined;
   create(clocks: MotionClocks): MotionInputProcessor<P>;
 }
+
+/** Pure resolution/validation metadata cannot reach sensor or processor implementations. */
+export type MotionMetadata<P extends object> = Omit<
+  MotionDefinition<P>,
+  'create'
+>;

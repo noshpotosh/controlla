@@ -24,6 +24,7 @@ function setup(t: TestContext) {
     });
   }
   const f = motionFixture();
+  f.advance(1000); // Provider and runtime share the same local monotonic clock.
   let clock = 1000;
   t.mock.method(performance, 'now', () => clock);
   const runtime = new Runtime(

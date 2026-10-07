@@ -7,6 +7,8 @@ import type {
   OutputKind,
 } from './api.ts';
 
+import { motionDefinitionFor } from './motion/metadata-registry.ts';
+
 import { button } from './button/definition.ts';
 import { dpad } from './dpad/definition.ts';
 import { stick } from './stick/definition.ts';
@@ -37,22 +39,17 @@ export const isLibraryControl = (type: WidgetType) => byType.has(type);
 const legacy: Partial<
   Record<WidgetType, { channel: Channel; throttle: boolean; kind: OutputKind }>
 > = {
-  shake: { channel: 'both', throttle: false, kind: 'press' },
-  chop: { channel: 'both', throttle: false, kind: 'press' },
   text: { channel: 'value', throttle: false, kind: 'text' },
   slider: { channel: 'value', throttle: true, kind: 'scalar' },
   dial: { channel: 'value', throttle: true, kind: 'angle' },
   'draw-canvas': { channel: 'value', throttle: true, kind: 'stroke' },
-  // Motion inputs steer the frame's x/y, like a stick does.
-  pointer: { channel: 'value', throttle: true, kind: 'vector' },
-  tilt: { channel: 'value', throttle: true, kind: 'vector' },
 };
 
 export const kindOf = (type: WidgetType): OutputKind | undefined =>
-  (byType.get(type) ?? legacy[type])?.kind;
+  (byType.get(type) ?? motionDefinitionFor(type) ?? legacy[type])?.kind;
 
 export function channelOf(type: WidgetType) {
-  const d = byType.get(type) ?? legacy[type];
+  const d = byType.get(type) ?? motionDefinitionFor(type) ?? legacy[type];
   return {
     channel: d?.channel ?? 'value',
     throttle: d?.throttle ?? true,

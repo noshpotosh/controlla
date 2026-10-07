@@ -235,6 +235,10 @@ for (const [original, copied, outputType] of [
           recursive: true,
         },
       );
+      await cp(
+        join(root, 'src/core/types.ts'),
+        join(directory, 'src/core/types.ts'),
+      );
       if (original === 'stick') {
         // Both halves matter: external aliases keep their names/references, while
         // source-owned named imports follow the renamed definition declaration.

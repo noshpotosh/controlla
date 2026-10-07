@@ -1,5 +1,6 @@
 /** Pure output validation shared by phone adapters and authoritative ingress. */
 import type { WidgetType, SwipeOutput, ControlValue } from './api.ts';
+import { motionDefinitionFor } from './motion/metadata-registry.ts';
 import { kindOf } from './registry.ts';
 
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -19,6 +20,8 @@ export function parseControlValue(
   } catch {
     return undefined;
   }
+  const motion = motionDefinitionFor(type);
+  if (motion) return motion.parseValue(value);
   switch (kindOf(type)) {
     case 'vector': {
       if (!record(value) || !finite(value.x) || !finite(value.y))
@@ -101,6 +104,11 @@ export function parseActivationValue(
   type: WidgetType,
   value: unknown,
 ): ControlValue | undefined {
+  const motion = motionDefinitionFor(type);
+  if (motion)
+    return valueFitsEnvelope(value)
+      ? motion.parseActivation(structuredClone(value))
+      : undefined;
   const parsed = parseControlValue(type, value);
   if (
     kindOf(type) === 'charge' &&

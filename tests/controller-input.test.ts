@@ -278,12 +278,17 @@ void test('recentering makes the current tilt level', () => {
   assert.ok(Math.abs(f.frames.at(-1)!.x - 0.4) < 0.001);
   f.input.recenter();
   f.at(1700);
-  f.input.tick(f.motion);
+  f.input.tick({ ...f.motion, at: 1700, sequence: 2 });
   assert.ok(Math.abs(f.frames.at(-1)!.x) < 0.001);
   assert.ok(Math.abs(f.frames.at(-1)!.y) < 0.001);
   // Tipping further from the new level still reads, clamped to the unit range.
   f.at(2400);
-  f.input.tick({ ...f.motion, tilt: { x: -0.9, y: 0.9 } });
+  f.input.tick({
+    ...f.motion,
+    at: 2400,
+    sequence: 3,
+    tilt: { x: -0.9, y: 0.9 },
+  });
   assert.equal(f.frames.at(-1)!.x, -1);
   assert.equal(f.frames.at(-1)!.y, 1);
 });
@@ -427,6 +432,15 @@ void test('holding the swing button freezes the aim, and a swing whacks there', 
   assert.ok(Math.abs(press.press.y - aimed.y) < 0.01);
   // Authority time runs 100 ms ahead of local time in this fixture.
   assert.equal(press.press.time, onset + 100);
+  const value = f.messages.find(
+    (message) => message.type === 'widget' && message.action === 'whack',
+  );
+  assert.ok(value && value.type === 'widget');
+  assert.equal(
+    value.time,
+    press.press.time,
+    'the activation value and edge share one captured authority timestamp',
+  );
   assert.ok(
     Math.abs((press.press.value as number) - Math.hypot(9, 1) / 10) < 1e-9,
   );

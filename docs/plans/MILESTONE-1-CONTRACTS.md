@@ -75,7 +75,7 @@ export type MotionCommand =
   | { type: 'aim-lock'; at: number; policy: AimLockPolicy }
   | { type: 'aim-release'; at: number; immediate?: true };
 export type MotionOutput =
-  | { type: 'value'; value: ControlValue; at: number }
+  | { type: 'value'; value: ControlValue; at: number; confidence?: number }
   | {
       type: 'activation';
       value?: ControlValue;
@@ -129,11 +129,15 @@ ownership doc's settling description is not a license to change the code.
 
 Implementation refinement (2026-10-07): aim outputs now carry the capture/rebound
 policy as data, and registered aim processors receive equivalent generic commands.
+Value outputs carry optional sensor confidence for generic binary projection.
 Held state and haptic requests are semantic outputs; activation can request the
 previous locked aim after release. This preserves chop behavior without requiring
 a chop branch in composition or transport. Cancellation requests immediate release
 with no release grace. The existing raw sensor MotionProcessor keeps its name;
-the new semantic interface is MotionInputProcessor.
+the new semantic interface is MotionInputProcessor. Authority and UI import the
+metadata-only registry (MotionMetadata = Omit<MotionDefinition, 'create'>); live
+controls composition imports the processor registry. Metadata and constructor
+registrations are checked for parity, preserving authority/shell boundaries.
 
 UI registration belongs separately in controls presentation (React is allowed
 there). Its concrete signatures use React ComponentType and existing ControlPort:

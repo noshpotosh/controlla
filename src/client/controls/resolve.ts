@@ -14,18 +14,10 @@ import {
   validateLayout,
 } from './layout/validate.ts';
 import { layouts } from './layouts/index.ts';
+import { motionDefinitionFor } from './motion/metadata-registry.ts';
 import { PRESS_SLOTS, usesPressSlot } from './registry.ts';
 export function available(type: WidgetType, c: Capabilities) {
-  if (type === 'pointer' || type === 'chop')
-    return (
-      c.sensors.gyro.present &&
-      c.sensors.gyro.permission === 'granted' &&
-      c.sensors.accel.present &&
-      c.sensors.accel.permission === 'granted'
-    );
-  if (['tilt', 'shake'].includes(type))
-    return c.sensors.accel.present && c.sensors.accel.permission === 'granted';
-  return true;
+  return motionDefinitionFor(type)?.availability(c).available ?? true;
 }
 /** Select the named controller layout, or generate one from requirements. */
 export function gameLayout(spec: ControllerSpec) {
@@ -88,7 +80,7 @@ export function resolveConfig(
   // The unchanged binary frame carries one motion vector. Check resolved
   // actions, including repeated uses of one sensor, rather than layout flags.
   const motionWidgets = widgets.filter(
-    (widget) => widget.type === 'pointer' || widget.type === 'tilt',
+    (widget) => motionDefinitionFor(widget.type)?.transport.motionVector,
   );
   if (motionWidgets.length > 1)
     throw new Error(

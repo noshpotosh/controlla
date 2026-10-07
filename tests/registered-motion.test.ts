@@ -36,18 +36,18 @@ void test('tilt calibration preserves signed coordinates, neutralizes stale inpu
   processor.configure({});
   const input = f.sample(10, { tilt: { x: 0.4, y: -0.3 } });
   assert.deepEqual(processor.process(input), [
-    { type: 'value', value: { x: 0.4, y: -0.3 }, at: 10 },
+    { type: 'value', confidence: 1, value: { x: 0.4, y: -0.3 }, at: 10 },
   ]);
   processor.command({ type: 'recenter', at: 10 });
   assert.deepEqual(processor.process(f.sample(20, { tilt: { x: -1, y: 1 } })), [
-    { type: 'value', value: { x: -1, y: 1 }, at: 20 },
+    { type: 'value', confidence: 1, value: { x: -1, y: 1 }, at: 20 },
   ]);
   assert.deepEqual(
     processor.process(f.sample(30, { tilt: { x: 0.4, y: -0.3 } })),
-    [{ type: 'value', value: { x: 0, y: 0 }, at: 30 }],
+    [{ type: 'value', confidence: 1, value: { x: 0, y: 0 }, at: 30 }],
   );
   assert.deepEqual(processor.process(f.sample(40, { accelFresh: false })), [
-    { type: 'value', value: { x: 0, y: 0 }, at: 40 },
+    { type: 'value', confidence: 0, value: { x: 0, y: 0 }, at: 40 },
   ]);
   assert.deepEqual(processor.command({ type: 'cancel', at: 40 }), [
     { type: 'value', value: { x: 0, y: 0 }, at: 40 },
@@ -266,7 +266,7 @@ void test('registered pointer integrates each fresh sample once and preserves it
   if (!config.ok) throw new Error(config.reason);
   processor.configure(config.value);
   assert.deepEqual(processor.process(f.sample(0)), [
-    { type: 'value', value: { x: 0.5, y: 0.5 }, at: 0 },
+    { type: 'value', confidence: 1, value: { x: 0.5, y: 0.5 }, at: 0 },
   ]);
   const next = f.sample(50, { rate: [0, 0, -1] });
   const moved = processor.process(next);
@@ -281,7 +281,7 @@ void test('registered pointer integrates each fresh sample once and preserves it
   );
   const resumed = f.sample(70, { epoch: next.epoch + 1, sequence: 0 });
   assert.deepEqual(processor.process(resumed), [
-    { type: 'value', value: point, at: 70 },
+    { type: 'value', confidence: 1, value: point, at: 70 },
   ]);
   assert.deepEqual(processor.process({ ...next, sequence: 100, at: 70 }), []);
   processor.dispose();
@@ -308,24 +308,25 @@ void test('registered pointer handles generic aim capture, release, bounds and c
     policy: CHOP.swing,
   });
   assert.deepEqual(locked, [
-    { type: 'value', value: { x: 0.5, y: 0.5 }, at: 0 },
+    { type: 'value', confidence: 1, value: { x: 0.5, y: 0.5 }, at: 0 },
   ]);
   assert.deepEqual(processor.process(f.sample(100, { rate: [0, 0, -5] })), [
-    { type: 'value', value: { x: 0.5, y: 0.5 }, at: 100 },
+    { type: 'value', confidence: 1, value: { x: 0.5, y: 0.5 }, at: 100 },
   ]);
   processor.command({ type: 'aim-release', at: 100 });
   assert.deepEqual(processor.process(f.sample(150, { rate: [0, 0, -5] })), [
-    { type: 'value', value: { x: 0.5, y: 0.5 }, at: 150 },
+    { type: 'value', confidence: 1, value: { x: 0.5, y: 0.5 }, at: 150 },
   ]);
   processor.command({ type: 'cancel', at: 150 });
   const moving = processor.process(f.sample(200, { rate: [0, 0, -5] }));
   assert.notDeepEqual(moving[0], {
     type: 'value',
+    confidence: 1,
     value: { x: 0.5, y: 0.5 },
     at: 200,
   });
   assert.deepEqual(processor.command({ type: 'recenter', at: 200 }), [
-    { type: 'value', value: { x: 0.5, y: 0.5 }, at: 200 },
+    { type: 'value', confidence: 1, value: { x: 0.5, y: 0.5 }, at: 200 },
   ]);
   assert.deepEqual(
     processor.command({ type: 'sensitivity', value: 2, at: 200 }),
@@ -346,7 +347,10 @@ void test('pointer registration rejects invalid bounds, rate and semantic coordi
     { bounds: { left: -1, right: 1, top: 0, bottom: 1 } },
   ])
     assert.equal(pointer.validateConfig(config).ok, false);
-  assert.equal(pointer.parseValue({ x: -0.1, y: 0.5 }), undefined);
+  assert.deepEqual(pointer.parseValue({ x: -0.1, y: 0.5 }), {
+    x: -0.1,
+    y: 0.5,
+  });
   assert.equal(pointer.parseValue({ x: NaN, y: 0.5 }), undefined);
   assert.deepEqual(pointer.parseValue({ x: 0.3, y: 0.4, extra: true }), {
     x: 0.3,
