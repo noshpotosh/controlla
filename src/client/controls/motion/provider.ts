@@ -1,5 +1,6 @@
 import type { Capabilities, Permission } from '../api.ts';
-import type { MotionSnapshot, MotionStatus } from './contracts.ts';
+import type { MotionStatus } from './contracts.ts';
+import type { ValidatedMotionSample, Vec3 } from './registration.ts';
 import { compassDegrees } from './heading.ts';
 import { MotionProcessor } from './processor.ts';
 import {
@@ -109,6 +110,7 @@ export class Motion {
   private observed = 0;
   private accelAt: number | null = null;
   private gyroAt: number | null = null;
+  private linearAcceleration: Vec3 | null = null;
   private accelPresent = false;
   private gyroPresent = false;
   private sequence = 0;
@@ -136,7 +138,7 @@ export class Motion {
       ? 'waiting'
       : 'unavailable';
   }
-  getSnapshot(): MotionSnapshot {
+  getSnapshot(): ValidatedMotionSample {
     const time = this.env.now();
     const accelFresh =
       !!this.unlisten &&
@@ -169,6 +171,10 @@ export class Motion {
         : 0,
       rate: [...this.processor.rate],
       gravity: [...this.processor.gravity],
+      linearAcceleration:
+        accelFresh && this.linearAcceleration
+          ? [...this.linearAcceleration]
+          : null,
       up: this.processor.up,
       tilt: this.processor.tilt,
       aim: this.processor.aim,
@@ -283,6 +289,7 @@ export class Motion {
     this.cancelTimer?.();
     this.cancelTimer = null;
     this.accelAt = this.gyroAt = null;
+    this.linearAcceleration = null;
     this.accelPresent = this.gyroPresent = false;
     this.processor.resetTiming();
     ++this.epoch;
@@ -336,6 +343,7 @@ export class Motion {
     this.gyroPresent = sample.rate !== null;
     this.accelAt = this.accelPresent ? time : null;
     this.gyroAt = this.gyroPresent ? time : null;
+    this.linearAcceleration = sample.accel;
     this.processor.sample(sample);
     ++this.sequence;
     ++this.observed;

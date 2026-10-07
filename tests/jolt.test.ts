@@ -11,6 +11,39 @@ import {
 } from '../src/client/controls/motion/jolt.ts';
 import type { Rotation, JoltOutput } from '../src/client/controls/api.ts';
 import type { ValidatedMotionSample } from '../src/client/controls/motion/registration.ts';
+import { motionFixture } from './fixtures/motion-provider.ts';
+
+void test('directional processing consumes the production provider projection without reading browser globals', async () => {
+  const f = motionFixture();
+  await f.motion.enable();
+  let time = 0;
+  const processor = jolt.create({
+    localTime: () => time,
+    authorityTime: (at) => at + 1000,
+  });
+  processor.configure(JOLT);
+  f.emit({ acceleration: { x: 0, y: 0, z: 0 } });
+  assert.deepEqual(processor.process(f.motion.getSnapshot()), []);
+  time = 60;
+  f.advance(60);
+  f.emit({ acceleration: { x: 0, y: 0, z: 0 } });
+  assert.deepEqual(processor.process(f.motion.getSnapshot()), []);
+  time = 80;
+  f.advance(20);
+  f.emit({
+    acceleration: { x: 30, y: 0, z: 0 },
+    accelerationIncludingGravity: { x: 30, y: 0, z: 9.81 },
+  });
+  assert.deepEqual(processor.process(f.motion.getSnapshot()), [
+    {
+      type: 'activation',
+      at: 80,
+      value: { kind: 'translation', direction: 'right', strength: 1 },
+    },
+  ]);
+  processor.dispose();
+  f.motion.dispose();
+});
 
 function fixture(rotation: Rotation = 0) {
   let now = 0;

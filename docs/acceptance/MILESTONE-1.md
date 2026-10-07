@@ -170,3 +170,24 @@ Provider sample projection, configuration schema 2/protocol 5, generic shell
 surfaces/settings/commands, legacy retirement and production ingress conformance
 remain required. No protocol source changed yet. Existing gameplay remains on
 its current path until the migration is integrated and validated.
+
+## Checkpoint 2b: production sensor projection
+
+Provider snapshots now satisfy ValidatedMotionSample and include detached, frozen
+linearAcceleration from finite browser acceleration, or null when absent/invalid,
+stale, suspended or disposed. The provider retains all permission/listener/timer
+ownership. Its raw recording path is unchanged. A test passes its actual projected
+sample to the new jolt processor, proving the detector accepts production sensor
+projection without browser access or fabricated transport input.
+
+Validation: full suite 387/387; game:test 139/139; focused provider/jolt suites
+17/17; typecheck, lint and build pass. Logs:
+/private/tmp/milestone-1-motion-provider-{0,1,2}.log. A test's deliberately mutable
+cast initially failed typecheck; replaced with Reflect.set to assert rejection of
+mutation without weakening readonly types, then focused tests/typecheck/lint passed.
+No production code changed after the full suite and build runs.
+
+Still incomplete: registered processing of pointer/tilt/shake/chop, generic shell
+presentation/commands and settings, legacy removal, config/protocol migration,
+live jolt registration and ingress. Checkpoint 2 remains open. Pure core saved at
+fb53ed6 and pushed; this additive provider checkpoint preserves that recovery point.
