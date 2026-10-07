@@ -326,3 +326,33 @@ input-specific shell members and UI. Obsolete widgets and their legacy container
 remain pending retirement. Motion surface classes temporarily retain existing
 styling; move their styles into controls before deleting legacy-exclusive CSS.
 All later milestone checkpoints and browser/device/network evidence remain open.
+
+
+## Checkpoint 2g: obsolete widget and legacy container retirement
+
+Removed slider, dial, text and draw-canvas from WidgetType, registry, value
+validation and public output shapes. They had no saved layouts or production
+game users. Designer/gallery choices already derive from registered definitions;
+no obsolete choices remain. Structural layout parsing, assignment validation and
+layout validation now reject these names with explicit replacement guidance.
+ControllerInput rejects unsupported widget types even in schema-2 configurations,
+without replacing a valid prior setup.
+
+Deleted LegacyWidget and its shell fallback. Every supported motion surface is
+rendered through controls registration. Removed exclusive legacy global/cell CSS;
+ported motion styling into controls/motion-views/styles.css with ctl class names,
+cell fill, container sizing and reduced-motion handling. Input glossary and
+backlog ideas no longer present retired widgets as available. Jolt documentation
+now reflects its registered contract and separates synthetic correctness from
+physical tuning.
+
+Validation: npm test 409/409; game:test 139/139; typecheck, lint and production
+build passed. Logs: /private/tmp/retire-widgets-{tests,games,build}.log. Repository
+search confirms no LegacyWidget consumers/file, legacy widget/chop-tile CSS or
+retired production type branches remain; obsolete names remain only in rejection
+logic, tests and historical/plan documentation. Both production games retain
+their controller-resolution and gameplay regressions.
+
+Checkpoint 2 remains open for generic controls-owned settings/calibration and
+remaining input-specific shell/runtime settings adapters. Browser smoke and
+physical-device evidence remain unverified, as do all later milestone checkpoints.

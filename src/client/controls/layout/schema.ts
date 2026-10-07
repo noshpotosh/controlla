@@ -114,6 +114,13 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
 const isCount = (v: unknown): v is number =>
   Number.isInteger(v) && (v as number) >= 0;
 
+/** Obsolete widgets are rejected; their layout files require an authoring edit. */
+export function retiredWidgetMessage(type: string): string | undefined {
+  return ['slider', 'dial', 'text', 'draw-canvas'].includes(type)
+    ? `The "${type}" widget is retired. Replace it with a supported touch control.`
+    : undefined;
+}
+
 /** Structural check for untrusted JSON (the save endpoint, hand edits). */
 export function isControllerLayout(v: unknown): v is ControllerLayout {
   if (!isObject(v) || v.schemaVersion !== 2) return false;
@@ -142,6 +149,7 @@ export function isControllerLayout(v: unknown): v is ControllerLayout {
       typeof item.name === 'string' &&
       isControlName(item.name) &&
       typeof item.type === 'string' &&
+      !retiredWidgetMessage(item.type) &&
       isObject(item.rect) &&
       ['x', 'y', 'w', 'h'].every((k) =>
         isCount((item.rect as Record<string, unknown>)[k]),
@@ -155,7 +163,17 @@ export function isControllerLayout(v: unknown): v is ControllerLayout {
 
 /** Checked cast for layout JSON imported by the layout index. */
 export function asControllerLayout(v: unknown): ControllerLayout {
-  if (!isControllerLayout(v)) throw new Error('Invalid controller layout JSON');
+  if (!isControllerLayout(v)) {
+    if (isObject(v) && Array.isArray(v.items))
+      for (const item of v.items) {
+        const message =
+          isObject(item) && typeof item.type === 'string'
+            ? retiredWidgetMessage(item.type)
+            : undefined;
+        if (message) throw new Error(message);
+      }
+    throw new Error('Invalid controller layout JSON');
+  }
   // Older files omit motion inputs added later; they are off.
   return { ...v, motion: { ...NO_MOTION, ...v.motion } };
 }

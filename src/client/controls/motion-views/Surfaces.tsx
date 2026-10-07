@@ -64,7 +64,7 @@ export function ChopTile({
   return (
     <button
       type="button"
-      className={held ? 'widget chop-tile is-held' : 'widget chop-tile'}
+      className={held ? 'ctl-motion ctl-chop is-held' : 'ctl-motion ctl-chop'}
       aria-label={`Hold, then swing to ${label}`}
       aria-pressed={held}
       onContextMenu={(e) => e.preventDefault()}
@@ -82,11 +82,11 @@ export function ChopTile({
     >
       <span
         key={hits}
-        className={hits ? 'chop-tile__hammer is-hit' : 'chop-tile__hammer'}
+        className={hits ? 'ctl-chop__hammer is-hit' : 'ctl-chop__hammer'}
       >
         <Hammer strokeWidth={1.75} />
       </span>
-      <span className="chop-tile__title">
+      <span className="ctl-chop__title">
         {held ? `Swing to ${label}!` : 'Hold, then swing'}
       </span>
       <small>

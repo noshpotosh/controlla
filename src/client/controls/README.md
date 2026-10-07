@@ -34,6 +34,8 @@ The binary frame supports **one resolved motion vector**: at most one action may
 
 Motion settings belong to the input requirement, for example `aim: { prefer: 'pointer', fallback: 'aim-pad', motion: { bounds: { left: 0.1, top: 0.1, right: 0.9, bottom: 0.9 }, anchor: false } }`. Each registered definition validates and fills its defaults. Repeated actions using the same motion type need identical settings because configuration stores settings per type. Jolt supplies a directional impulse and has no button substitute; a required jolt with unavailable motion fails resolution explicitly.
 
+The unused `slider`, `dial`, `text` and `draw-canvas` types and legacy widget container are retired. Obsolete layout JSON produces a retirement error; replace those items with supported controls. Gallery and designer touch choices derive only from registered definitions. Motion surfaces and styles live in `motion-views`, separately from headless metadata/processors.
+
 The designer shows which games use each layout, and flags inputs a layout can't satisfy. The test suite checks this for every game too.
 
 Games receive semantic input through `GameInput`:

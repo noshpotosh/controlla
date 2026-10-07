@@ -8,6 +8,7 @@ import type { MotionControlPort } from '../../controls/motion/contracts.ts';
 import type { MotionSnapshot } from '../../controls/motion/contracts.ts';
 import {
   channelOf,
+  kindOf,
   PRESS_SLOTS,
   usesPressSlot,
 } from '../../controls/registry.ts';
@@ -98,7 +99,8 @@ export class ControllerInput {
       !config ||
       config.schemaVersion !== 2 ||
       !Array.isArray(config.widgets) ||
-      config.widgets.length > 24
+      config.widgets.length > 24 ||
+      config.widgets.some((widget) => !widget || !kindOf(widget.type))
     )
       return false;
     const changed =

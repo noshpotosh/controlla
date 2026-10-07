@@ -18,16 +18,12 @@ export type WidgetType =
   | 'stick'
   | 'aim-pad'
   | 'swipe-pad'
-  | 'draw-canvas'
-  | 'slider'
-  | 'dial'
   | 'hold-meter'
   | 'tilt'
   | 'shake'
   | 'chop'
   | 'jolt'
-  | 'pointer'
-  | 'text';
+  | 'pointer';
 export interface Widget {
   id: string;
   type: WidgetType;
@@ -146,16 +142,7 @@ export type Channel = 'press' | 'value' | 'both';
  * The shape of what a control emits. A layout may swap one control for
  * another only when the kinds match (a D-pad for a stick, never a button).
  */
-export type OutputKind =
-  | 'vector'
-  | 'press'
-  | 'swipe'
-  | 'charge'
-  | 'scalar'
-  | 'angle'
-  | 'text'
-  | 'stroke'
-  | 'impulse';
+export type OutputKind = 'vector' | 'press' | 'swipe' | 'charge' | 'impulse';
 
 /**
  * The silhouette a control's frame takes inside its cell. `circle` is the
@@ -259,13 +246,6 @@ export interface HoldOutput {
   released: boolean;
 }
 
-export interface StrokeOutput {
-  x: number;
-  y: number;
-  pressure: number;
-  phase: 'move';
-}
-
 export type JoltOutput = { strength: number } & (
   | {
       kind: 'translation';
@@ -276,9 +256,7 @@ export type JoltOutput = { strength: number } & (
 
 export type ControlValue =
   | number
-  | string
   | Vector
   | SwipeOutput
   | HoldOutput
-  | StrokeOutput
   | JoltOutput;

@@ -49,9 +49,3 @@
 .ctl-cell__turn[data-rotation='270'] {
   rotate: 270deg;
 }
-
-/* Legacy widgets (not yet in the library) fill their cell. */
-.ctl-cell__turn > .widget {
-  position: absolute;
-  inset: 0;
-}

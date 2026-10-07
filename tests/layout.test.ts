@@ -525,3 +525,32 @@ void test('layouts saved before chop existed still load, with chop off', () => {
   assert.equal(isControllerLayout({ ...older, motion: withoutShake }), false);
   assert.equal(!!layouts['aim-and-whack'].motion.chop, true);
 });
+
+void test('obsolete widget layouts fail parsing and validation with an explicit retirement message', () => {
+  for (const type of ['slider', 'dial', 'text', 'draw-canvas']) {
+    const obsolete = {
+      ...emptyLayout('obsolete-probe', 'Obsolete probe', 'portrait'),
+      items: [
+        { name: 'old', type, rotation: 0, rect: { x: 0, y: 4, w: 4, h: 4 } },
+      ],
+    };
+    assert.equal(isControllerLayout(obsolete), false);
+    assert.throws(
+      () => asControllerLayout(obsolete),
+      new RegExp(`"${type}" widget is retired`),
+    );
+    assert.ok(
+      validateLayout(obsolete as ControllerLayout).some((issue) =>
+        issue.message.includes('widget is retired'),
+      ),
+    );
+    const requirements = {
+      inputs: { old: { prefer: type, required: true } },
+    } as unknown as ControllerSpec;
+    assert.ok(
+      checkAssignment(requirements, obsolete as ControllerLayout).some(
+        (issue) => issue.message.includes('widget is retired'),
+      ),
+    );
+  }
+});

@@ -17,7 +17,12 @@ import {
 import { motionMetadata } from '../motion/metadata-registry.ts';
 import { isSideways } from './rotation.ts';
 
-import { isControlName, isMotion, menuRect } from './schema.ts';
+import {
+  isControlName,
+  isMotion,
+  menuRect,
+  retiredWidgetMessage,
+} from './schema.ts';
 
 export interface LayoutIssue {
   /** Index of the offending item, when the issue belongs to one. */
@@ -40,7 +45,9 @@ export function validateLayout(layout: ControllerLayout): LayoutIssue[] {
     if (!definitionFor(item.type))
       issues.push({
         item: i,
-        message: `${name}: "${item.type}" isn't a touch control. Motion inputs are switched on, not placed.`,
+        message:
+          retiredWidgetMessage(item.type) ??
+          `${name}: "${item.type}" isn't a touch control. Motion inputs are switched on, not placed.`,
       });
     if (!isControlName(item.name))
       issues.push({
@@ -130,6 +137,13 @@ export function checkAssignment(
 ): LayoutIssue[] {
   const issues: LayoutIssue[] = [];
   for (const [input, need] of Object.entries(spec.inputs)) {
+    const retired =
+      retiredWidgetMessage(need.prefer) ??
+      (need.fallback ? retiredWidgetMessage(need.fallback) : undefined);
+    if (retired) {
+      issues.push({ message: `${input}: ${retired}` });
+      continue;
+    }
     const name = boundName(spec, input),
       item = layout.items.find((i) => i.name === name),
       motionOn = isMotion(need.prefer) && layout.motion[need.prefer];

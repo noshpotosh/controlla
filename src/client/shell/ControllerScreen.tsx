@@ -5,7 +5,6 @@ import { Slider } from '@/components/ui/slider';
 import { RotateCcw } from 'lucide-react';
 import { ControllerSurface } from '../controls/ControllerSurface.tsx';
 import { useImmersive } from '../controls/kit/immersive.ts';
-import { LegacyWidget } from './LegacyWidget.tsx';
 import { ControllerMenu, StatusToast } from './ControllerMenu.tsx';
 import type {
   ShellView,
@@ -127,12 +126,6 @@ export function ControllerScreen({
           accent={accent}
           portFor={(w) => phone.portFor(w, v.config!.generation)}
           motionPortFor={(w) => phone.motionPortFor(w, v.config!.generation)}
-          fallback={(w) => (
-            <LegacyWidget
-              widget={w}
-              port={phone.portFor(w, v.config!.generation)}
-            />
-          )}
         >
           {menu}
         </ControllerSurface>

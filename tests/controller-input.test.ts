@@ -679,3 +679,17 @@ void test('motion ports bind detached identity and retire commands and observati
   replacement.command({ type: 'recenter' });
   assert.equal(replacement.getSnapshot().activations, 0);
 });
+
+void test('a current-schema configuration cannot reintroduce a retired widget', () => {
+  const f = fixture();
+  const previous = f.input.getConfiguration();
+  for (const type of ['slider', 'dial', 'text', 'draw-canvas']) {
+    const config = {
+      ...configuration(),
+      widgets: [{ id: 'old', action: 'old', label: 'Old', type }],
+    };
+    assert.equal(f.input.configure(config as ControllerConfig), false);
+    assert.deepEqual(f.input.getConfiguration(), previous);
+  }
+  f.input.dispose();
+});

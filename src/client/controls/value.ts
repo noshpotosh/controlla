@@ -26,11 +26,7 @@ export function parseControlValue(
     case 'vector': {
       if (!record(value) || !finite(value.x) || !finite(value.y))
         return undefined;
-      // Pointer coordinates may legitimately lie beyond the display edges.
-      if (
-        type !== 'pointer' &&
-        (!between(value.x, -1, 1) || !between(value.y, -1, 1))
-      )
+      if (!between(value.x, -1, 1) || !between(value.y, -1, 1))
         return undefined;
       if (
         type === 'dpad' &&
@@ -61,26 +57,6 @@ export function parseControlValue(
         between(value.charge, 0, 1) &&
         typeof value.released === 'boolean'
         ? { charge: value.charge, released: value.released }
-        : undefined;
-    case 'press':
-      // A chop carries its swing strength; a shake is a bare event.
-      if (type === 'chop') return between(value, 0, 1) ? value : undefined;
-      return type === 'shake' && value === 1 ? 1 : undefined;
-    case 'scalar':
-      return between(value, 0, 1) ? value : undefined;
-    case 'angle':
-      return finite(value) ? value : undefined;
-    case 'text':
-      return typeof value === 'string' && value.length <= 120
-        ? value
-        : undefined;
-    case 'stroke':
-      return record(value) &&
-        between(value.x, 0, 1) &&
-        between(value.y, 0, 1) &&
-        between(value.pressure, 0, 1) &&
-        value.phase === 'move'
-        ? { x: value.x, y: value.y, pressure: value.pressure, phase: 'move' }
         : undefined;
     default:
       return undefined;

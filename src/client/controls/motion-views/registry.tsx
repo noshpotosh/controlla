@@ -11,8 +11,8 @@ export interface MotionSurfaceProps {
 }
 function PointerSurface({ motion }: MotionSurfaceProps) {
   return (
-    <div className="widget">
-      <span className="widget-glyph">⊕</span>
+    <div className="ctl-motion">
+      <span className="ctl-motion__glyph">⊕</span>
       {motion && (
         <PointerPreview previewPoint={() => motion.getSnapshot().point} />
       )}
@@ -23,23 +23,23 @@ function PointerSurface({ motion }: MotionSurfaceProps) {
 }
 function TiltSurface() {
   return (
-    <div className="widget">
-      <span className="widget-glyph">↔</span>Tilt to steer
+    <div className="ctl-motion">
+      <span className="ctl-motion__glyph">↔</span>Tilt to steer
     </div>
   );
 }
 function ShakeSurface() {
   return (
-    <div className="widget">
-      <span className="widget-glyph">↯</span>Shake your phone
+    <div className="ctl-motion">
+      <span className="ctl-motion__glyph">↯</span>Shake your phone
     </div>
   );
 }
 function JoltSurface() {
   return (
-    <div className="widget">
-      <span className="widget-glyph">↯</span>Move or turn sharply to send an
-      impulse
+    <div className="ctl-motion">
+      <span className="ctl-motion__glyph">↯</span>Move or turn sharply to send
+      an impulse
     </div>
   );
 }
