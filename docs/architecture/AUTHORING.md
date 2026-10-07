@@ -1,12 +1,12 @@
 # Independent game authoring: Neon Harvest walkthrough
 
-Status: the current accepted authoring example is the sole production descriptor, **Neon Harvest**. Controller, shell, shared and [engine boundaries](ENGINE-OWNERSHIP.md) are implemented; **248 tests**, typecheck, project lint, and production build pass. Desktop observations, browser report-save limitations and remaining physical-device checks are recorded in the [validation ledger](../VALIDATION.md). The interfaces remain repository-local and versioned with the application. Read the [baseline/provenance](BASELINE.md), [decisions/evidence](DECISIONS-EXPERIMENTS.md), and [meta-plan](../ARCHITECTURE-META-PLAN.md).
+Status: this walkthrough uses **Neon Harvest**; the production catalog also includes **Whack-a-Mole**. Controller, shell, shared and [engine boundaries](ENGINE-OWNERSHIP.md) are implemented; **248 tests**, typecheck, project lint, and production build pass. Desktop observations, browser report-save limitations and remaining physical-device checks are recorded in the [validation ledger](../VALIDATION.md). The interfaces remain repository-local and versioned with the application. Read the [baseline/provenance](BASELINE.md), [decisions/evidence](DECISIONS-EXPERIMENTS.md), and [meta-plan](../ARCHITECTURE-META-PLAN.md).
 
 ## Run the authoring environment
 
 Run `npm run game:dev` and open `/dev/game-harness`. Simulated Ada, Bea and Cy need no rooms, signaling process, phones or permissions. The route is development-only. Pause, step 20 ms, finish a round, disconnect/return a player, or abort. The capability selector chooses touch fallback or simulated motion; host and delayed remote canvases consume the same encoded snapshot boundary. Cursor input on the host canvas and its discrete action are development input, not physical sensor evidence.
 
-Game/mode choices come from the catalog. The current catalog contains only `neon-harvest`, with default mode `standard`; modes remain declarative for future descriptors. `npm run game:test` runs architecture wrappers, including discovered colocated game tests; `npm test` runs the full suite.
+Game/mode choices come from the catalog. The current catalog contains `neon-harvest` and `whack-a-mole`, each with default mode `standard`; modes remain declarative for future descriptors. `npm test` directly discovers every `.test.ts` and `.test.tsx` beneath `tests` and `src`, once per file. `npm run game:test` selects game-owned and harness-owned suites, architecture and game-prefixed suites, and the engine-round, live-catalog, neon-runner, replay and test-discovery suites. Both commands exclude dependencies, symlinks, worktrees and generated/build output; standalone benchmark/replay scripts are not test files. Inspect exact file selection with `npm test -- --list` or `npm run game:test -- --list`.
 
 ## Author the game
 

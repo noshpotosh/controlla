@@ -13,13 +13,13 @@
     "lint": "oxlint",
     "format": "oxfmt",
     "signal": "tsx server/index.ts",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "node --import tsx scripts/run-tests.ts",
     "typecheck": "tsc --noEmit --incremental false",
     "benchmark": "tsx tests/benchmark.ts",
     "replay": "tsx tests/replay.ts",
     "control:new": "tsx scripts/new-control.ts",
     "game:dev": "vinext dev",
-    "game:test": "tsx --test tests/architecture-*.test.ts"
+    "game:test": "node --import tsx scripts/run-tests.ts --game"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

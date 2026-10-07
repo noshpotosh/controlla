@@ -90,11 +90,12 @@ recorded here before shared implementation proceeds.
 - Resolve latest checkpoint and backup equality with `git log -1` and
   `git rev-parse HEAD @{upstream}`; latest commit/push result is reported in the
   chat handoff to avoid self-referential doc commits.
-- No implementation checkpoint 1–6 complete.
+- Checkpoint 1 test discovery is complete (independent of shared API approval).
+- Shared implementation checkpoints 2–6 remain incomplete.
 
 ## Remaining work and evidence
 
-After user contract review: discovery repair, motion registration and retirement,
+After user contract review: motion registration and retirement,
 jolt, lifecycle/roles, feedback/sound, replay/conformance, game scaffold and final
 integration/documentation. Execute the full required test/typecheck/lint/build
 gates at each appropriate checkpoint and final acceptance.
@@ -105,3 +106,40 @@ haptic behavior and hosted-network evidence: not measured. Synthetic traces or
 passing tests cannot certify those checks. No deployment, merge, new production
 game, art overhaul or party-session work performed. Milestone 1 cannot close from
 this baseline evidence alone.
+
+## Checkpoint 1: direct test discovery
+
+Implemented independently while contract review remains pending. No shared API,
+protocol, game rules or runtime behavior changed.
+
+- `scripts/test-discovery.ts` recursively enumerates only tests/src, sorts paths,
+  selects .test.ts/.test.tsx, skips dependencies/worktrees/artifact directories
+  and does not follow symlinks.
+- `scripts/run-tests.ts` passes each file once to the Node test runner with tsx;
+  npm test and game:test use it. `--list` exposes the exact file selection.
+- Removed architecture-examples.test.ts, whose import wrapper would duplicate
+  game and harness suites under direct discovery.
+- Game selection includes all game/harness-owned tests, architecture-/game-
+  prefixed suites, engine-round, live-catalog, neon-runner, replay and discovery
+  tests. Documented selection in the authoring guide.
+- Regression uses disposable source roots and the actual copied runner. It proves
+  newly added TSX tests are discovered/executed, files execute exactly once,
+  artifact/symlink exclusions work and a deliberately failing test returns exit 1.
+  The nested fixture clears Node's inherited test-context environment so it runs
+  as an independent runner. An initial fixture failed without that isolation;
+  fixed before checkpoint validation.
+
+| Command | Result |
+| --- | --- |
+| `npm test` | PASS: 377 tests, 0 failures (baseline 375 plus 2 discovery regressions) |
+| `npm run game:test` | PASS: 139 tests, 0 failures; expanded beyond former architecture wrapper selection |
+| `npm run typecheck` | PASS |
+| `npm run lint` | PASS |
+| `npm run build` | PASS, client/SSR/RSC production boundaries verified |
+| `git diff --check` | PASS |
+
+Logs: /private/tmp/milestone-1-discovery-{0,1,2,3,4}.log. The test runner change
+revealed no additional failing production tests. Baseline colocated suites remain
+present without duplication. No browser/physical-device/hosted-network evidence
+is asserted by this tooling checkpoint. Next dependent step is motion registration,
+which remains behind the supplied plan's explicit contract-review gate.

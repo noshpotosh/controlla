@@ -1,6 +1,6 @@
 # Milestone 1 implementation handoff
 
-Status: prerequisite review prepared; shared-contract implementation awaits explicit user review.
+Status: prerequisite review prepared and checkpoint 1 discovery repair validated; shared-contract implementation awaits explicit user review.
 
 - Baseline: fetched `origin/develop` equals `4a885029d30bab8009ed6854d3aeba13a18166e0` on 2026-10-07.
 - Topic: `codex/milestone-1-foundation-1007`; review target: `develop` (task-specific override of AGENTS.md main default).
@@ -17,7 +17,7 @@ Status: prerequisite review prepared; shared-contract implementation awaits expl
 
 1. Read this handoff, the contract proposal and acceptance record. Inspect branch, worktree, staged/unstaged changes and upstream before writing.
 2. Record the user's explicit contract review with any amendments in the acceptance record. Do not infer it from the original request to implement the plan.
-3. Run checkpoint 1 test-discovery repair before changing shared APIs. Account for `tests/architecture-examples.test.ts`, which already imports the three colocated .test.ts suites: removing its import-based discovery is necessary to avoid duplicate execution.
+3. Checkpoint 1 is complete: npm test directly discovers every eligible test, game:test selects the documented game suites, and the old import wrapper is removed. Validation: 377 full tests, 139 game tests, typecheck, lint and build pass. Continue checkpoint 2 only after contract approval.
 4. Continue checkpoints sequentially; update acceptance, inspect explicit staged files, commit, review outgoing commits and push the topic branch after coherent improvements.
 5. Review against develop; do not merge or deploy. Do not mark milestone complete without required evidence. Recover this prerequisite from the topic branch's first commit; use git log for its exact ID.
 
