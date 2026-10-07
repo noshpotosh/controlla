@@ -61,17 +61,36 @@ export interface ValidatedMotionSample extends MotionSnapshot {
   // Null unless the gravity-removed device vector is finite and fresh.
   readonly linearAcceleration: Vec3 | null; // m/s², device axes
 }
+export interface AimLockPolicy {
+  rate: number;
+  calmMs: number;
+  maxMs: number;
+  lookbackMs: number;
+}
 export type MotionCommand =
   | { type: 'press'; down: boolean; at: number }
   | { type: 'cancel'; at: number }
   | { type: 'recenter'; at: number }
-  | { type: 'sensitivity'; value: number; at: number };
+  | { type: 'sensitivity'; value: number; at: number }
+  | { type: 'aim-lock'; at: number; policy: AimLockPolicy }
+  | { type: 'aim-release'; at: number; immediate?: true };
 export type MotionOutput =
   | { type: 'value'; value: ControlValue; at: number }
-  | { type: 'activation'; value?: ControlValue; at: number }
-  | { type: 'aim-lock'; captureAt: number }
-  | { type: 'aim-release'; at: number };
-export interface MotionProcessor<P extends object> {
+  | {
+      type: 'activation';
+      value?: ControlValue;
+      at: number;
+      capture?: 'locked-aim';
+    }
+  | {
+      type: 'aim-lock';
+      captureAt: number;
+      policy: AimLockPolicy;
+    }
+  | { type: 'aim-release'; at: number; immediate?: true }
+  | { type: 'held'; down: boolean }
+  | { type: 'haptic'; ms: number };
+export interface MotionInputProcessor<P extends object> {
   configure(config: Readonly<P>): void;
   process(sample: ValidatedMotionSample): readonly MotionOutput[];
   command(command: MotionCommand): readonly MotionOutput[];
@@ -88,7 +107,7 @@ export interface MotionDefinition<P extends object> {
   validateConfig(value: unknown): Validated<P>;
   parseValue(value: unknown): ControlValue | undefined;
   parseActivation(value: unknown): ControlValue | undefined;
-  create(clocks: MotionClocks): MotionProcessor<P>;
+  create(clocks: MotionClocks): MotionInputProcessor<P>;
 }
 ```
 
@@ -107,6 +126,14 @@ controls-owned composition to the registered aim source. Chop preserves its
 releases capture and discards pending gestures without activation. Keep the
 current immediate slow aim after release and rebound suppression; the old
 ownership doc's settling description is not a license to change the code.
+
+Implementation refinement (2026-10-07): aim outputs now carry the capture/rebound
+policy as data, and registered aim processors receive equivalent generic commands.
+Held state and haptic requests are semantic outputs; activation can request the
+previous locked aim after release. This preserves chop behavior without requiring
+a chop branch in composition or transport. Cancellation requests immediate release
+with no release grace. The existing raw sensor MotionProcessor keeps its name;
+the new semantic interface is MotionInputProcessor.
 
 UI registration belongs separately in controls presentation (React is allowed
 there). Its concrete signatures use React ComponentType and existing ControlPort:

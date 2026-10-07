@@ -191,3 +191,33 @@ Still incomplete: registered processing of pointer/tilt/shake/chop, generic shel
 presentation/commands and settings, legacy removal, config/protocol migration,
 live jolt registration and ingress. Checkpoint 2 remains open. Pure core saved at
 fb53ed6 and pushed; this additive provider checkpoint preserves that recovery point.
+
+## Checkpoint 2c: existing motion processor extraction
+
+Added pure registered definitions and processors for pointer, tilt, shake and
+chop. Provider lifecycle remains unchanged. Pointer retains gyro/history/filter
+implementation, fresh-sample integration, bounded aim, calibration, generic
+capture/release and rebound suppression. Tilt retains signed calibration and
+stale neutralization. Shake retains its magnitude threshold and strict 600 ms
+recognition cooldown. Chop retains held capture, onset dating, release grace,
+epoch recovery and follow-through/return rearming. Cancellation emits immediate
+release and no activation; processors stay inert after disposal.
+
+The documented semantic contract now carries aim-lock policy, locked-aim capture,
+held state and haptic request data, so composition can route these effects without
+input-specific branches. The interface name is MotionInputProcessor, avoiding the
+existing raw fusion processor name. These are preservation-driven refinements of
+the approved interface; they do not introduce another approval gate.
+
+Validation: full suite 398/398, game:test 139/139, production build passed.
+Focused registered-motion suite 11/11. Typecheck initially caught a redundant
+assertion that made a test's error branch unreachable; removed the assertion and
+reran focused tests/typecheck/lint successfully. No production code changed after
+the full suite/build. Logs: /private/tmp/milestone-registered-motion-{tests,games,build}.log.
+
+This is a saved intermediate extraction, not the completed registration migration.
+The live controller still owns its existing processing. Next add generic registered
+composition and wire it into controller input, then move presentation/settings,
+retire legacy widgets, migrate configuration/protocol and enable jolt via the same
+registry. Checkpoint 2 and all later checkpoints remain open. No physical sensor,
+haptic, browser smoke or hosted-network claims are made by these pure tests.
