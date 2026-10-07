@@ -1,6 +1,6 @@
 # Milestone 1 implementation handoff
 
-Status: prerequisite review prepared and checkpoint 1 discovery repair validated; shared-contract implementation awaits explicit user review.
+Status: prerequisite review prepared and checkpoint 1 discovery repair validated; shared-contract proposal approved by the requesting user; checkpoint 2a pure contracts/impulse core validated; checkpoint 2 integration in progress.
 
 - Baseline: fetched `origin/develop` equals `4a885029d30bab8009ed6854d3aeba13a18166e0` on 2026-10-07.
 - Topic: `codex/milestone-1-foundation-1007`; review target: `develop` (task-specific override of AGENTS.md main default).
@@ -16,9 +16,9 @@ Status: prerequisite review prepared and checkpoint 1 discovery repair validated
 ## Resume instructions
 
 1. Read this handoff, the contract proposal and acceptance record. Inspect branch, worktree, staged/unstaged changes and upstream before writing.
-2. Record the user's explicit contract review with any amendments in the acceptance record. Do not infer it from the original request to implement the plan.
-3. Checkpoint 1 is complete: npm test directly discovers every eligible test, game:test selects the documented game suites, and the old import wrapper is removed. Validation: 377 full tests, 139 game tests, typecheck, lint and build pass. Continue checkpoint 2 only after contract approval.
-4. Continue checkpoints sequentially; update acceptance, inspect explicit staged files, commit, review outgoing commits and push the topic branch after coherent improvements.
+2. Contract review is recorded as approved in the acceptance record (2026-10-07, “I love it! Let’s continue”).
+3. Checkpoint 1 is complete: npm test directly discovers every eligible test, game:test selects the documented game suites, and the old import wrapper is removed. Validation: 377 full tests, 139 game tests, typecheck, lint and build pass. Proceed with checkpoint 2 under the recorded approval.
+4. Checkpoint 2a saves pure registration contracts and the isolated directional impulse core (385 full / 139 game tests, typecheck, lint and build pass). Next migrate existing motion inputs and provider projection, then wire jolt via registration; it is not live yet. Continue checkpoints sequentially; update acceptance, inspect explicit staged files, commit, review outgoing commits and push the topic branch after coherent improvements.
 5. Review against develop; do not merge or deploy. Do not mark milestone complete without required evidence. Recover this prerequisite from the topic branch's first commit; use git log for its exact ID.
 
 ## Supplied implementation plan (preserved)

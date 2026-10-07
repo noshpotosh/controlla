@@ -76,10 +76,11 @@ protocol-mismatch reload guidance/stopped retries. It removes feature negotiatio
 and mixed-version support. No protocol/runtime source has changed. The API review
 remains pending; this clarification amends compatibility scope only.
 
-**Approval status: PENDING.** No shared-contract/runtime implementation authorized
-past this explicit gate yet. Original request to implement the plan is not recorded
-as approval of signatures drafted afterward. User amendments/approval must be
-recorded here before shared implementation proceeds.
+**Approval status: APPROVED.** On 2026-10-07 the requesting user reviewed the
+proposal and replied: “I love it! Let’s continue”. This records approval of the
+shared-contract proposal and coordinated protocol 5 migration without older-client
+support. Proceed with checkpoints 2–6; any implementation refinements must preserve
+the approved semantics and be documented with their validation evidence.
 
 ## Checkpoints and remote backup
 
@@ -143,3 +144,29 @@ revealed no additional failing production tests. Baseline colocated suites remai
 present without duplication. No browser/physical-device/hosted-network evidence
 is asserted by this tooling checkpoint. Next dependent step is motion registration,
 which remains behind the supplied plan's explicit contract-review gate.
+
+## Checkpoint 2a: approved pure motion contracts and impulse core
+
+Approval is recorded above. Added controls-owned registration contracts for
+availability, settings validation, semantic parsing, injected clocks and lifecycle.
+The interface is named MotionInputProcessor to distinguish it from the existing
+raw sensor MotionProcessor; ownership and semantics match the approved proposal.
+
+The jolt owning module implements finite bounded direction/strength values,
+device/controller reflection and quarter turns (including angular handedness),
+gravity-removed acceleration with a calm gravity-estimation fallback, normalized
+channel/axis tie breaking, consecutive calm plus refractory rearming, epoch/time/
+sequence safety, cancellation and permanent disposal. Availability requires both
+granted sensors. Eight pure synthetic trace tests pass; no physical tuning claim.
+
+Validation: npm test 385/385; game:test 139/139; typecheck, lint and production
+build pass. Logs: /private/tmp/milestone-1-motion-core-{0,1,4}.log. Targeted jolt
+suite: 8/8. Initial lint caught an unused test type import; removed before gates.
+
+This is a saved intermediate implementation, not checkpoint 2 completion. The
+new processor is not registered for live resolution/processing yet. Migrate
+pointer/tilt/shake/chop behind the seam first, then wire jolt through registration.
+Provider sample projection, configuration schema 2/protocol 5, generic shell
+surfaces/settings/commands, legacy retirement and production ingress conformance
+remain required. No protocol source changed yet. Existing gameplay remains on
+its current path until the migration is integrated and validated.

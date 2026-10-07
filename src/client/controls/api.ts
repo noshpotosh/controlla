@@ -25,6 +25,7 @@ export type WidgetType =
   | 'tilt'
   | 'shake'
   | 'chop'
+  | 'jolt'
   | 'pointer'
   | 'text';
 export interface Widget {
@@ -175,7 +176,8 @@ export type OutputKind =
   | 'scalar'
   | 'angle'
   | 'text'
-  | 'stroke';
+  | 'stroke'
+  | 'impulse';
 
 /**
  * The silhouette a control's frame takes inside its cell. `circle` is the
@@ -286,10 +288,19 @@ export interface StrokeOutput {
   phase: 'move';
 }
 
+export type JoltOutput = { strength: number } & (
+  | {
+      kind: 'translation';
+      direction: 'left' | 'right' | 'up' | 'down' | 'forward' | 'back';
+    }
+  | { kind: 'rotation'; axis: 'x' | 'y' | 'z'; sign: -1 | 1 }
+);
+
 export type ControlValue =
   | number
   | string
   | Vector
   | SwipeOutput
   | HoldOutput
-  | StrokeOutput;
+  | StrokeOutput
+  | JoltOutput;
