@@ -69,11 +69,12 @@ Includes exact proposed registration/lifecycle/feedback data signatures, coordin
 and gravity rules, jolt thresholds, completion cutoff, fixed roles, deterministic
 dependencies, sound ownership, wire compatibility and migrations for both games.
 
-Compatibility proposal: retain protocol 4 / 47-byte binary frame with bounded
-feature negotiation and reject unsupported peers before new-feature rounds.
-The earlier possible protocol 5 migration was superseded during analysis by this
-conditional protocol 4 design. Implementation must test negotiation; if safe
-compatibility cannot be demonstrated, return for a separately reviewed bump.
+User clarification (2026-10-07): older clients do not need support because the
+application is not released. The revised proposal uses protocol 5, ControllerConfig
+schema 2 and RoundSnapshot schema 2, retaining the 47-byte binary frame and existing
+protocol-mismatch reload guidance/stopped retries. It removes feature negotiation
+and mixed-version support. No protocol/runtime source has changed. The API review
+remains pending; this clarification amends compatibility scope only.
 
 **Approval status: PENDING.** No shared-contract/runtime implementation authorized
 past this explicit gate yet. Original request to implement the plan is not recorded
@@ -84,10 +85,12 @@ recorded here before shared implementation proceeds.
 
 - Checkpoint 0: documentation/ownership prerequisite prepared; all baseline
   automated gates pass. The first topic commit saves these review artifacts.
-- Resolve exact commit with `git log -1` or the first commit after baseline; the
-  commit ID is reported in the chat handoff to avoid self-referential doc commits.
-- Remote backup status: pending initial push at time of this record; update after
-  push. No implementation checkpoint 1–6 complete.
+- Initial prerequisite checkpoint: `d10b9b6`, successfully pushed to origin with
+  upstream tracking. An additive follow-up records the no-older-clients clarification.
+- Resolve latest checkpoint and backup equality with `git log -1` and
+  `git rev-parse HEAD @{upstream}`; latest commit/push result is reported in the
+  chat handoff to avoid self-referential doc commits.
+- No implementation checkpoint 1–6 complete.
 
 ## Remaining work and evidence
 

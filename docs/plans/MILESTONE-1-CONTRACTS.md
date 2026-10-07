@@ -14,7 +14,7 @@ ownership. Runtime changes must follow approval and test-discovery repair.
 | Sensor permission / epochs | `controls/motion/provider.ts`, `processor.ts`, `contracts.ts` | retain lifecycle; expose detached validated linear acceleration |
 | Phone emission | `runtime/controller-input/controller-input.ts` | generic registered processors and controls-owned commands |
 | Authority ingress | `engine/session.ts` input/control/press; `engine/round.ts` | role requirements, enabled state, cutoff admission |
-| Routing / phone admission | `runtime/session-routing/session-router.ts` | authenticated feedback and negotiated features |
+| Routing / phone admission | `runtime/session-routing/session-router.ts` | authenticated feedback and protocol admission |
 | Identity / clock | `engine/progress.ts`, `engine/session.ts`, `engine/timing.ts` | injected deterministic defaults and fixtures |
 | Snapshots / display | `engine/snapshots.ts`, `replication.ts`, screen adapters | timing policy and fixed roles; existing JSON budgets |
 | Playback | `runtime/browser/sounds.ts`, browser resources and display playback | game-owned cues, shared synthesis and disposal |
@@ -134,12 +134,14 @@ Controls own surfaces, calibration and settings. The shell receives a generic
 controls surface/settings slot and a bounded phone feedback view, never chopCount
 or holdAim. Captured ports/commands retire with config and input epochs.
 
-Keep existing `ControllerConfig.sensors` fields for migrated inputs and normalize
-them inside controls-owned registrations. Add optional
-`motion?: Partial<Record<MotionInput, Record<string, unknown>>>` to schema 1 for
-extension settings (jolt first); validate each entry using its definition. Saved
-schema 2 layouts missing `motion.jolt` normalize it to false, as missing chop
-already does. No per-input runtime/shell branches are admitted.
+Replace per-input ControllerConfig.sensors flags with the generic registered
+settings map `motion: Partial<Record<MotionInput, Record<string, unknown>>>` in
+ControllerConfig schema 2. A present entry enables that registered input; absent
+means disabled. Each definition validates its entry and produces its own defaults.
+No compatibility projection for old sensor flags is required. Keep non-motion
+config fields and binary transport unchanged. Saved layout schema 2 remains a
+local authoring format: missing motion.jolt normalizes to false. Reject obsolete
+widget layouts clearly. No per-input runtime/shell branches are admitted.
 
 ### Jolt output and deterministic tuning
 
@@ -233,11 +235,12 @@ export interface GameTickResult {
 ```
 
 Timing durations are positive finite safe integers <=24 hours. Untimed UI hides
-countdown-to-end but retains the start countdown. Add optional timing and
-assignments metadata to RoundSnapshot schema 1; absence means legacy timed/default
-roles. Updated authorities always emit it. Add optional `roundId` and `role` to
-configuration messages outside the existing config object for fixed-round
-presentation and feedback admission.
+countdown-to-end but retains the start countdown. RoundSnapshot schema 2 requires
+`timing: RoundTiming` and fixed `assignments: ParticipantAssignment[]`; validate
+both and include them in the same 47 KiB envelope budget. Configuration messages
+add `roundId: string | null` and `role: string | null` outside the config object
+for fixed-round presentation and feedback admission (null in lobby). No old
+snapshot/configuration schema support is required.
 
 Completion is accepted only from a running authoritative tick, after successful
 result/state validation. Its effective cutoff is min(tick.time, original
@@ -282,8 +285,9 @@ export interface FeedbackMessage {
 }
 ```
 
-Descriptor presentation.phoneFeedback declares use before preparation so older
-phones can be rejected safely. Absent fields preserve current status/enabled;
+Descriptor presentation.phoneFeedback declares feedback use before preparation.
+Feedback from an undeclared game is invalid. Absent fields preserve current
+status/enabled;
 initial state is empty/true. Validate game-produced feedback before applying it;
 unknown players, invalid types/bounds or oversized tick feedback fail the round
 without awards. At most one update per participant per tick (max eight).
@@ -396,48 +400,43 @@ peak eight-player states. Exact scoring remains game-owned. Dynamic catalog
 checks must have independent positive expectations for Neon Harvest and
 Whack-a-Mole and negative fixtures for omitted games/leaked tools.
 
-## 6. Wire compatibility decision
+## 6. Coordinated development protocol migration
 
-**Proposed decision: retain application protocol 4 and binary frame version 1
-(47 bytes), with explicit optional feature negotiation for new semantics.**
-No protocol bump is required if the following admission rules are implemented
-and tested. A protocol 5 bump is the fallback only if those rules cannot preserve
-safe operation; it would require a separate reviewed migration.
+**Proposed decision: application protocol 5, binary frame version 1 (47 bytes),
+ControllerConfig schema 2 and RoundSnapshot schema 2. No older-client support.**
 
-```ts
-export type FoundationFeature =
-  | 'motion-registration-v1'
-  | 'round-roles-v1'
-  | 'round-timing-v1'
-  | 'phone-feedback-v1';
-// Optional features?: readonly FoundationFeature[] on hello and venueHello.
-// Host hello/phase response adds optional supportedFeatures.
-```
+User clarification on 2026-10-07: this application is not released and older
+clients do not need support. This supersedes the earlier feature-negotiation
+proposal. Do not implement feature flags, old-host/new-phone combinations,
+old sensor-config projections or old snapshot defaults.
 
-Evidence: current Message is extensible JSON; snapshots validate known fields
-and tolerate extra fields; optional chop already demonstrates sensor additions.
-Existing games keep supported types, numeric endAt, same default roles and their
-current timed behavior. Old peers can still use those legacy rounds. They do
-not understand jolt (absent WidgetType/registry), feedback (no handler) or hidden
-untimed countdown/role UI. Unknown features are therefore never assumed.
+Concrete incompatible changes: a generic motion settings map replaces the
+per-input sensor flags; directional jolt introduces a new atomic semantic shape;
+phone feedback requires controls cancellation/enabled enforcement; snapshots
+require timing/assignment metadata so untimed presentation and fixed roles can
+be rendered correctly. Old clients have no jolt/feedback handler and would use
+obsolete config/snapshot contracts. A protocol bump coordinates the whole
+application rather than supporting those incompatible semantics under version 4.
 
-Host derives required features before sending configs: jolt requires registered
-motion; setup requires role support; untimed timing requires timing support;
-phoneFeedback requires feedback support. Phones need applicable input/role/
-feedback features; every display needs timing/role features for those rounds.
-Feature-less peers are legacy, not fully compatible. Reject preparation with an
-explicit reload-required unavailable result before disturbing the prior round.
-Do not auto-substitute a button, send partial foundation configs, or retry the
-rejected round indefinitely. Updated clients paired with old hosts continue
-legacy behavior using absent supportedFeatures. Existing protocol-mismatch reload
-message and stopped connection retries remain untouched. Negotiation tests must
-cover old-host/new-phone, new-host/old-phone/display and absent/malformed features.
-No claim of safe mixed-version foundation play is made until these tests pass.
+Implementation migration:
 
-If retaining protocol 4 would demand unbounded compatibility branches, stop and
-present the concrete incompatibility plus protocol 5 migration for review; do
-not silently bump. The only compatibility branching allowed is generic feature
-admission and legacy defaults, never game-ID or jolt-specific framework logic.
+1. Change APP_PROTOCOL_VERSION from 4 to 5 in src/shared/app-protocol.ts and update
+   protocol fixtures/docs. Client, signaling service and all participants run
+   the same new build. Do not change 47-byte input encoding or frame version 1.
+2. Use the existing protocol-mismatch code, reload message and stopped retries;
+   mismatch tests verify that stale clients cannot join rooms or establish peers.
+   Do not add feature negotiation or automatic old-client substitution.
+3. Restart the development frontend and signaling service, reload every screen
+   and phone, then create/rejoin a room. Existing in-memory sessions are not
+   migrated. No persisted game/session data requires conversion.
+4. Browser smoke checks use one current build. Tests reject obsolete config/
+   snapshot schemas and validate protocol mismatch guidance without retry loops.
+5. Keep supported saved schema 2 authoring layouts readable with optional new
+   motion defaults; that is local artifact handling, not older-client support.
+
+The user clarification authorizes dropping old-client compatibility; exact
+shared API signatures still require the plan's prerequisite review before
+implementation. No protocol source has been changed in this checkpoint.
 
 ## Migration examples for review
 
@@ -481,16 +480,16 @@ Directional motion proof requirement:
  controls: { inputs: { move: { required: true, prefer: 'jolt' } } },
 ```
 
-No fallback: unavailable devices/legacy clients receive a clear preparation
-error. Role requirements can include this input using the same resolver.
+No fallback: unavailable devices receive a clear preparation error.
+Clients with an obsolete protocol are rejected before joining. Role requirements can include this input using the same resolver.
 Scaffold output starts with one timed/default role game and its own folder,
 renderer, tests and catalog entry; no new production game is added as a proof.
 
 ## Review record
 
 Review requested after prerequisite evidence and checkpoint are saved. Approval
-must cover the signatures, feature-negotiated protocol 4 compatibility, jolt
-coordinate/tuning defaults, lifecycle cutoff, fixed preparation roster, feedback
+must cover the signatures, coordinated protocol 5 migration without older-client
+support, jolt coordinate/tuning defaults, lifecycle cutoff, fixed preparation roster, feedback
 bounds/enforcement, sound and deterministic fixtures. Amendments are recorded in
 `docs/acceptance/MILESTONE-1.md` before implementation. Physical sensors, haptics,
 browser and hosted-network evidence remain separate gates.

@@ -5,9 +5,11 @@ Status: prerequisite review prepared; shared-contract implementation awaits expl
 - Baseline: fetched `origin/develop` equals `4a885029d30bab8009ed6854d3aeba13a18166e0` on 2026-10-07.
 - Topic: `codex/milestone-1-foundation-1007`; review target: `develop` (task-specific override of AGENTS.md main default).
 - Worktree: `/private/tmp/controlla-milestone-1`.
+- Initial prerequisite checkpoint `d10b9b6` is pushed to origin. Latest checkpoint: use `git log -1`; verify backup with `git rev-parse HEAD @{upstream}`.
 - Original checkout and other worktrees remain untouched.
 - Dependencies reuse the original checkout's ignored node_modules symlink; no dependency changes.
 - Accountable Foundation, Inputs and Game kit owner/reviewer: requesting user, repository owner `@noshpotosh`, verified by GitHub repository API.
+- User clarification: no older-client support; proposal uses a coordinated protocol 5 migration.
 - Contract proposal: [MILESTONE-1-CONTRACTS.md](MILESTONE-1-CONTRACTS.md).
 - Commands, evidence, limitations and approval: [acceptance record](../acceptance/MILESTONE-1.md).
 
