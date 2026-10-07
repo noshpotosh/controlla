@@ -1,7 +1,7 @@
 import { timingDuration } from '../../engine/timing-policy.ts';
 import { SnapshotEncoder, SnapshotTimeline } from '../../engine/replication.ts';
 import { channelOf, usesPressSlot } from '../../controls/registry.ts';
-import type { ControllerConfig } from '../../controls/api.ts';
+import type { Capabilities, ControllerConfig } from '../../controls/api.ts';
 import type { WireSnapshot } from '../../engine/replication.ts';
 import type {
   Action,
@@ -16,6 +16,7 @@ import { resolveController } from '../../engine/input.ts';
 import { capabilityProfile } from './input.ts';
 import { SessionProgress } from '../../engine/progress.ts';
 import { RoundRunner } from '../../engine/round.ts';
+import { prepareAssignments } from '../../engine/round-setup.ts';
 import { snapshotPolicy } from '../../engine/snapshots.ts';
 export { snapshotPolicy } from '../../engine/snapshots.ts';
 
@@ -50,6 +51,8 @@ export interface HarnessOptions {
   progress?: SessionProgress;
   motion?: boolean;
   mode?: string;
+  seed?: number;
+  capabilities?: Readonly<Record<string, Capabilities>>;
   presentationDelay?: number;
   remoteDelay?: number;
 }
@@ -101,17 +104,33 @@ export class GameHarness<S extends object = object> {
       throw new Error(
         'Presentation delay must cover the remote delay plus one snapshot interval.',
       );
+    this.progress = options.progress ?? new SessionProgress();
+    const seed = options.seed ?? 3000;
+    const assignments = prepareAssignments(
+      descriptor,
+      options.mode ?? descriptor.defaultMode,
+      this.initialPlayers,
+      seed,
+    );
     this.configs = Object.fromEntries(
       this.initialPlayers.map((player) => [
         player.id,
         resolveController(
           descriptor,
-          capabilityProfile(options.motion ?? false),
+          options.capabilities?.[player.id] ??
+            capabilityProfile(options.motion ?? false),
+          1,
+          assignments.find((a) => a.playerId === player.id)!.controls,
         ),
       ]),
     );
-    this.progress = options.progress ?? new SessionProgress();
     this.runner = new RoundRunner(descriptor, this.progress, options.mode);
+    try {
+      this.runner.prepare(this.initialPlayers, seed, assignments);
+    } catch (error) {
+      this.runner.dispose();
+      throw error;
+    }
     this.displays = {
       host: new SnapshotTimeline(snapshotPolicy(descriptor)),
       remote: new SnapshotTimeline(snapshotPolicy(descriptor)),
@@ -130,12 +149,12 @@ export class GameHarness<S extends object = object> {
     return this.runner.error;
   }
   get startAt() {
-    return this.runner.roundId ? this.runner.startAt : 3000;
+    return this.runner.startAt || this.time + 3000;
   }
   get endAt() {
-    return this.runner.roundId
+    return this.runner.endAt
       ? this.runner.endAt
-      : 3000 + timingDuration(this.descriptor.timing);
+      : this.startAt + timingDuration(this.descriptor.timing);
   }
   load(): Promise<void> {
     this.loading ??= Promise.resolve(this.runner.load()).then(() => {

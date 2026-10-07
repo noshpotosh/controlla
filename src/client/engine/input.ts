@@ -4,15 +4,19 @@ import type {
   Capabilities,
   ControllerConfig,
   ControllerSpec,
+  ControllerRequirements,
 } from '../controls/api.ts';
 import type { GameDescriptor } from '../api/index.ts';
 
-export function controllerSpec(game: GameDescriptor): ControllerSpec {
+export function controllerSpec(
+  game: GameDescriptor,
+  controls: ControllerRequirements = game.controls,
+): ControllerSpec {
   return {
     id: game.id,
     name: game.name,
-    inputs: game.controls.inputs,
-    ...(game.controls.controller && { controller: game.controls.controller }),
+    inputs: controls.inputs,
+    ...(controls.controller && { controller: controls.controller }),
   };
 }
 
@@ -20,6 +24,11 @@ export function resolveController(
   game: GameDescriptor,
   capabilities: Capabilities = defaultCapabilities(),
   generation = 1,
+  controls: ControllerRequirements = game.controls,
 ): ControllerConfig {
-  return resolveConfig(controllerSpec(game), capabilities, generation);
+  return resolveConfig(
+    controllerSpec(game, controls),
+    capabilities,
+    generation,
+  );
 }

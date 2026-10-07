@@ -76,7 +76,12 @@ function setup(t: TestContext) {
       f.advance(ms);
     },
     config(config: ControllerConfig) {
-      invoke('controllerMessage', { type: 'config', config });
+      invoke('controllerMessage', {
+        type: 'config',
+        roundId: null,
+        role: null,
+        config,
+      });
     },
   };
 }
@@ -300,15 +305,28 @@ void test('directional jolt resolves without a touch substitute and traverses li
   let delivered = p.messages.length;
   p.config(config);
   const deliver = () => {
-    for (const message of p.messages.slice(delivered))
-      host.control('a', message);
-    delivered = p.messages.length;
+    for (let pass = 0; pass < 10; pass++) {
+      const pending = p.messages.slice(delivered);
+      delivered = p.messages.length;
+      for (const message of pending) host.control('a', message);
+      const latest = configs.at(-1)!;
+      if (latest.generation !== p.runtime.view.config?.generation) {
+        p.config(latest); // Recovery retires the unavailable generation and requires its replacement ACK.
+        continue;
+      }
+      if (delivered === p.messages.length) return;
+    }
+    assert.fail('configuration recovery did not settle');
   };
   deliver();
   p.advance(20);
   host.tick();
   p.advance(3000);
   host.tick();
+  p.f.emit({ acceleration: { x: 0, y: 0, z: 0 } });
+  p.invoke('tick');
+  deliver(); // Apply the fresh capability/configuration before accepting a new gesture.
+  p.advance(60);
   p.f.emit({ acceleration: { x: 0, y: 0, z: 0 } });
   p.invoke('tick');
   p.advance(60);

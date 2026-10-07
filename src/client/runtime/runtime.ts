@@ -39,6 +39,8 @@ export interface RuntimeView {
   roundId: string | null;
   roundError: string | null;
   config: ControllerConfig | null;
+  controllerRoundId: string | null;
+  controllerRole: string | null;
   phase: string;
   /** Local control lifetime, independent of the wire configuration generation. */
   inputEpoch: number;
@@ -118,6 +120,8 @@ export class Runtime {
     roundId: null,
     roundError: null,
     config: null,
+    controllerRoundId: null,
+    controllerRole: null,
     phase: 'lobby',
     inputEpoch: 0,
     D: 0,
@@ -446,6 +450,7 @@ export class Runtime {
     });
     if (!phase) return;
     Object.assign(this.view, phase);
+    this.syncInput();
     this.notify();
   }
   private displayMessage(channel: Channel, msg: Message) {
@@ -473,12 +478,29 @@ export class Runtime {
   private controllerMessage(msg: Message) {
     if (msg.type === 'clockReply') this.clockReply(msg);
     else if (msg.type === 'config') {
+      if (
+        !(
+          (msg.roundId === null && msg.role === null) ||
+          (typeof msg.roundId === 'string' &&
+            msg.roundId.length > 0 &&
+            msg.roundId.length <= 160 &&
+            typeof msg.role === 'string' &&
+            msg.role.trim().length > 0 &&
+            msg.role.length <= 64)
+        )
+      ) {
+        this.warn('Unsupported controller round assignment');
+        return;
+      }
       const config = msg.config as ControllerConfig;
       if (!this.input.configure(config)) {
         this.warn('Unsupported controller configuration');
         return;
       }
       this.view.config = this.input.getConfiguration();
+      this.view.controllerRoundId =
+        typeof msg.roundId === 'string' ? msg.roundId : null;
+      this.view.controllerRole = typeof msg.role === 'string' ? msg.role : null;
       this.syncInput();
       this.applySensorConfig();
       this.sendUp({ type: 'ready', generation: config.generation });
@@ -538,6 +560,11 @@ export class Runtime {
         !this.view.ended &&
         this.view.identity?.role === 'controller' &&
         this.view.status === 'Connected' &&
+        (!this.view.roundId ||
+          !['loading', 'countdown', 'running', 'settling'].includes(
+            this.view.phase,
+          ) ||
+          this.view.controllerRoundId === this.view.roundId) &&
         !this.resources.suspended,
     );
     const input = this.input.getSnapshot();

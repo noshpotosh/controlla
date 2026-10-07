@@ -83,7 +83,7 @@ export class NeonHarvest implements GameInstance<NeonHarvestState> {
     this.lastPulse.clear();
     this.nextWave = context.startAt;
     this.nextNode = this.nextEffect = this.nextEvent = 0;
-    this.seed = (Math.floor(context.startAt) ^ 0x7f4a7c15) >>> 0;
+    this.seed = (context.seed ^ 0x7f4a7c15) >>> 0;
     // Defining entries preserves valid IDs such as "__proto__" as own keys.
     this.state.scores = Object.fromEntries(
       context.players.map((player) => [player.id, 0]),

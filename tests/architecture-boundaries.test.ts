@@ -669,6 +669,8 @@ void test('screen exposes detached, deeply frozen progress and no completion cap
   const compact = session.compact(['ada', 'bea']);
   const snapshot: RoundSnapshot<NeonHarvestState> = {
     schemaVersion: 2,
+    seed: 3000,
+    assignments: [],
     timing: neonHarvest.timing,
     mode: 'standard',
     roundId: 'presentation-probe',

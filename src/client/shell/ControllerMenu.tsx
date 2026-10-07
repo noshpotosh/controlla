@@ -82,6 +82,7 @@ export function ControllerMenu({
             </button>
           </div>
           <p className="ctl-sheet__status">{statusText(v)}</p>
+          {v.controllerRole && <p>Role: {v.controllerRole}</p>}
           {v.warning && <p className="ctl-sheet__warning">{v.warning}</p>}
           {!globalThis.isSecureContext && (
             <p className="ctl-sheet__warning">

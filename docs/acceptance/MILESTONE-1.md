@@ -421,3 +421,41 @@ Checkpoint 3 remains open: deterministic setup seed, frozen assignments and
 per-player requirements, preparation roster freeze, role/round configuration
 metadata, capability substitution, stale ACK and reconnect evidence. Browser
 untimed/settings evidence and all later milestone checkpoints remain pending.
+
+
+## Checkpoint 3b: fixed roles and deterministic round setup
+
+Added the optional pure descriptor setup hook and explicit uint32 seed. Detached,
+frozen ordered setup data produces exactly one bounded role/requirements assignment
+per participant. Every assignment, layout, capability and transport capacity is
+resolved before constructing or replacing the previous game. Omitted setup gives
+both production games their default role and existing controls. Their random wave
+seeds now use context.seed with the same salts; the harness defaults to 3000.
+
+Round identity is reserved before configuration delivery without opening awards.
+Preparation freezes its candidate roster; every candidate must reconnect and ACK
+the current generation before start. Late arrivals receive no round assignment
+and cannot inject discrete, continuous or binary gameplay input. Config messages
+carry required roundId/role metadata. Phones cancel retained controls for an
+unassigned active round, show a waiting screen and expose the assigned role in the
+menu. Reconnect retains assignments. Capability substitution uses frozen semantic
+requirements; failed resolution retires old readiness/input, and recovery requires
+a new generation ACK. During settling, already accepted terminal presses survive
+reconnect as before. Turn order remains game-owned.
+
+Schema-2 snapshots include validated seed/assignments within existing JSON limits.
+Shared JSON validation moved to a headless module to avoid setup/snapshot cycles.
+Harness options accept seed and per-player capabilities; preflight happens before
+game construction. Reserved identity does not change the loading deadline preview.
+
+Validation: npm test 424/424; game:test 152/152; typecheck, lint and production
+build passed. Focused role/input/live-motion tests 30/30, final harness/roles 20/20.
+Logs: /private/tmp/roles-{tests,games,typecheck,lint,build,final-focused,harness-final}.log.
+Initial full-suite failures caught construction before preflight, terminal press
+loss and stale-generation expectations; final code/tests preserve terminal input
+while enforcing fresh ACKs. Live jolt evidence now negotiates recovery configs and
+rearms before the gesture. Substitution tests send valid discrete dpad vectors.
+
+Checkpoint 3 implementation is complete. Checkpoints 4–6, final browser smoke,
+physical sensor/haptic tuning and hosted-network evidence remain open. Continue
+with bounded per-player feedback and game-owned sound.

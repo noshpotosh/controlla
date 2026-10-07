@@ -333,9 +333,11 @@ void test('only the framework finalizes a round, with an immutable data-only gam
   await harness.load();
   assert.ok(context);
   assert.deepEqual(Object.keys(context).sort(), [
+    'assignments',
     'endAt',
     'mode',
     'players',
+    'seed',
     'startAt',
   ]);
   assert.ok(Object.isFrozen(context));

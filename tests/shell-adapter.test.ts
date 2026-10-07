@@ -54,6 +54,8 @@ function fixture(t: TestContext, role: Role = 'host') {
   };
   Reflect.get(runtime, 'controllerMessage').call(runtime, {
     type: 'config',
+    roundId: null,
+    role: null,
     config: resolveConfig(pointerSpec, defaultCapabilities(), 1),
   });
   // No live transport, audio, or timers are started by these adapter tests.
@@ -162,6 +164,8 @@ void test('phone ports retain configuration generation and local epoch, and stop
   assert.equal(values().length, 1);
   Reflect.get(runtime, 'controllerMessage').call(runtime, {
     type: 'config',
+    roundId: null,
+    role: null,
     config: resolveConfig(pointerSpec, defaultCapabilities(), 2),
   });
   old.value({ x: 0.9, y: 0.9 });

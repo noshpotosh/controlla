@@ -46,9 +46,18 @@ export interface Progress {
 
 export type Completion = 'accepted' | 'duplicate' | 'closed' | 'invalid';
 
-export interface GameContext {
+export interface RoundSetupContext {
   readonly mode: string;
   readonly players: ReadonlyDeep<Player[]>;
+  readonly seed: number;
+}
+export interface ParticipantAssignment {
+  playerId: string;
+  role: string;
+  controls: ControllerRequirements;
+}
+export interface GameContext extends RoundSetupContext {
+  readonly assignments: ReadonlyDeep<ParticipantAssignment[]>;
   readonly startAt: number;
   readonly endAt: number;
 }
@@ -121,6 +130,8 @@ export type CompactProgress = RoundProgress;
 export interface RoundSnapshot<S extends object = object> {
   schemaVersion: 2;
   timing: RoundTiming;
+  seed: number;
+  assignments: ParticipantAssignment[];
   mode: string;
   roundId: string;
   gameId: string;
@@ -168,6 +179,7 @@ export interface GameDescriptor<S extends object = object> {
   defaultMode: string;
   instructions?: readonly string[];
   controls: ControllerRequirements;
+  setup?(context: RoundSetupContext): readonly ParticipantAssignment[];
   presentation: { cursors: boolean };
   /**
    * Optional. How long presses wait (ms) so presses from different phones reach

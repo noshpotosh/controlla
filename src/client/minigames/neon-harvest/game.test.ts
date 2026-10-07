@@ -1,3 +1,4 @@
+import { neonHarvest } from './index.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type {
@@ -28,12 +29,20 @@ const players = (count = 1): Player[] =>
     color: '#ffffff',
     connected: true,
   }));
+const assignments = (roster: Player[]) =>
+  roster.map((player) => ({
+    playerId: player.id,
+    role: 'default',
+    controls: neonHarvest.controls,
+  }));
 function fixture(count = 1, disableSpawn = true) {
   const game = new NeonHarvest();
   game.load();
   game.start({
     mode: 'standard',
     players: players(count),
+    seed: START,
+    assignments: assignments(players(count)),
     startAt: START,
     endAt: END,
   });
@@ -92,6 +101,8 @@ void test('Neon Harvest requires readiness and returns isolated snapshots and ti
     unloaded.start({
       mode: 'standard',
       players: players(),
+      seed: START,
+      assignments: assignments(players()),
       startAt: START,
       endAt: END,
     }),
@@ -518,7 +529,14 @@ void test('prototype-like player IDs remain eligible own keys in snapshots and o
   const roster = players(2);
   roster[0].id = '__proto__';
   roster[1].id = 'constructor';
-  game.start({ mode: 'standard', players: roster, startAt: START, endAt: END });
+  game.start({
+    mode: 'standard',
+    players: roster,
+    seed: START,
+    assignments: assignments(roster),
+    startAt: START,
+    endAt: END,
+  });
   const state = Reflect.get(game, 'state') as NeonHarvestState;
   Reflect.set(game, 'nextWave', Infinity);
   put(state, node(1));

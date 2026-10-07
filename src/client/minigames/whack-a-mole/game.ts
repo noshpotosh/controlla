@@ -83,7 +83,7 @@ export class WhackAMole implements GameInstance<WhackState> {
     this.roster = context.players.map((player) => player.id);
     this.nextMole = this.nextEffect = this.nextEvent = 0;
     this.lastPop = -Infinity;
-    const seed = (Math.floor(context.startAt) ^ 0x5bd1e995) >>> 0;
+    const seed = (context.seed ^ 0x5bd1e995) >>> 0;
     this.state.holes = holeLayout(
       holeCount(context.players.length),
       createRandom(seed ^ 0x9e3779b9),

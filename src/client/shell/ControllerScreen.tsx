@@ -82,6 +82,13 @@ export function ControllerScreen({
           }
           onClose={phone.closeSettings}
         />
+      ) : v.roundId &&
+        ['loading', 'countdown', 'running', 'settling'].includes(v.phase) &&
+        v.controllerRoundId !== v.roundId ? (
+        <div className="controller-waiting">
+          <p className="note">Waiting for the next round…</p>
+          {menu}
+        </div>
       ) : !v.config ? (
         <div className="controller-waiting">
           <p className="note">Waiting for your controller layout…</p>

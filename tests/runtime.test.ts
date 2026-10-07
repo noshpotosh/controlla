@@ -256,6 +256,8 @@ void test('controller maintains 60 Hz despite timer rounding and skips missed fr
   runtime.view.status = 'Connected';
   Reflect.get(runtime, 'controllerMessage').call(runtime, {
     type: 'config',
+    roundId: null,
+    role: null,
     config: resolveConfig(pointerSpec, defaultCapabilities(), 1),
   });
   const frames: number[] = [];

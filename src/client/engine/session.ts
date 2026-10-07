@@ -1,3 +1,4 @@
+import { prepareAssignments } from './round-setup.ts';
 import { defaultCapabilities } from '../controls/resolve.ts';
 import { defaultGame, findGame, resolveMode } from '../minigames/catalog.ts';
 import { resolveController } from './input.ts';
@@ -32,6 +33,13 @@ export interface SessionPorts {
   event: (id: string, event: PresentationEvent & { roundId: string }) => void;
   warning: (message: string) => void;
 }
+export interface SessionDependencies {
+  /** Inject a uint32 source for deterministic round setup/replay. */
+  seed?(): number;
+}
+const randomSeed = () =>
+  globalThis.crypto?.getRandomValues?.(new Uint32Array(1))[0] ??
+  Math.floor(Math.random() * 0x100000000);
 export class SessionAuthority {
   private runner: RoundRunner | null = null;
   private readonly progress = new SessionProgress();
@@ -81,6 +89,7 @@ export class SessionAuthority {
   constructor(
     private hostId: string,
     private ports: SessionPorts,
+    private readonly dependencies: SessionDependencies = {},
   ) {
     this.venueDelays.set(hostId, new Samples());
     this.venueDelays.get(hostId)!.add(0);
@@ -133,6 +142,19 @@ export class SessionAuthority {
       if (!p.connected) clearDisconnectedInput(p.id);
     }
   }
+  private participating(id: string): boolean {
+    return !this.runner || !!this.runner.requirementsFor(id);
+  }
+  private retireConfiguration(id: string): void {
+    this.ready.delete(id);
+    this.windows.delete(id);
+    this.streams.delete(id);
+    this.edges.delete(id);
+    this.widgetValues.delete(id);
+    this.widgetSequences.delete(id);
+    this.runner?.clearInput(id, now());
+    delete this.cursors[id];
+  }
   private configurePlayer(p: Player, force = false) {
     const descriptor = findGame(this.selectedGame)!;
     try {
@@ -140,6 +162,7 @@ export class SessionAuthority {
         descriptor,
         this.capabilities.get(p.id) ?? defaultCapabilities(),
         this.generation,
+        this.runner?.requirementsFor(p.id) ?? descriptor.controls,
       );
       const existing = this.configs.get(p.id);
       const changed =
@@ -151,18 +174,22 @@ export class SessionAuthority {
         config.generation = this.generation;
       } else if (existing && !force) config = existing;
       if (!existing || existing.generation !== config.generation) {
-        this.ready.delete(p.id);
-        this.windows.delete(p.id);
-        this.streams.delete(p.id);
-        this.edges.delete(p.id);
-        this.widgetValues.delete(p.id);
-        this.widgetSequences.delete(p.id);
-        this.runner?.clearInput(p.id, now());
-        delete this.cursors[p.id];
+        this.retireConfiguration(p.id);
       }
       this.configs.set(p.id, config);
-      this.ports.toPlayer(p.id, { type: 'config', config });
+      this.ports.toPlayer(p.id, {
+        type: 'config',
+        config,
+        roundId: this.runner?.requirementsFor(p.id)
+          ? this.runner.roundId
+          : null,
+        role: this.runner?.roleFor(p.id) ?? null,
+      });
     } catch (error) {
+      if (this.configs.has(p.id))
+        this.generation = (this.generation + 1) % 65536;
+      this.retireConfiguration(p.id);
+      this.configs.delete(p.id);
       this.ports.toPlayer(p.id, { type: 'error', message: String(error) });
     }
   }
@@ -204,7 +231,8 @@ export class SessionAuthority {
     else if (
       msg.type === 'widget' &&
       player?.connected &&
-      this.ready.has(from)
+      this.ready.has(from) &&
+      this.participating(from)
     ) {
       const config = this.configs.get(from);
       const widget = config?.widgets.find((w) => w.action === msg.action);
@@ -285,7 +313,8 @@ export class SessionAuthority {
   }
   input(playerId: string, buffer: ArrayBuffer) {
     const p = this.roster.players.find((p) => p.id === playerId && p.connected);
-    if (!p || !this.ready.has(playerId)) return;
+    if (!p || !this.ready.has(playerId) || !this.participating(playerId))
+      return;
     let f: InputFrame;
     try {
       f = decodeInput(buffer, now());
@@ -373,6 +402,7 @@ export class SessionAuthority {
       !widget ||
       !state ||
       !this.ready.has(p.playerId) ||
+      !this.participating(p.playerId) ||
       this.pending ||
       !['countdown', 'running', 'settling'].includes(state.phase) ||
       time < state.startAt ||
@@ -436,14 +466,26 @@ export class SessionAuthority {
       throw new Error(
         `${descriptor.name} needs ${descriptor.players.min}–${descriptor.players.max} connected phones.`,
       );
-    // Validate every required binding before disturbing the previous round/configuration.
+    // Validate fixed assignments and every binding before constructing or replacing a game.
+    const seed = this.dependencies.seed
+      ? this.dependencies.seed()
+      : randomSeed();
+    const assignments = prepareAssignments(
+      descriptor,
+      selectedMode,
+      players,
+      seed,
+    );
     for (const player of players)
       resolveController(
         descriptor,
         this.capabilities.get(player.id) ?? defaultCapabilities(),
-        this.generation,
+        (this.generation + 1) % 65536,
+        assignments.find((assignment) => assignment.playerId === player.id)!
+          .controls,
       );
     const runner = new RoundRunner(descriptor, this.progress, selectedMode);
+    runner.prepare(players, seed, assignments);
     this.runner?.dispose();
     this.selectedGame = descriptor.id;
     this.selectedMode = selectedMode;
@@ -545,7 +587,7 @@ export class SessionAuthority {
     this.equalizer.tick(dt);
     const previousPhase = this.runner?.phase;
     if (this.pending && this.runner) {
-      const players = this.roster.players.filter((p) => p.connected);
+      const players = this.runner.players;
       if (this.runner.phase === 'error') this.pending = null;
       else if (time - this.pending.at >= 15000) {
         this.runner.abort(
@@ -556,7 +598,12 @@ export class SessionAuthority {
         this.runner.loaded &&
         players.length >= this.runner.descriptor.players.min &&
         players.length <= this.runner.descriptor.players.max &&
-        players.every((p) => this.ready.has(p.id))
+        players.every(
+          (p) =>
+            this.roster.players.some(
+              (current) => current.id === p.id && current.connected,
+            ) && this.ready.has(p.id),
+        )
       ) {
         this.runner.begin(players, time);
         this.pending = null;
@@ -564,7 +611,7 @@ export class SessionAuthority {
     }
     const values: Record<string, Record<string, ValueSample>> = {};
     for (const player of this.roster.players.filter(
-      (p) => p.connected && this.ready.has(p.id),
+      (p) => p.connected && this.ready.has(p.id) && this.participating(p.id),
     )) {
       const frame = this.streams.get(player.id)?.sample(time);
       const widgets = this.configs.get(player.id)?.widgets ?? [];

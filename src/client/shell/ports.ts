@@ -91,7 +91,10 @@ export interface ShellView {
   readonly warning: string;
   readonly ended: boolean;
   readonly phase: string;
+  readonly roundId: string | null;
   readonly config: ControllerConfig | null;
+  readonly controllerRoundId: string | null;
+  readonly controllerRole: string | null;
   readonly inputEpoch: number;
   readonly D: number;
   readonly limitingVenue: string | null;

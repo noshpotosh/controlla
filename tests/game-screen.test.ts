@@ -93,6 +93,12 @@ async function snapshot(): Promise<RoundSnapshot<object>> {
   game.start({
     mode: descriptor.defaultMode,
     players,
+    seed: 0,
+    assignments: players.map((player) => ({
+      playerId: player.id,
+      role: 'default',
+      controls: descriptor.controls,
+    })),
     startAt: 0,
     endAt: 30000,
   });
@@ -101,6 +107,12 @@ async function snapshot(): Promise<RoundSnapshot<object>> {
   return {
     schemaVersion: 2,
     timing: descriptor.timing,
+    seed: 0,
+    assignments: players.map((player) => ({
+      playerId: player.id,
+      role: 'default',
+      controls: descriptor.controls,
+    })),
     roundId: 'round-a',
     gameId: descriptor.id,
     mode: descriptor.defaultMode,

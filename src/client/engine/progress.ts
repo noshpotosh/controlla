@@ -106,10 +106,19 @@ export class SessionProgress {
     return this.version;
   }
 
+  reserveRoundId(): string {
+    const roundId = `${this.id}:${++this.nextRound}`;
+    this.reserved.add(roundId);
+    return roundId;
+  }
+  private readonly reserved = new Set<string>();
+  releaseRoundId(roundId: string): void {
+    this.reserved.delete(roundId);
+  }
   open(
     gameId: string,
     playerIds: readonly string[],
-    options?: { mode: string; players: Player[] },
+    options?: { mode: string; players: Player[]; roundId?: string },
   ): {
     roundId: string;
     complete(outcomes: Outcome[]): Completion;
@@ -146,7 +155,9 @@ export class SessionProgress {
           connected: true,
         }));
     const mode = options?.mode ?? '';
-    const roundId = `${this.id}:${++this.nextRound}`;
+    const roundId = options?.roundId ?? this.reserveRoundId();
+    if (!this.reserved.delete(roundId))
+      throw new Error('Unknown or consumed round reservation.');
     let added = false;
     for (const id of roster)
       if (!this.totals.has(id)) {

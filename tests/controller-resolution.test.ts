@@ -453,10 +453,11 @@ void test('live capability upgrades use the controller error channel without pub
   });
   const restored = r.sent.filter((m) => m.type === 'config').at(-1)!.config;
   assert.deepEqual(
-    restored,
-    before,
-    'failed resolution did not replace or advance the configuration',
+    { ...restored, generation: 0 },
+    { ...before, generation: 0 },
+    'recovery preserves requirements but retires the failed generation',
   );
+  assert.notEqual(restored.generation, before.generation);
 });
 
 void test('live preflight rejects conflicts before loading/reconfiguration and exposes the existing host warning', (t) => {

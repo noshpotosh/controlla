@@ -10,6 +10,8 @@ import type { SnapshotPolicy } from '../src/client/engine/replication.ts';
 function state(roundId = 'a'): RoundSnapshot<object> {
   return {
     schemaVersion: 2,
+    seed: 3000,
+    assignments: [],
     timing: { kind: 'timed', durationMs: 30000 },
     roundId,
     gameId: 'fixture',

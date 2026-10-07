@@ -1,3 +1,9 @@
+import {
+  prepareAssignments,
+  validAssignments,
+  validSeed,
+  freezeRoundData,
+} from './round-setup.ts';
 import { timingDuration } from './timing-policy.ts';
 import {
   ARBITRATION_MS,
@@ -15,6 +21,8 @@ import type {
   PresentationEvent,
   RoundSnapshot,
   RoundTiming,
+  ParticipantAssignment,
+  ControllerRequirements,
 } from '../api/index.ts';
 import { SessionProgress } from './progress.ts';
 import {
@@ -38,6 +46,9 @@ export class RoundRunner<S extends object = object> {
   endAt = 0;
   players: Player[] = [];
   loaded = false;
+  private assignments: ParticipantAssignment[] = [];
+  private seed = 0;
+  private prepared = false;
   private readonly game: GameInstance<S>;
   private readonly timing: RoundTiming;
   private loading: Promise<void> | null = null;
@@ -89,6 +100,37 @@ export class RoundRunner<S extends object = object> {
       this.fail(error);
     }
   }
+  prepare(
+    players: Player[],
+    seed: number,
+    assignments?: ParticipantAssignment[],
+  ): void {
+    if (this.prepared || this.disposed || this.phase !== 'loading')
+      throw new Error('Round preparation is already closed.');
+    if (!validSeed(seed)) throw new Error('Invalid round seed.');
+    if (assignments && !validAssignments(assignments, players))
+      throw new Error('Invalid prepared assignments.');
+    this.assignments = assignments
+      ? freezeRoundData(structuredClone(assignments))
+      : prepareAssignments(this.descriptor, this.mode, players, seed);
+    this.players = structuredClone(players);
+    this.seed = seed;
+    this.roundId = this.progress.reserveRoundId();
+    this.prepared = true;
+  }
+  getAssignments(): ParticipantAssignment[] {
+    return structuredClone(this.assignments);
+  }
+  requirementsFor(id: string): ControllerRequirements | undefined {
+    return this.assignments.find((assignment) => assignment.playerId === id)
+      ?.controls;
+  }
+  roleFor(id: string): string | null {
+    return (
+      this.assignments.find((assignment) => assignment.playerId === id)?.role ??
+      null
+    );
+  }
   begin(players: Player[], time: number): void {
     if (!this.loaded || this.disposed || this.phase !== 'loading' || this.round)
       throw new Error('Game is not ready to begin.');
@@ -100,20 +142,31 @@ export class RoundRunner<S extends object = object> {
       new Set(players.map((p) => p.id)).size !== players.length
     )
       throw new Error('Invalid round participants or start time.');
-    this.players = structuredClone(players);
+    if (!this.prepared) this.prepare(players, Math.floor(time + 3000) >>> 0);
+    if (
+      players.length !== this.players.length ||
+      players.some((player, index) => player.id !== this.players[index].id)
+    )
+      throw new Error('Round participants must match the prepared roster.');
+    this.players = this.players.map((player) => ({
+      ...player,
+      connected: true,
+    }));
     this.previousTick = time;
     this.startAt = time + 3000;
     this.endAt = this.startAt + timingDuration(this.timing);
     this.round = this.progress.open(
       this.descriptor.id,
       players.map((p) => p.id),
-      { mode: this.mode, players },
+      { mode: this.mode, players: this.players, roundId: this.roundId! },
     );
     this.roundId = this.round.roundId;
     this.phase = 'countdown';
     const context = {
       mode: this.mode,
-      players: structuredClone(players),
+      seed: this.seed,
+      assignments: structuredClone(this.assignments),
+      players: structuredClone(this.players),
       startAt: this.startAt,
       endAt: this.endAt,
     };
@@ -129,7 +182,10 @@ export class RoundRunner<S extends object = object> {
     if (
       !this.active() ||
       !this.players.some((p) => p.id === action.playerId && p.connected) ||
-      !Object.hasOwn(this.descriptor.controls.inputs, action.name) ||
+      !Object.hasOwn(
+        this.requirementsFor(action.playerId)?.inputs ?? {},
+        action.name,
+      ) ||
       !Number.isFinite(receivedAt) ||
       receivedAt < this.startAt ||
       receivedAt >= this.endAt + ARBITRATION_MS ||
@@ -231,7 +287,10 @@ export class RoundRunner<S extends object = object> {
                 Object.fromEntries(
                   Object.entries(values[p.id] ?? {}).filter(
                     ([name, sample]) =>
-                      Object.hasOwn(this.descriptor.controls.inputs, name) &&
+                      Object.hasOwn(
+                        this.requirementsFor(p.id)?.inputs ?? {},
+                        name,
+                      ) &&
                       Number.isFinite(sample.time) &&
                       sample.time < this.endAt &&
                       sample.time <= time + 100 &&
@@ -380,6 +439,7 @@ export class RoundRunner<S extends object = object> {
     if (this.disposed || ['results', 'aborted', 'error'].includes(this.phase))
       return;
     this.round?.abort();
+    if (!this.round && this.roundId) this.progress.releaseRoundId(this.roundId);
     this.actions = [];
     this.held = {};
     this.phase = 'aborted';
@@ -392,6 +452,7 @@ export class RoundRunner<S extends object = object> {
       2000,
     );
     this.round?.abort();
+    if (!this.round && this.roundId) this.progress.releaseRoundId(this.roundId);
     this.actions = [];
     this.held = {};
     this.phase = 'error';
@@ -422,6 +483,8 @@ export class RoundRunner<S extends object = object> {
     return {
       schemaVersion: 2,
       timing: structuredClone(this.timing),
+      seed: this.seed,
+      assignments: this.getAssignments(),
       roundId: this.roundId!,
       gameId: this.descriptor.id,
       mode: this.mode,

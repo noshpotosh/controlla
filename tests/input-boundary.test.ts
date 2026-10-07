@@ -80,6 +80,8 @@ function phone(
   runtime.view.status = 'Connected';
   Reflect.get(runtime, 'controllerMessage').call(runtime, {
     type: 'config',
+    roundId: null,
+    role: null,
     config: config,
   });
   const sent: Message[] = [];
@@ -108,6 +110,54 @@ const players: Player[] = ['a', 'b'].map((id, seat) => ({
   connected: true,
   color: 'blue',
 }));
+
+void test('round scope cancels retained phone controls for late arrivals until assignment arrives', (t) => {
+  const { runtime, sent } = phone(t);
+  const config = runtime.view.config!;
+  const old = runtime.portFor(config.widgets[0], config.generation);
+  old.value({ x: 0.25, y: 0.5 });
+  assert.equal(sent.filter((m) => m.type === 'widget').length, 1);
+  const message = Reflect.get(runtime, 'controllerMessage');
+  message.call(runtime, {
+    type: 'phase',
+    phase: 'running',
+    roundId: 'round-1',
+    gameId: 'steering-probe',
+    mode: 'standard',
+  });
+  old.value({ x: 0.5, y: 0.5 });
+  runtime
+    .portFor(config.widgets[0], config.generation)
+    .value({ x: 0.5, y: 0.5 });
+  assert.equal(sent.filter((m) => m.type === 'widget').length, 1);
+  message.call(runtime, {
+    type: 'config',
+    roundId: 'round-1',
+    role: 'pilot',
+    config: resolveConfig(steeringSpec, defaultCapabilities(), 4),
+  });
+  assert.equal(runtime.view.controllerRole, 'pilot');
+  assert.equal(runtime.view.controllerRoundId, 'round-1');
+  old.value({ x: 0.5, y: 0.5 });
+  const current = runtime.portFor(runtime.view.config!.widgets[0], 4);
+  current.value({ x: 0.5, y: 0.5 });
+  assert.equal(sent.filter((m) => m.type === 'widget').length, 2);
+  message.call(runtime, {
+    type: 'phase',
+    phase: 'loading',
+    roundId: 'round-2',
+    gameId: 'steering-probe',
+    mode: 'standard',
+  });
+  current.value({ x: 0.5, y: 0.5 });
+  assert.equal(sent.filter((m) => m.type === 'widget').length, 2);
+  // Coordinated protocol: incomplete assignment metadata is rejected.
+  message.call(runtime, {
+    type: 'config',
+    config: resolveConfig(steeringSpec, defaultCapabilities(), 5),
+  });
+  assert.equal(runtime.view.config!.generation, 4);
+});
 
 function authority(t: TestContext, gameId = buttonProbe.id) {
   let clock = 0;
@@ -256,6 +306,8 @@ void test('reconfiguration clears pending values and old view callbacks cannot a
   old.value({ x: 0.9, y: 0 });
   runtime.network.onMessage('host', 'ctrl', {
     type: 'config',
+    roundId: null,
+    role: null,
     config: { ...config, generation: 4 },
   });
   sent.length = 0;
