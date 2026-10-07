@@ -219,12 +219,13 @@ void test('a final batch validates all events and emits one framework end cue', 
 });
 
 void test('all shipped descriptors are catalog entries with validated modes', () => {
-  assert.deepEqual(
-    games.map((g) => g.id),
-    ['neon-harvest', 'whack-a-mole'],
-  );
+  const ids = games.map((g) => g.id);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const id of ['neon-harvest', 'whack-a-mole'])
+    assert.ok(ids.includes(id), `${id} remains registered`);
   assert.equal(findGame('missing'), undefined);
   for (const game of games) {
+    assert.equal(findGame(game.id), game);
     assert.equal(resolveMode(game), game.defaultMode);
     assert.throws(() => resolveMode(game, 'missing'), /Unknown mode/);
   }

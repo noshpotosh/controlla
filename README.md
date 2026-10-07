@@ -2,7 +2,7 @@
 
 A browser-authoritative party-game framework. Each venue has a screen and its own phone controllers. Phones send local input to their venue; screens relay input to the host and render snapshots of its simulation. No video streaming.
 
-**Status: Neon Harvest is the sole game; controller, shell, shared-contract, browser-engine, motion-provider, display-playback, controller-input and session-routing boundaries are implemented. Validation results and desktop observations are recorded in the validation ledger. Hardware/multi-household acceptance remains unverified.** The acceptance budgets in the specification are targets, not measured claims. See [validation](docs/VALIDATION.md) and [design decisions](docs/ADR-001.md).
+**Status: Neon Harvest and Whack-a-Mole are the two production games; controller, shell, shared-contract, browser-engine, motion-provider, display-playback, controller-input and session-routing boundaries are implemented. Validation results and desktop observations are recorded in the validation ledger. Hardware/multi-household acceptance remains unverified.** The acceptance budgets in the specification are targets, not measured claims. See [validation](docs/VALIDATION.md) and [design decisions](docs/ADR-001.md).
 
 ## Run locally
 
@@ -30,7 +30,7 @@ npm run dev
 
 Stop each process with Ctrl+C when finished. Stopping the signaling service ends its active sessions. No database, account setup, or environment file is needed for local desktop testing.
 
-Open http://localhost:3000. Create a room on a screen. Connect one to eight phones using **Copy phone link**, or the five-character room code and four-character screen code. A second screen uses only the room code, then gets its own phone link. Select Neon Harvest: a 45-second collection round with motion aim or absolute touch aim and a separate pulse button.
+Open http://localhost:3000. Create a room on a screen. Connect one to eight phones using **Copy phone link**, or the five-character room code and four-character screen code. A second screen uses only the room code, then gets its own phone link. Select Neon Harvest for a 45-second collection round with motion aim or absolute touch aim and a separate pulse button, or Whack-a-Mole for a 60-second round with held-aim swings and touch fallback.
 
 On a single computer, separate browser tabs can act as phones using touch/mouse fallback. Choose **Join as a new device** in connection settings to avoid resuming another tab's saved identity. This is a functional test, not a latency measurement.
 
@@ -95,6 +95,7 @@ Generated `.next/`, `.vinext/`, and `dist/` directories are ignored by Git and c
 
 ```sh
 npm test
+npm run game:test
 npm run typecheck
 npm run lint
 npm run benchmark
@@ -104,13 +105,19 @@ npm audit
 
 The benchmark reports Node structured-clone and MessageChannel timing. It does not decide browser iframe performance. The UI uses same-page modules provisionally and passes cloneable snapshots across its boundaries.
 
+## Extend the framework
+
+Run `npm run game:new -- <kebab-slug>` to generate a descriptor, rules, Canvas renderer and colocated test, then register the descriptor once in the catalog. Invalid names and existing folders/registrations reject before writes. The starter counts semantic SCORE presses; replace its game-owned rules and presentation. New games need only their folder, catalog registration and optionally a reusable layout. Run all five validation gates above. The catalog-derived conformance and bundle audit automatically include new registrations, while independent checks preserve both existing production games and exclude developer/test code.
+
+`npm test` discovers every source test once; `game:test` selects game, harness, catalog, lifecycle and architecture suites. The harness supports fixed identity/seed/clock/roster/capabilities, timestamped scenarios and detached authority snapshots separately from delayed displays. See [game authoring](docs/architecture/AUTHORING.md), [inputs](docs/INPUTS.md) and the [milestone acceptance record](docs/acceptance/MILESTONE-1.md). These are coordinated unreleased contracts; older clients are unsupported and the app/service must update together.
+
 ## Layout
 
 The proposed reorganization and API planning process is documented in the [architecture meta plan](docs/ARCHITECTURE-META-PLAN.md). It is a planning draft; the current layout is described below.
 
-The [independent game-authoring walkthrough](docs/architecture/AUTHORING.md) runs with `npm run game:dev` at `/dev/game-harness`, without signaling or phones. The harness and live rooms share one catalog and round runner for Neon Harvest, the sole production descriptor (`standard` mode, 1–8 players). The harness includes simulated host/remote displays, mode selection, a controller probe, and session points. Run `npm run game:test` for its checks. See the [evidence and remaining acceptance work](docs/architecture/DECISIONS-EXPERIMENTS.md) before treating these repository-local APIs as a stable public SDK.
+The [independent game-authoring walkthrough](docs/architecture/AUTHORING.md) runs with `npm run game:dev` at `/dev/game-harness`, without signaling or phones. The harness and live rooms share one catalog and round runner for Neon Harvest and Whack-a-Mole (each `standard` mode, 1–8 players). The harness includes simulated host/remote displays, mode selection, a controller probe, and session points. Run `npm run game:test` for its checks. See the [evidence and remaining acceptance work](docs/architecture/DECISIONS-EXPERIMENTS.md) before treating these repository-local APIs as a stable public SDK.
 
-Frontend and signaling must both use application protocol **4**. Reload existing screens and phones after upgrading; the binary input frame is unchanged.
+Frontend and signaling must both use application protocol **5**, ControllerConfig **2**, and snapshot schema **2**. Reload existing screens and phones after upgrading; the binary input frame is unchanged.
 
 The gallery, designer, phone preview, Motion Lab and game harness are development-only. Production builds assert that their modules and styles are excluded. Calibration, connection diagnostics and session reports remain available in production. Rounds hold a 200 ms settling period after the timer ends before showing final results.
 
@@ -127,7 +134,7 @@ The gallery, designer, phone preview, Motion Lab and game harness are developmen
 - `src/client/controls`: controller contracts, validated resolution, reusable controls and saved layouts (`layouts/`).
 - `src/client/devtools`: development entry, controller designer/gallery/preview, Motion Lab and isolated game harness.
 - `src/client/api`, `game-screen`, `minigames`: author contracts, read-only presentation, and the production game catalog.
-- `src/client/minigames/neon-harvest`: independent rules, state, renderer and colocated tests. Lab, Tilt Rally, Target Practice and their combined legacy adapters/state are retired; cross-game guarantees use test-only descriptors.
+- `src/client/minigames/neon-harvest` and `whack-a-mole`: independent rules, state, renderers, sounds and colocated tests. Lab, Tilt Rally, Target Practice and their combined legacy adapters/state are retired; cross-game guarantees use test-only descriptors.
 - `server`: signed identity/resume tokens, room codes, source/global join limits, authorized signaling and relay routes, heartbeat-based host termination.
 - `tests`: protocol/math/lifecycle tests, room security/reconnect tests, a live WebSocket integration test, and clone benchmark.
 

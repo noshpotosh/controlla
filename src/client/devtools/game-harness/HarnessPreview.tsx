@@ -292,9 +292,16 @@ export function HarnessPreview() {
         <button
           type="button"
           onClick={() => {
-            harness.current?.advance(34000, (game) =>
+            const instance = harness.current;
+            instance?.finish((game) =>
               driveSimulatedPlayers(game, mouse.current),
             );
+            // Flush terminal delivery/presentation while a paused clock stays paused.
+            if (
+              instance &&
+              ['results', 'aborted', 'error'].includes(instance.phase)
+            )
+              instance.advance(instance.presentationDelay + remoteDelay + 20);
             refresh.current();
           }}
         >

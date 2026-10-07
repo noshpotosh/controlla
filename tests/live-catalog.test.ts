@@ -132,12 +132,6 @@ function room(t: TestContext) {
   };
 }
 
-/** Each shipped game's statistics keys, sorted. */
-const statKeys: Record<string, string[]> = {
-  'neon-harvest': ['bestChain', 'collected', 'mineHits'],
-  'whack-a-mole': ['bestStreak', 'bombs', 'golden', 'hits', 'misses'],
-};
-
 void test('live catalog runs every mode through the generic host/remote boundary and retains game statistics', (t) => {
   const r = room(t);
   for (const game of games) {
@@ -154,18 +148,25 @@ void test('live catalog runs every mode through the generic host/remote boundary
       assert.equal(host.gameId, game.id);
       assert.equal(host.mode, mode.id);
       assert.equal(host.phase, 'results');
-      assert.deepEqual(
-        host.outcomes.map((o) => o.placement),
-        [1, 1],
+      const awards = Object.fromEntries(
+        host.outcomes.map((outcome) => [
+          outcome.playerId,
+          host.outcomes.filter((other) => other.placement > outcome.placement)
+            .length,
+        ]),
       );
-      assert.deepEqual(host.progress.awards, { a: 0, b: 0 });
+      assert.deepEqual(host.progress.awards, awards);
       assert.equal(
         'rounds' in host.progress,
         false,
         'snapshots do not carry report history',
       );
       for (const result of r.authority.summary().completed.at(-1)!.results)
-        assert.deepEqual(Object.keys(result.stats).sort(), statKeys[game.id]);
+        assert.deepEqual(
+          result.stats,
+          host.outcomes.find((outcome) => outcome.playerId === result.playerId)!
+            .stats ?? {},
+        );
     }
   }
   assert.equal(

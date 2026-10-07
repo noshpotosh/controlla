@@ -23,3 +23,7 @@ Add a row per idea. Description is optional. For controls, use the input names f
 | Whack-a-Mole _(built)_ | Moles pop out of scattered holes; point at the screen to aim your hammer, then hold the button and swing to whack. The first whack on each mole wins. | `pointer` (falls back to `aim-pad`), `chop` (falls back to `button`) |
 
 What each input senses, what the game receives, and which games use it: [INPUTS.md](INPUTS.md).
+
+## Authoring
+
+The production catalog contains Neon Harvest and Whack-a-Mole; the other entries above remain ideas. Generate a starter with `npm run game:new -- <slug>`, then edit only its game folder and single catalog registration (plus an optional reusable layout). See [authoring](architecture/AUTHORING.md) for lifecycle, roles, feedback, sound, deterministic scenarios and the five validation gates.

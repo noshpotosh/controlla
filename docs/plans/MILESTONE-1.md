@@ -1,6 +1,6 @@
 # Milestone 1 implementation handoff
 
-Status: prerequisite review approved; checkpoints 1–3 implementation validated and saved. Browser evidence remains pending. Checkpoint 4a game-owned sound is validated; continue with checkpoint 4b bounded phone feedback.
+Status: prerequisite review approved; checkpoints 1–5 implementation validated and saved. Checkpoint 6 scaffold integration is validated; live browser evidence and completion audit remain pending.
 
 - Baseline: fetched `origin/develop` equals `4a885029d30bab8009ed6854d3aeba13a18166e0` on 2026-10-07.
 - Topic: `codex/milestone-1-foundation-1007`; review target: `develop` (task-specific override of AGENTS.md main default).
@@ -92,7 +92,7 @@ These are proposed additions, not existing APIs. Record their exact TypeScript s
 - Add an explicit seed to game context and injectable session identity/clock dependencies. Production retains normal defaults; replay supplies all nondeterministic inputs.
 - Move game-specific sound declarations into game folders. Shared browser playback owns AudioContext, scheduling, and disposal; games emit declarative cues.
 
-Retain protocol 4 and the binary input frame unless compatibility analysis demonstrates an incompatible change. Any necessary bump requires a documented coordinated migration and preserved reload guidance/stopped retries.
+Approved migration: use application protocol 5, ControllerConfig 2 and snapshot schema 2 together. The binary input frame remains unchanged. The unreleased application requires no older-client compatibility; preserve reload guidance and stopped retries on mismatch.
 
 ## Ordered implementation checkpoints
 
@@ -182,3 +182,5 @@ Run `npm test`, `npm run game:test`, `npm run typecheck`, `npm run lint`, and `n
 After each coherent checkpoint, inspect the staged diff, commit explicit task-owned files, review outgoing commits, and push the topic branch. Update the handoff with commit, validation, remaining work, and remote-backup status.
 
 Milestone 1 closes only when both lanes, extension proofs, documentation, and required evidence pass. Hosting, new backlog games, unified art, native delivery, and party-session implementation remain outside this plan.
+
+Checkpoint 6a adds game:new and catalog-derived production evidence. Both games remain independently required; shared tests accept catalog extensions. Main gates: 470 full / 192 game tests; generated-game checkout: 479 full / 201 game tests; typecheck, lint and build pass in both. Browser harness Finish round now respects actual completion and flushes delayed terminal displays; both games pass paused completion smoke. Continue live phone touch fallback, settings/calibration and final requirements audit. Physical sensor/haptic and hosted-network evidence remains separately unverified.

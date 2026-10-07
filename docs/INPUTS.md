@@ -30,3 +30,9 @@ These need motion permission on the phone (the **Enable motion** button). After 
 | `jolt` | Sudden movement (acceleration) and rotation (gyro) | A timestamped impulse with strength 0–1: translation left/right/up/down/forward/back, or rotation around x/y/z with sign −1/+1. Requires acceleration and gyro access; a required jolt has no button substitute. | Registered extension proof; no production game uses it yet. |
 
 Jolt settings use `InputRequirement.motion`. Device Y is inverted into controller Y; rotation is applied around controller Z. Missing linear acceleration falls back to orientation-based gravity compensation. Trigger/rearm thresholds, a calm window and a refractory period suppress repeat impulses. Synthetic traces and production ingress establish the contract; physical tuning remains unverified.
+
+## Extension and validation
+
+Touch controls use `npm run control:new -- <type>` and the controls-owned definition/view registration. Motion inputs add their pure definition and processor under `src/client/controls/motion`, register metadata and processor construction there, and register their controls-owned surface/settings in `motion-views/registry.tsx`. Pure processors receive validated samples, injected clocks and generic commands; provider/runtime keep sensor permission and transport ownership. No input-specific shell/runtime branches are needed. Jolt follows this same seam as pointer, tilt, shake and chop.
+
+Run `npm test`, `npm run game:test`, `npm run typecheck`, `npm run lint` and `npm run build` after extensions. Direct discovery includes colocated tests; shared fixtures exercise output bounds, freshness/epochs, reconfiguration/cancellation and post-disposal behavior. Synthetic tests and production ingress establish contracts; record physical sensor/haptic and network evidence separately in the acceptance ledger. The four former slider/dial/text/draw-canvas widgets remain unsupported and obsolete layouts reject.

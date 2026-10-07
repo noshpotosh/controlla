@@ -585,3 +585,54 @@ includes 32 complete production rounds and took 157 seconds standalone. Logs:
 /private/tmp/scenario-final-focused.log and /private/tmp/conformance-focused.log.
 Integrated validation: npm test 466/466; game:test 189/189; typecheck, lint and production build passed. Logs: /private/tmp/scenario-{tests,games,typecheck,lint,build}.log. Checkpoint 5 implementation is complete; continue checkpoint 6 scaffolding, catalog-derived bundle evidence, documentation inventory and browser smoke/completion audit.
 No browser, physical sensor, vibration or hosted-network evidence is claimed.
+
+## Checkpoint 6a: game scaffold and catalog-derived production evidence
+
+Added game:new using controls scaffold conventions. It validates bounded kebab
+slugs, folder/registration and catalog identifier collisions before writes; loads
+all templates before mutation; supports formatted trailing-comma arrays. Descriptor,
+rules, renderer and colocated test are generated under one folder, with one catalog
+import/entry. The generic starter accepts semantic SCORE actions, uses finite timed
+rounds/default roles and owns a detached point-counter state. No engine, runtime,
+shell or controls changes are generated. Discovery includes the generated test.
+
+Catalog registration is parsed without executing games. Production evidence derives
+index/game/renderer requirements for every catalog folder, independently requires
+Neon Harvest and Whack-a-Mole, and rejects developer, test and template imports.
+Negative tests cover a new unbundled registration, missing original modules/catalog
+entries and leaked fixture modules. README now lists both actual production games;
+authoring, input extension and validation docs explain the new workflows.
+
+Focused scaffold proof: 3/3 tests; generated tests and copied-source typecheck pass;
+invalid/duplicate operations leave the fixture unchanged. Catalog bundle checks
+6/6. Logs: /private/tmp/game-scaffold-final-focused.log and
+/private/tmp/catalog-bundle-focused.log. Initial fixture typecheck failures exposed
+missing UI/hooks copies (fixed); initial generator narrowing and test variable lint
+issues were corrected. Identifier-collision cases include default/find, and keyword
+slug class produces valid identifiers.
+
+Disposable integration checkout: /private/tmp/controlla-game-integration-o_13oo5q,
+branch codex/scaffold-integration, corrected baseline 796f665. It contains scaffold-proof only
+for integration evidence; the real catalog still contains two games. Generation
+changes only its folder and catalog. Main validation: 470/470 full tests and
+192/192 game tests (/private/tmp/scaffold-final-{tests,games}.log). Generated-game
+validation: 479/479 full tests and 201/201 game tests
+(/private/tmp/scaffold-proof-accepted-{tests,games}.log); typecheck, lint and build
+pass in both checkouts, including catalog-derived production module checks.
+
+The initial fixture suites exposed a shared hard-coded statistics-key map
+(scaffold-proof-{tests,games}-before.log) and an exact two-entry catalog assertion
+(scaffold-proof-final-{tests,games}.log). Shared report checks now compare preserved
+snapshot statistics and generic placement awards; focused exact statistics remain
+in each game folder. The catalog test permits extensions while independently
+requiring both original games and unique IDs. Its final focused reruns pass 11/11
+in both checkouts (/private/tmp/scaffold-{proof-,}engine-focused.log).
+
+Browser harness smoke found Finish round advancing a fixed 34 seconds. It now uses
+the public finish helper, then advances through delivery/presentation delay so
+paused displays show terminal results. Both games finish while paused with matching
+host/remote results and cumulative awards; screenshot:
+/private/tmp/milestone-harness-results.jpg. Typecheck/lint/build pass after this
+repair (/private/tmp/scaffold-browser-{typecheck,lint,build}.log). No new production
+rules changed. Live-room touch/settings/calibration smoke and completion audit
+remain open; physical sensors/haptics and hosted-network evidence remain unverified.

@@ -19,6 +19,7 @@
     "replay": "tsx tests/replay.ts",
     "control:new": "tsx scripts/new-control.ts",
     "game:dev": "vinext dev",
+    "game:new": "tsx scripts/new-game.ts",
     "game:test": "node --import tsx scripts/run-tests.ts --game"
   },
   "dependencies": {
