@@ -44,3 +44,7 @@ Keep work recoverable and make collaboration easy. Apply this policy to all repo
 
 - Report the branch, worktree path if applicable, latest checkpoint commit, validation results, and whether the remote push succeeded. Identify remaining task work and any pre-existing changes left untouched.
 - When comparing approaches, name the branch or commit for each and identify the last verified checkpoint. Keep this information in the handoff or PR so a teammate can resume or recover an earlier version without relying on one agent's memory.
+
+## Never read docs from the docs/retired directory
+
+- Do not read or use the .md files in docs/retired/ to make decisions about code changes or planning unless explicitly asked.
