@@ -29,7 +29,7 @@ for every connected/current-generation participant; late arrivals wait for the
 next round. Missing capabilities retire readiness; recovery/substitution requires
 a replacement ACK without reassignment. Both production games retain timed/default
 roles. Validation: 424 full tests / 152 game tests, typecheck, lint and build pass.
-Checkpoint 4a declarative sound is saved: 426 full / 154 game tests plus typecheck, lint and build pass. Continue with bounded authenticated feedback, then replay/conformance, scaffolding and browser evidence.
+Checkpoint 4a declarative sound is saved: 426 full / 154 game tests plus typecheck, lint and build pass. Checkpoint 4b feedback is validated: 441 full / 164 game tests plus typecheck, lint and build pass. Authenticated scoped state, enabled enforcement/cancellation, bounded pulse delivery and reconnect restoration are covered, including a live forced-relay turn fixture. The authority clock is injectable and fractional deadline validation is repaired. Continue checkpoint 5 replay/identity/conformance, then scaffolding and browser evidence.
 No physical sensor, vibration or hosted-network verification is claimed.
 
 ## Supplied implementation plan (preserved)

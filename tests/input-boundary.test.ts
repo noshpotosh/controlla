@@ -886,3 +886,141 @@ void test('Neon aim pad preserves square corners, sample times and held aim thro
   session.tick();
   assert.equal(frames.mock.calls.at(-1)!.arguments[0].values.a.aim, undefined);
 });
+
+void test('phone feedback retires pending gestures, rejects stale scope and restores state without haptic replay', async (t) => {
+  const p = phone(t),
+    runtime = p.runtime;
+  const vibrations: number[] = [];
+  Object.defineProperty(navigator, 'vibrate', {
+    configurable: true,
+    value: (ms: number) => vibrations.push(ms),
+  });
+  const config = { ...runtime.view.config!, haptics: { enabled: true } };
+  const receive = (message: Message) =>
+    runtime.network.onMessage('host', 'ctrl', message);
+  receive({ type: 'config', config, roundId: 'turn', role: 'leader' });
+  receive({
+    type: 'phase',
+    phase: 'running',
+    roundId: 'turn',
+    gameId: 'steering-probe',
+    mode: 'standard',
+  });
+  const old = runtime.portFor(config.widgets[0], config.generation);
+  old.value({ x: 0.1, y: 0.2 });
+  old.value({ x: 0.2, y: 0.3 });
+  const before = p.sent.filter((m) => m.type === 'widget').length;
+  const feedback = {
+    type: 'feedback',
+    roundId: 'turn',
+    generation: config.generation,
+    revision: 1,
+    status: 'Wait',
+    enabled: false,
+    hapticMs: 30,
+  };
+  receive(feedback);
+  old.value({ x: 0.5, y: 0.5 });
+  old.press(true);
+  old.press(false);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.equal(p.sent.filter((m) => m.type === 'widget').length, before);
+  assert.equal(p.sent.filter((m) => m.type === 'press').length, 0);
+  assert.deepEqual(runtime.view.controllerFeedback, {
+    status: 'Wait',
+    enabled: false,
+  });
+  assert.deepEqual(vibrations, [30]);
+  for (const patch of [
+    { revision: 1 },
+    { roundId: 'other', revision: 2 },
+    { generation: config.generation - 1, revision: 2 },
+    { status: 'x'.repeat(121), revision: 2 },
+    { hapticMs: 101, revision: 2 },
+  ])
+    receive({ ...feedback, enabled: true, ...patch });
+  assert.equal(runtime.view.controllerFeedback.enabled, false);
+  assert.equal(vibrations.length, 1);
+  receive({
+    type: 'config',
+    config: { ...config, generation: 4 },
+    roundId: 'turn',
+    role: 'leader',
+  });
+  assert.equal(runtime.view.controllerFeedback.enabled, false);
+  receive({ ...feedback, generation: 3, revision: 2 });
+  receive({
+    ...feedback,
+    generation: 4,
+    revision: 2,
+    status: 'Restored',
+    hapticMs: undefined,
+  });
+  // Wire JSON omits absent fields.
+  assert.equal(runtime.view.controllerFeedback.status, 'Wait');
+  receive({
+    type: 'feedback',
+    roundId: 'turn',
+    generation: 4,
+    revision: 2,
+    status: 'Restored',
+    enabled: false,
+  });
+  assert.equal(runtime.view.controllerFeedback.status, 'Restored');
+  assert.equal(vibrations.length, 1);
+  p.at(1200);
+  receive({
+    type: 'feedback',
+    roundId: 'turn',
+    generation: 4,
+    revision: 3,
+    status: 'Your turn',
+    enabled: true,
+  });
+  old.value({ x: 0.1, y: 0.1 });
+  runtime.portFor(runtime.view.config!.widgets[0], 4).value({ x: 0.4, y: 0.3 });
+  assert.equal(p.sent.filter((m) => m.type === 'widget').length, before + 1);
+  receive({
+    type: 'phase',
+    phase: 'results',
+    roundId: 'turn',
+    gameId: 'steering-probe',
+    mode: 'standard',
+  });
+  assert.deepEqual(runtime.view.controllerFeedback, {
+    status: '',
+    enabled: true,
+  });
+  receive({ ...feedback, generation: 4, revision: 4 });
+  assert.equal(vibrations.length, 1);
+  runtime.close();
+  receive({ ...feedback, generation: 4, revision: 5 });
+  assert.deepEqual(runtime.view.controllerFeedback, {
+    status: '',
+    enabled: true,
+  });
+});
+
+void test('feedback on a phone without vibration still applies status and enabled state', (t) => {
+  const { runtime } = phone(t),
+    config = runtime.view.config!;
+  runtime.network.onMessage('host', 'ctrl', {
+    type: 'config',
+    config,
+    roundId: 'round',
+    role: 'default',
+  });
+  runtime.network.onMessage('host', 'ctrl', {
+    type: 'feedback',
+    roundId: 'round',
+    generation: config.generation,
+    revision: 1,
+    status: 'Ready',
+    enabled: true,
+    hapticMs: 100,
+  });
+  assert.deepEqual(runtime.view.controllerFeedback, {
+    status: 'Ready',
+    enabled: true,
+  });
+});

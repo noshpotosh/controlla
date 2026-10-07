@@ -126,7 +126,14 @@ export type RoundTiming =
   | { kind: 'untimed'; safetyDurationMs: number };
 export interface GameTickResult {
   events: readonly PresentationEvent[];
+  feedback?: readonly PlayerFeedback[];
   complete?: true;
+}
+export interface PlayerFeedback {
+  playerId: string;
+  status?: string;
+  enabled?: boolean;
+  hapticMs?: number;
 }
 
 export interface GameInstance<S extends object> {
@@ -203,7 +210,7 @@ export interface GameDescriptor<S extends object = object> {
   instructions?: readonly string[];
   controls: ControllerRequirements;
   setup?(context: RoundSetupContext): readonly ParticipantAssignment[];
-  presentation: { cursors: boolean };
+  presentation: { cursors: boolean; phoneFeedback?: boolean };
   sounds?: Readonly<Record<string, readonly SoundLayer[]>>;
   /**
    * Optional. How long presses wait (ms) so presses from different phones reach

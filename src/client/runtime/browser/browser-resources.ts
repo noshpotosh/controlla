@@ -14,6 +14,9 @@ const browserEnvironment: BrowserEnvironment = {
     return () => surface.removeEventListener(event, listener);
   },
   createAudio: () => new AudioContext(),
+  vibrate: (ms) => {
+    navigator.vibrate?.(ms);
+  },
   requestWake: () =>
     'wakeLock' in navigator ? navigator.wakeLock.request('screen') : null,
 };
@@ -114,6 +117,21 @@ export class BrowserResources implements BrowserResourcePort {
       playSound(this.audio, event.kind, sounds);
     } catch {
       /* Closed audio context. */
+    }
+  }
+  pulse(ms: number) {
+    if (
+      this.disposed ||
+      this.suspended ||
+      !Number.isInteger(ms) ||
+      ms <= 0 ||
+      ms > 100
+    )
+      return;
+    try {
+      this.environment.vibrate?.(ms);
+    } catch {
+      /* Vibration is optional. */
     }
   }
   dispose() {

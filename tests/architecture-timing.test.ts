@@ -240,3 +240,16 @@ void test('live authority admits delayed pre-cutoff presses and rejects post-cut
   );
   assert.equal(authority.summary().completed.length, 1);
 });
+
+void test('fractional authority clocks validate finite deadlines without subtraction rounding errors', () => {
+  const f = fixture({ kind: 'timed', durationMs: 5000 }, Infinity);
+  const runner = new RoundRunner(f.descriptor, new SessionProgress());
+  runner.prepare(players, 42);
+  void runner.load();
+  runner.begin(players, 192.069207622869);
+  assert.equal(runner.phase, 'countdown');
+  assert.ok(runner.snapshot()?.state);
+  runner.tick(runner.startAt + 20, 20, {}, 0);
+  assert.equal(runner.phase, 'running');
+  runner.dispose();
+});

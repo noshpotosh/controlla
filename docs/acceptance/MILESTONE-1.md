@@ -487,3 +487,43 @@ and framework cues retain precedence. Physical audible comparison remains pendin
 Checkpoint 4 remains open for bounded authenticated phone feedback, enabled-state
 cancellation/enforcement, status rendering, reconnect restoration and haptics without
 replay. Checkpoints 5–6 and required browser/device/network evidence remain open.
+
+
+## Checkpoint 4b: bounded authenticated phone feedback
+
+Added opt-in tick feedback with per-player plain status, enabled state and brief
+haptics. Validators bound status to 120 Unicode code points, pulses to positive
+integer milliseconds at most 100, and one entry per fixed participant/tick within
+8 KiB JSON. Messages carry round ID, current configuration generation and monotonic
+revision. Host sends feedback directly over authenticated control routing, including
+remote-venue phones; venue/player spoofing is rejected. Per-player delivery is
+limited to one update per 100 ms, coalescing latest state and dropping excess
+pulses. Reconnect/current ACK restores state without replaying haptics.
+
+Authority rejects disabled reliable, widget and binary input and clears held
+values, while retaining already accepted actions. Re-enable establishes a capture
+floor. Phones cancel gestures, retire scoped ports and disable game controls while
+keeping menu/settings available. Status uses escaped React text. Unsupported
+vibration does not prevent feedback state; optional vibration is browser-owned.
+Terminal lifecycle and disposal clear feedback. Production games remain unchanged;
+a test-only turn fixture exercises the extension seam.
+
+Session clock dependency is now injectable (finite nonnegative milliseconds) for
+deterministic authority feedback tests. Live forced-relay testing exposed a
+fractional deadline bug: subtracting start from end could round duration slightly
+above its limit. Snapshot validation now compares end directly to start+duration.
+A regression reproduced failure before the fix and passes after it; deadline
+bounds remain strict.
+
+Validation: npm test 441/441; game:test 164/164; typecheck, lint and production
+build passed. Logs: /private/tmp/feedback-{tests,games,typecheck,lint,build}.log.
+Focused feedback/control/router/browser tests passed; live WebSocket testing proves
+turn switching, player isolation, spoof rejection, reconnect/new generation without
+old pulses and host-loss cleanup. Fractional regression evidence:
+/private/tmp/feedback-fraction-{before,final}.log. Physical vibration and audible
+comparison remain unverified; mocks and relay tests do not certify devices or
+hosted-network performance.
+
+Checkpoint 4 implementation is complete. Continue checkpoint 5 replay fixtures,
+identity dependencies, detached authority/display samples and common catalog
+conformance, then checkpoint 6 scaffolding and final browser/evidence audit.

@@ -201,3 +201,34 @@ void test('sound cues synthesize game-owned layers and keep framework cues indep
   playSound(audio, 'end', { end: [] });
   assert.deepEqual(made, ['gain', 'oscillator']);
 });
+
+void test('browser feedback pulses are bounded, optional and stop after suspension or disposal', () => {
+  const pulses: number[] = [];
+  let hidden = false;
+  const environment: BrowserEnvironment = {
+    hidden: () => hidden,
+    listen: () => () => {},
+    createAudio: () => {
+      throw new Error('No audio');
+    },
+    requestWake: () => null,
+    vibrate: (ms) => {
+      pulses.push(ms);
+      if (ms === 99) throw new Error('Unsupported');
+    },
+  };
+  const resources = new BrowserResources(
+    { lifecycle() {}, shouldWarnBeforeUnload: () => false, wakeChanged() {} },
+    environment,
+  );
+  for (const ms of [0, -1, 101, 0.5, Infinity]) resources.pulse(ms);
+  resources.pulse(100);
+  resources.pulse(99);
+  assert.deepEqual(pulses, [100, 99]);
+  hidden = true;
+  resources.pulse(10);
+  hidden = false;
+  resources.dispose();
+  resources.pulse(10);
+  assert.deepEqual(pulses, [100, 99]);
+});

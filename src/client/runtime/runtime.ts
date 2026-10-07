@@ -1,4 +1,8 @@
 import { BrowserResources } from './browser/browser-resources.ts';
+import {
+  validFeedbackMessage,
+  type FeedbackState,
+} from '../engine/feedback.ts';
 import type { BrowserEnvironment } from './browser/contracts.ts';
 import { downloadSummary } from './browser/download.ts';
 import { Diagnostics } from './diagnostics/diagnostics.ts';
@@ -41,6 +45,7 @@ export interface RuntimeView {
   config: ControllerConfig | null;
   controllerRoundId: string | null;
   controllerRole: string | null;
+  controllerFeedback: FeedbackState;
   phase: string;
   /** Local control lifetime, independent of the wire configuration generation. */
   inputEpoch: number;
@@ -107,6 +112,8 @@ export class Runtime {
   private probeTimers = new Set<ReturnType<typeof setTimeout>>();
   private motionCapabilitiesKey = '';
   private bootId = runtimeBootId();
+  private feedbackRevision = 0;
+  private lastFeedbackPulse = -Infinity;
   view: RuntimeView = {
     identity: null,
     roster: { players: [], venues: [] },
@@ -122,6 +129,7 @@ export class Runtime {
     config: null,
     controllerRoundId: null,
     controllerRole: null,
+    controllerFeedback: { status: '', enabled: true },
     phase: 'lobby',
     inputEpoch: 0,
     D: 0,
@@ -251,7 +259,7 @@ export class Runtime {
       {
         frame: (data) => this.router.sendFrame(data),
         reliable: (message) => this.sendUp(message),
-        haptic: (ms) => navigator.vibrate?.(ms),
+        haptic: (ms) => this.resources.pulse(ms),
         settingsChanged: (values) => {
           try {
             localStorage.setItem(CONTROL_SETTINGS_KEY, JSON.stringify(values));
@@ -289,6 +297,7 @@ export class Runtime {
     this.network.onEnded = (reason) => {
       if (this.stopped || this.view.ended) return;
       this.view.ended = true;
+      this.clearControllerFeedback();
       this.stopScheduling();
       this.diagnostic.dispose();
       this.resources.dispose();
@@ -442,6 +451,7 @@ export class Runtime {
     this.notify();
   }
   private acceptPhase(msg: Message) {
+    const previousRoundId = this.view.roundId;
     const phase = this.playback.acceptPhase({
       phase: msg.phase,
       roundId: msg.roundId,
@@ -451,7 +461,16 @@ export class Runtime {
     });
     if (!phase) return;
     Object.assign(this.view, phase);
+    if (!['loading', 'countdown', 'running', 'settling'].includes(phase.phase))
+      this.clearControllerFeedback();
     this.syncInput();
+    if (
+      previousRoundId !== phase.roundId &&
+      phase.roundId === this.view.controllerRoundId &&
+      this.view.identity?.role === 'controller' &&
+      this.view.config
+    )
+      this.sendUp({ type: 'ready', generation: this.view.config.generation });
     this.notify();
   }
   private displayMessage(channel: Channel, msg: Message) {
@@ -476,6 +495,11 @@ export class Runtime {
       this.notify();
     }
   }
+  private clearControllerFeedback(): void {
+    this.view.controllerFeedback = { status: '', enabled: true };
+    this.feedbackRevision = 0;
+    this.lastFeedbackPulse = -Infinity;
+  }
   private controllerMessage(msg: Message) {
     if (msg.type === 'clockReply') this.clockReply(msg);
     else if (msg.type === 'config') {
@@ -499,12 +523,44 @@ export class Runtime {
         return;
       }
       this.view.config = this.input.getConfiguration();
+      if (this.view.controllerRoundId !== msg.roundId)
+        this.clearControllerFeedback();
       this.view.controllerRoundId =
         typeof msg.roundId === 'string' ? msg.roundId : null;
       this.view.controllerRole = typeof msg.role === 'string' ? msg.role : null;
       this.syncInput();
       this.applySensorConfig();
       this.sendUp({ type: 'ready', generation: config.generation });
+      this.notify();
+    } else if (msg.type === 'feedback') {
+      if (
+        this.stopped ||
+        this.view.ended ||
+        !validFeedbackMessage(msg) ||
+        msg.roundId !== this.view.controllerRoundId ||
+        msg.generation !== this.view.config?.generation ||
+        msg.revision <= this.feedbackRevision ||
+        (this.view.roundId !== null && this.view.roundId !== msg.roundId) ||
+        (this.view.roundId === msg.roundId &&
+          !['loading', 'countdown', 'running', 'settling'].includes(
+            this.view.phase,
+          ))
+      )
+        return;
+      this.feedbackRevision = msg.revision;
+      this.view.controllerFeedback = {
+        status: msg.status,
+        enabled: msg.enabled,
+      };
+      this.syncInput();
+      if (
+        msg.hapticMs !== undefined &&
+        this.view.config.haptics.enabled &&
+        now() - this.lastFeedbackPulse >= 100
+      ) {
+        this.lastFeedbackPulse = now();
+        this.resources.pulse(msg.hapticMs);
+      }
       this.notify();
     } else if (msg.type === 'phase') this.acceptPhase(msg);
     else if (msg.type === 'progressBatch') this.acceptProgress(msg);
@@ -561,6 +617,7 @@ export class Runtime {
         !this.view.ended &&
         this.view.identity?.role === 'controller' &&
         this.view.status === 'Connected' &&
+        this.view.controllerFeedback.enabled &&
         (!this.view.roundId ||
           !['loading', 'countdown', 'running', 'settling'].includes(
             this.view.phase,
@@ -692,6 +749,7 @@ export class Runtime {
   close() {
     if (this.stopped) return;
     this.stopped = true;
+    this.clearControllerFeedback();
     this.playback.dispose();
     this.input.dispose();
     this.router.dispose();

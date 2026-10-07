@@ -8,6 +8,7 @@ export interface BrowserEnvironment {
   ): () => void;
   createAudio(): AudioContext;
   requestWake(): Promise<WakeLockSentinel> | null;
+  vibrate?(ms: number): void;
 }
 export interface BrowserEffects {
   lifecycle(suspended: boolean, warnHost: boolean): void;
@@ -19,6 +20,7 @@ export interface BrowserResourcePort {
   start(): void;
   unlock(): Promise<void>;
   acquireWake(): Promise<void>;
+  pulse(ms: number): void;
   playEvent(
     event: PresentationEvent,
     sounds?: Readonly<Record<string, readonly SoundLayer[]>>,

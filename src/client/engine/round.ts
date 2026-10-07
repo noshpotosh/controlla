@@ -6,6 +6,7 @@ import {
 } from './round-setup.ts';
 import { timingDuration } from './timing-policy.ts';
 import { validateSounds } from './sound-policy.ts';
+import { validFeedback, type FeedbackState } from './feedback.ts';
 import {
   ARBITRATION_MS,
   arbitrationWindow,
@@ -24,6 +25,7 @@ import type {
   RoundTiming,
   ParticipantAssignment,
   ControllerRequirements,
+  PlayerFeedback,
 } from '../api/index.ts';
 import { SessionProgress } from './progress.ts';
 import {
@@ -50,6 +52,9 @@ export class RoundRunner<S extends object = object> {
   private assignments: ParticipantAssignment[] = [];
   private seed = 0;
   private prepared = false;
+  private feedback = new Map<string, FeedbackState>();
+  private feedbackUpdates = new Map<string, PlayerFeedback>();
+  private enabledSince = new Map<string, number>();
   private readonly game: GameInstance<S>;
   private readonly timing: RoundTiming;
   private loading: Promise<void> | null = null;
@@ -73,6 +78,11 @@ export class RoundRunner<S extends object = object> {
       throw new Error(`Unknown mode ${mode} for ${descriptor.id}.`);
     timingDuration(descriptor.timing);
     validateSounds(descriptor.sounds);
+    if (
+      descriptor.presentation.phoneFeedback !== undefined &&
+      typeof descriptor.presentation.phoneFeedback !== 'boolean'
+    )
+      throw new Error('Invalid phone feedback declaration.');
     this.timing = structuredClone(descriptor.timing);
     freeze(this.timing);
     this.game = descriptor.create({ mode });
@@ -133,6 +143,27 @@ export class RoundRunner<S extends object = object> {
       null
     );
   }
+  feedbackFor(id: string): FeedbackState {
+    return { ...(this.feedback.get(id) ?? { status: '', enabled: true }) };
+  }
+  enabledFor(id: string, captureTime = Infinity): boolean {
+    return (
+      this.feedbackFor(id).enabled &&
+      captureTime >= (this.enabledSince.get(id) ?? -Infinity)
+    );
+  }
+  takeFeedback(): PlayerFeedback[] {
+    const updates = [...this.feedbackUpdates.values()].map((update) =>
+      structuredClone(update),
+    );
+    this.feedbackUpdates.clear();
+    return updates;
+  }
+  private clearFeedback(): void {
+    this.feedback.clear();
+    this.feedbackUpdates.clear();
+    this.enabledSince.clear();
+  }
   begin(players: Player[], time: number): void {
     if (!this.loaded || this.disposed || this.phase !== 'loading' || this.round)
       throw new Error('Game is not ready to begin.');
@@ -183,6 +214,7 @@ export class RoundRunner<S extends object = object> {
   input(action: Action, receivedAt: number): boolean {
     if (
       !this.active() ||
+      !this.enabledFor(action.playerId, action.time) ||
       !this.players.some((p) => p.id === action.playerId && p.connected) ||
       !Object.hasOwn(
         this.requirementsFor(action.playerId)?.inputs ?? {},
@@ -254,12 +286,39 @@ export class RoundRunner<S extends object = object> {
         !isJsonValue(result, 32 * 1024)
       )
         throw new Error('Game returned an invalid tick result.');
+      if (
+        result.feedback !== undefined &&
+        (!this.descriptor.presentation.phoneFeedback ||
+          !validFeedback(result.feedback, this.players))
+      )
+        throw new Error('Game returned invalid phone feedback.');
       this.appendEvents(structuredClone(result.events));
       emitted.push(...structuredClone(result.events));
       // A completion request may only latch after its state and events validate.
       this.snapshot();
       if (this.phase === 'error')
         throw new Error(this.error ?? 'Invalid tick state.');
+      for (const update of result.feedback ?? []) {
+        const before = this.feedbackFor(update.playerId);
+        const current = {
+          status: update.status ?? before.status,
+          enabled: update.enabled ?? before.enabled,
+        };
+        if (!before.enabled && current.enabled)
+          this.enabledSince.set(update.playerId, at);
+        if (!current.enabled)
+          this.held = Object.fromEntries(
+            Object.entries(this.held).filter(([id]) => id !== update.playerId),
+          );
+        this.feedback.set(update.playerId, current);
+        this.feedbackUpdates.set(update.playerId, {
+          playerId: update.playerId,
+          ...current,
+          ...(update.hapticMs === undefined
+            ? {}
+            : { hapticMs: update.hapticMs }),
+        });
+      }
       if (phase === 'running' && result.complete === true) this.settle(at);
     };
     try {
@@ -283,7 +342,7 @@ export class RoundRunner<S extends object = object> {
           this.actions = partition.pending;
           this.held = Object.fromEntries(
             this.players
-              .filter((p) => p.connected)
+              .filter((p) => p.connected && this.enabledFor(p.id))
               .map((p) => [
                 p.id,
                 Object.fromEntries(
@@ -294,6 +353,7 @@ export class RoundRunner<S extends object = object> {
                         name,
                       ) &&
                       Number.isFinite(sample.time) &&
+                      this.enabledFor(p.id, sample.time) &&
                       sample.time < this.endAt &&
                       sample.time <= time + 100 &&
                       (sample.observedAt === undefined ||
@@ -383,6 +443,7 @@ export class RoundRunner<S extends object = object> {
         );
         this.completedSnapshot = structuredClone(candidate);
         this.phase = 'results';
+        this.clearFeedback();
         this.disposeGame();
       }
       this.appendEvents(emitted);
@@ -445,6 +506,7 @@ export class RoundRunner<S extends object = object> {
     this.actions = [];
     this.held = {};
     this.phase = 'aborted';
+    this.clearFeedback();
     if (reason) this.error = reason.slice(0, 2000);
     this.disposeGame();
   }
@@ -458,6 +520,7 @@ export class RoundRunner<S extends object = object> {
     this.actions = [];
     this.held = {};
     this.phase = 'error';
+    this.clearFeedback();
     this.events = [];
     this.disposeGame();
   }

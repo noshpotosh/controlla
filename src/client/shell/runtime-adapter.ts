@@ -107,6 +107,7 @@ function project(runtime: Runtime): ShellView {
     config: v.config ? structuredClone(v.config) : null,
     controllerRoundId: v.controllerRoundId,
     controllerRole: v.controllerRole,
+    controllerFeedback: { ...v.controllerFeedback },
     inputEpoch: v.inputEpoch,
     D: v.D,
     limitingVenue: v.limitingVenue,

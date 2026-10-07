@@ -1,4 +1,5 @@
 import { prepareAssignments } from './round-setup.ts';
+import type { FeedbackMessage } from './feedback.ts';
 import { defaultCapabilities } from '../controls/resolve.ts';
 import { defaultGame, findGame, resolveMode } from '../minigames/catalog.ts';
 import { resolveController } from './input.ts';
@@ -34,6 +35,8 @@ export interface SessionPorts {
   warning: (message: string) => void;
 }
 export interface SessionDependencies {
+  /** Finite authority milliseconds; production uses the monotonic browser clock. */
+  now?(): number;
   /** Inject a uint32 source for deterministic round setup/replay. */
   seed?(): number;
 }
@@ -41,6 +44,9 @@ const randomSeed = () =>
   globalThis.crypto?.getRandomValues?.(new Uint32Array(1))[0] ??
   Math.floor(Math.random() * 0x100000000);
 export class SessionAuthority {
+  private feedbackPending = new Set<string>();
+  private feedbackLast = new Map<string, number>();
+  private feedbackRevision = new Map<string, number>();
   private runner: RoundRunner | null = null;
   private readonly progress = new SessionProgress();
   private selectedGame = defaultGame.id;
@@ -64,7 +70,7 @@ export class SessionAuthority {
   >();
   private ready = new Set<string>();
   private pending: { gameId: string; mode: string; at: number } | null = null;
-  private lastTick = now() - 1000 / 60;
+  private lastTick = 0;
   private bootIds = new Map<string, string>();
   private presentedTimes = new Map<string, Map<string, number>>();
   private lastSnapshot = 0;
@@ -91,12 +97,19 @@ export class SessionAuthority {
     private ports: SessionPorts,
     private readonly dependencies: SessionDependencies = {},
   ) {
+    this.lastTick = this.readTime() - 1000 / 60;
     this.venueDelays.set(hostId, new Samples());
     this.venueDelays.get(hostId)!.add(0);
   }
+  private readTime(): number {
+    const time = this.dependencies.now ? this.dependencies.now() : now();
+    if (!Number.isFinite(time) || time < 0)
+      throw new Error('Invalid authority clock.');
+    return time;
+  }
   setRoster(roster: Roster) {
     const returned = new Set<string>();
-    const time = now();
+    const time = this.readTime();
     const clearDisconnectedInput = (id: string) => {
       this.streams.delete(id);
       this.widgetValues.delete(id);
@@ -152,8 +165,40 @@ export class SessionAuthority {
     this.edges.delete(id);
     this.widgetValues.delete(id);
     this.widgetSequences.delete(id);
-    this.runner?.clearInput(id, now());
+    this.runner?.clearInput(id, this.readTime());
     delete this.cursors[id];
+  }
+  private clearFeedback(): void {
+    this.feedbackPending.clear();
+    this.feedbackLast.clear();
+    this.feedbackRevision.clear();
+  }
+  private sendFeedback(id: string, time: number, hapticMs?: number): void {
+    const runner = this.runner,
+      config = this.configs.get(id);
+    if (
+      !runner?.descriptor.presentation.phoneFeedback ||
+      !['countdown', 'running', 'settling'].includes(runner.phase) ||
+      !runner.requirementsFor(id) ||
+      !config ||
+      !this.ready.has(id) ||
+      !this.roster.players.some((p) => p.id === id && p.connected) ||
+      time - (this.feedbackLast.get(id) ?? -Infinity) < 100
+    )
+      return;
+    const revision = (this.feedbackRevision.get(id) ?? 0) + 1;
+    const message: FeedbackMessage = {
+      type: 'feedback',
+      roundId: runner.roundId!,
+      generation: config.generation,
+      revision,
+      ...runner.feedbackFor(id),
+      ...(hapticMs === undefined ? {} : { hapticMs }),
+    };
+    this.feedbackLast.set(id, time);
+    this.feedbackRevision.set(id, revision);
+    this.feedbackPending.delete(id);
+    this.ports.toPlayer(id, message);
   }
   private configurePlayer(p: Player, force = false) {
     const descriptor = findGame(this.selectedGame)!;
@@ -194,9 +239,14 @@ export class SessionAuthority {
     }
   }
   control(from: string, msg: Message) {
-    const time = now();
+    const time = this.readTime();
     if (msg.type === 'clock') {
-      this.reply(from, { type: 'clockReply', t0: msg.t0, t1: time, t2: now() });
+      this.reply(from, {
+        type: 'clockReply',
+        t0: msg.t0,
+        t1: time,
+        t2: this.readTime(),
+      });
       return;
     }
     const player = this.roster.players.find((p) => p.id === from),
@@ -224,15 +274,20 @@ export class SessionAuthority {
       player?.connected &&
       this.configs.has(from) &&
       msg.generation === this.configs.get(from)?.generation
-    )
+    ) {
       this.ready.add(from);
-    else if (msg.type === 'press' && player)
+      if (this.runner?.descriptor.presentation.phoneFeedback) {
+        this.feedbackPending.add(from);
+        this.sendFeedback(from, time);
+      }
+    } else if (msg.type === 'press' && player)
       this.press({ ...msg.press, playerId: from });
     else if (
       msg.type === 'widget' &&
       player?.connected &&
       this.ready.has(from) &&
-      this.participating(from)
+      this.participating(from) &&
+      (!this.runner || this.runner.enabledFor(from, msg.time))
     ) {
       const config = this.configs.get(from);
       const widget = config?.widgets.find((w) => w.action === msg.action);
@@ -317,14 +372,14 @@ export class SessionAuthority {
       return;
     let f: InputFrame;
     try {
-      f = decodeInput(buffer, now());
+      f = decodeInput(buffer, this.readTime());
     } catch {
       return;
     }
     if (
       f.generation !== this.configs.get(playerId)?.generation ||
-      f.time > now() + 100 ||
-      now() - f.time > 2000
+      f.time > this.readTime() + 100 ||
+      this.readTime() - f.time > 2000
     )
       return;
     let window = this.windows.get(playerId);
@@ -333,6 +388,10 @@ export class SessionAuthority {
       this.windows.set(playerId, window);
     }
     if (!window.accept(f.seq)) return;
+    if (this.runner && !this.runner.enabledFor(playerId, f.time)) {
+      this.edges.set(playerId, f.edges);
+      return;
+    }
     let stream = this.streams.get(playerId);
     if (!stream) {
       stream = new ContinuousBuffer();
@@ -343,9 +402,9 @@ export class SessionAuthority {
       this.pending ||
       (['countdown', 'running'].includes(this.runner.phase) &&
         f.time < this.runner.endAt &&
-        now() < this.runner.endAt)
+        this.readTime() < this.runner.endAt)
     )
-      stream.push(f, now());
+      stream.push(f, this.readTime());
     const prev = this.edges.get(playerId) ?? [0, 0, 0, 0];
     for (let b = 0; b < 4; b++) {
       const delta = (f.edges[b] - prev[b] + 256) % 256;
@@ -375,19 +434,19 @@ export class SessionAuthority {
       metrics = {
         ages: new Samples(),
         count: 0,
-        start: now(),
-        lastAt: now(),
+        start: this.readTime(),
+        lastAt: this.readTime(),
         confidence: 0,
       };
       this.playerMetrics.set(playerId, metrics);
     }
-    metrics.ages.add(Math.max(0, now() - f.time));
+    metrics.ages.add(Math.max(0, this.readTime() - f.time));
     metrics.count++;
-    metrics.lastAt = now();
+    metrics.lastAt = this.readTime();
     metrics.confidence = f.confidence;
   }
   private press(p: Press) {
-    const time = now();
+    const time = this.readTime();
     const player = this.roster.players.find(
       (candidate) => candidate.id === p.playerId && candidate.connected,
     );
@@ -502,17 +561,19 @@ export class SessionAuthority {
     this.latestMarker = null;
     this.cursors = {};
     this.runner = runner;
-    this.pending = { gameId, mode: selectedMode, at: now() };
+    this.clearFeedback();
+    this.pending = { gameId, mode: selectedMode, at: this.readTime() };
     for (const player of players) this.configurePlayer(player, true);
     void this.runner.load();
     this.announce();
   }
   abort() {
+    this.clearFeedback();
     this.pending = null;
     this.runner?.abort();
     this.cursors = {};
     this.announce();
-    this.publish(now(), true);
+    this.publish(this.readTime(), true);
   }
   private phaseMessage(): Message {
     return {
@@ -580,7 +641,7 @@ export class SessionAuthority {
       this.ports.snapshot(venue.id, message);
     }
   }
-  tick(time = now()) {
+  tick(time = this.readTime()) {
     if (this.disposed || time - this.lastTick < 1000 / 60) return;
     const dt = Math.min(50, Math.max(0, time - this.lastTick));
     this.lastTick = time;
@@ -611,7 +672,11 @@ export class SessionAuthority {
     }
     const values: Record<string, Record<string, ValueSample>> = {};
     for (const player of this.roster.players.filter(
-      (p) => p.connected && this.ready.has(p.id) && this.participating(p.id),
+      (p) =>
+        p.connected &&
+        this.ready.has(p.id) &&
+        this.participating(p.id) &&
+        (!this.runner || this.runner.enabledFor(p.id)),
     )) {
       const frame = this.streams.get(player.id)?.sample(time);
       const widgets = this.configs.get(player.id)?.widgets ?? [];
@@ -666,6 +731,22 @@ export class SessionAuthority {
     }
     const events =
       this.runner?.tick(time, dt, values, this.equalizer.current) ?? [];
+    for (const update of this.runner?.takeFeedback() ?? []) {
+      this.feedbackPending.add(update.playerId);
+      if (update.enabled === false) {
+        this.streams.delete(update.playerId);
+        this.widgetValues.delete(update.playerId);
+        delete this.cursors[update.playerId];
+      }
+      // Pulses are never queued. Coalesced state is delivered without old haptics.
+      this.sendFeedback(update.playerId, time, update.hapticMs);
+    }
+    if (
+      this.runner &&
+      ['results', 'aborted', 'error'].includes(this.runner.phase)
+    )
+      this.clearFeedback();
+    else for (const id of this.feedbackPending) this.sendFeedback(id, time);
     for (const [key, at] of this.edgeSeen)
       if (time - at > 3000) this.edgeSeen.delete(key);
     for (const event of events) {
@@ -731,6 +812,7 @@ export class SessionAuthority {
     return Math.max(...values) - Math.min(...values);
   }
   dispose() {
+    this.clearFeedback();
     if (this.disposed) return;
     this.runner?.dispose();
     this.pending = null;

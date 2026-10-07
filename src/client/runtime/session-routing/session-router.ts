@@ -93,6 +93,10 @@ export class SessionRouter {
     if (!this.active || this.terminal || !this.identity) return;
     const p = this.roster.players.find((p) => p.id === id);
     if (!p) return;
+    if (message.type === 'feedback') {
+      if (this.identity.role === 'host') this.effects.send(id, 'ctrl', message);
+      return;
+    }
     if (p.venueId === this.identity?.id) {
       this.effects.cursors.configure(id, message);
       this.effects.send(id, 'ctrl', message);
@@ -126,6 +130,7 @@ export class SessionRouter {
     const me = this.identity;
     if (!this.active || this.terminal || !me) return;
     if (me.role === 'controller') {
+      if (data.type === 'feedback' && from !== me.hostId) return;
       if (channel === 'ctrl' && (from === me.venueId || from === me.hostId))
         this.effects.controller(data);
       return;

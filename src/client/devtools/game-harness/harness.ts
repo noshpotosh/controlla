@@ -175,6 +175,7 @@ export class GameHarness<S extends object = object> {
       !this.runner.loaded ||
       !['countdown', 'running'].includes(this.phase) ||
       this.time >= this.endAt ||
+      !this.runner.enabledFor(playerId, this.time) ||
       !this.players.some((p) => p.id === playerId && p.connected)
     )
       return;

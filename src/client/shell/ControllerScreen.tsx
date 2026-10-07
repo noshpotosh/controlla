@@ -99,6 +99,8 @@ export function ControllerScreen({
           key={`${v.config.configId}:${v.config.generation}:${v.inputEpoch}`}
           widgets={v.config.widgets}
           accent={accent}
+          enabled={v.controllerFeedback.enabled}
+          status={v.controllerFeedback.status}
           portFor={(w) => phone.portFor(w, v.config!.generation)}
           motionPortFor={(w) => phone.motionPortFor(w, v.config!.generation)}
         >

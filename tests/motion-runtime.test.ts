@@ -362,3 +362,50 @@ void test('directional jolt resolves without a touch substitute and traverses li
   host.tick();
   assert.equal(observed.flatMap((input) => input.actions).length, 1);
 });
+
+void test('disabled feedback cancels held motion without activation and retires its retained port', async (t) => {
+  const p = setup(t);
+  await p.runtime.enableMotion();
+  p.f.emit();
+  const config = resolveConfig(
+    controllerSpec(games.find((game) => game.id === 'whack-a-mole')!),
+    p.f.motion.capabilities,
+    1,
+  );
+  p.invoke('controllerMessage', {
+    type: 'config',
+    config,
+    roundId: 'turn',
+    role: 'leader',
+  });
+  const widget = config.widgets.find((w) => w.action === 'whack')!;
+  assert.equal(widget.type, 'chop');
+  const retained = p.runtime.motionPortFor(widget, 1);
+  retained.command({ type: 'press', down: true });
+  assert.equal(retained.getSnapshot().held, true);
+  p.invoke('controllerMessage', {
+    type: 'feedback',
+    roundId: 'turn',
+    generation: 1,
+    revision: 1,
+    status: 'Wait',
+    enabled: false,
+  });
+  assert.equal(retained.getSnapshot().held, false);
+  retained.command({ type: 'press', down: false });
+  p.advance(20);
+  p.f.emit({ rotationRate: { alpha: 0, beta: 400, gamma: 0 } });
+  p.invoke('tick');
+  assert.equal(p.messages.filter((m) => m.type === 'press').length, 0);
+  p.invoke('controllerMessage', {
+    type: 'feedback',
+    roundId: 'turn',
+    generation: 1,
+    revision: 2,
+    status: 'Your turn',
+    enabled: true,
+  });
+  retained.command({ type: 'press', down: true });
+  assert.equal(retained.getSnapshot().held, false);
+  assert.equal(p.runtime.motionPortFor(widget, 1).getSnapshot().held, false);
+});

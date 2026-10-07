@@ -50,6 +50,8 @@ export interface ControllerSurfaceProps {
   widgets: Widget[];
   /** Player colour; tints every active state. */
   accent?: string;
+  enabled?: boolean;
+  status?: string;
   portFor: (widget: Widget) => ControlPort;
   motionPortFor?: (widget: Widget) => MotionControlPort;
   /** Renders widget types the library doesn't provide yet. */
@@ -62,6 +64,8 @@ export interface ControllerSurfaceProps {
 export function ControllerSurface({
   widgets,
   accent,
+  enabled = true,
+  status = '',
   portFor,
   fallback,
   motionPortFor,
@@ -74,23 +78,30 @@ export function ControllerSurface({
       style={accent ? ({ '--ctl-accent': accent } as CSSProperties) : undefined}
     >
       <div className="ctl-surface">
-        {widgets.map((w) =>
-          // Motion inputs with no touch fallback have no footprint.
-          !w.rect ? null : (
-            <ControlCell key={w.id} rect={w.rect} rotation={w.rotation}>
-              {views[w.type] ? (
-                <ControlView widget={w} port={screenPort(w, portFor(w))} />
-              ) : (
-                <MotionView
-                  widget={w}
-                  port={portFor(w)}
-                  motion={motionPortFor?.(w)}
-                  fallback={fallback?.(w)}
-                />
-              )}
-            </ControlCell>
-          ),
-        )}
+        <div
+          className="ctl-game-controls"
+          inert={!enabled}
+          aria-disabled={!enabled}
+        >
+          {widgets.map((w) =>
+            // Motion inputs with no touch fallback have no footprint.
+            !w.rect ? null : (
+              <ControlCell key={w.id} rect={w.rect} rotation={w.rotation}>
+                {views[w.type] ? (
+                  <ControlView widget={w} port={screenPort(w, portFor(w))} />
+                ) : (
+                  <MotionView
+                    widget={w}
+                    port={portFor(w)}
+                    motion={motionPortFor?.(w)}
+                    fallback={fallback?.(w)}
+                  />
+                )}
+              </ControlCell>
+            ),
+          )}
+        </div>
+        {status && <output className="ctl-feedback">{status}</output>}
         {children}
       </div>
     </div>

@@ -51,8 +51,9 @@ export function validRoundSnapshot(value: unknown): value is RoundSnapshot {
     !finite(s.startAt) ||
     !finite(s.endAt) ||
     s.endAt < s.startAt ||
-    s.endAt - s.startAt >
-      timingDuration(s.timing as import('../api/index.ts').RoundTiming) ||
+    s.endAt >
+      s.startAt +
+        timingDuration(s.timing as import('../api/index.ts').RoundTiming) ||
     !Array.isArray(s.players) ||
     s.players.length < 1 ||
     s.players.length > 8 ||
