@@ -17,7 +17,7 @@ export const buttonProbe: GameDescriptor<ProbeState> = {
   id: 'button-probe',
   name: 'Input probe',
   players: { min: 1, max: 8 },
-  durationMs: 30000,
+  timing: { kind: 'timed', durationMs: 30000 },
   modes: [{ id: 'standard', name: 'Standard' }],
   defaultMode: 'standard',
   controls: {
@@ -63,13 +63,15 @@ export const buttonProbe: GameDescriptor<ProbeState> = {
           state.flag = !state.flag;
           state.actions.push(structuredClone(action));
         }
-        return input.actions.map((action, i) => ({
-          id: `probe-${state.actions.length}-${i}`,
-          kind: 'hit',
-          time: input.time,
-          clock: 'presentation' as const,
-          playerId: action.playerId,
-        }));
+        return {
+          events: input.actions.map((action, i) => ({
+            id: `probe-${state.actions.length}-${i}`,
+            kind: 'hit',
+            time: input.time,
+            clock: 'presentation' as const,
+            playerId: action.playerId,
+          })),
+        };
       },
       snapshot: () => structuredClone(state),
       finalize: () =>

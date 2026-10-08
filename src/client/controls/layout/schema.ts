@@ -2,6 +2,10 @@
 // /?role=designer and stored as JSON in src/client/controls/layouts. Layouts don't know about
 // games; a game picks one and its inputs bind to the layout's control names.
 // Pure: safe for core, tests and Vite.
+import {
+  motionMetadata,
+  motionDefinitionFor,
+} from '../motion/metadata-registry.ts';
 import type {
   WidgetType,
   Orientation,
@@ -13,14 +17,10 @@ import type {
 } from '../api.ts';
 
 /** Motion inputs a layout can switch on. They have no on-screen footprint. */
-export const MOTION = [
-  'pointer',
-  'tilt',
-  'shake',
-  'chop',
-] as const satisfies readonly MotionInput[];
+export const MOTION = motionMetadata.map((definition) => definition.type);
 /** Motion inputs added after layout schema 2; saved layouts may omit them. */
-const LATER_MOTION: readonly MotionInput[] = ['chop'];
+const BASE_MOTION: readonly MotionInput[] = ['pointer', 'tilt', 'shake'];
+const LATER_MOTION = MOTION.filter((type) => !BASE_MOTION.includes(type));
 export const isMotion = (type: WidgetType): type is MotionInput =>
   (MOTION as readonly string[]).includes(type);
 
@@ -35,7 +35,9 @@ export const MENU_SIZE = 2;
 
 /** Aimed motion (pointer, tilt) drifts, so those layouts always show Recenter. */
 export const needsRecenter = (motion: Record<MotionInput, boolean>) =>
-  motion.pointer || motion.tilt;
+  MOTION.some(
+    (type) => motion[type] && motionDefinitionFor(type)?.calibration?.recenter,
+  );
 
 export const ROTATIONS: readonly Rotation[] = [0, 90, 180, 270];
 export const MENU_CORNERS: readonly MenuCorner[] = [
@@ -45,12 +47,9 @@ export const MENU_CORNERS: readonly MenuCorner[] = [
   'bottom-right',
 ];
 
-export const NO_MOTION: Record<MotionInput, boolean> = {
-  pointer: false,
-  tilt: false,
-  shake: false,
-  chop: false,
-};
+export const NO_MOTION = Object.fromEntries(
+  MOTION.map((type) => [type, false]),
+) as Record<MotionInput, boolean>;
 
 /**
  * The corner the phone chrome owns. With aimed motion on, it also holds the
@@ -115,6 +114,13 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
 const isCount = (v: unknown): v is number =>
   Number.isInteger(v) && (v as number) >= 0;
 
+/** Obsolete widgets are rejected; their layout files require an authoring edit. */
+export function retiredWidgetMessage(type: string): string | undefined {
+  return ['slider', 'dial', 'text', 'draw-canvas'].includes(type)
+    ? `The "${type}" widget is retired. Replace it with a supported touch control.`
+    : undefined;
+}
+
 /** Structural check for untrusted JSON (the save endpoint, hand edits). */
 export function isControllerLayout(v: unknown): v is ControllerLayout {
   if (!isObject(v) || v.schemaVersion !== 2) return false;
@@ -143,6 +149,7 @@ export function isControllerLayout(v: unknown): v is ControllerLayout {
       typeof item.name === 'string' &&
       isControlName(item.name) &&
       typeof item.type === 'string' &&
+      !retiredWidgetMessage(item.type) &&
       isObject(item.rect) &&
       ['x', 'y', 'w', 'h'].every((k) =>
         isCount((item.rect as Record<string, unknown>)[k]),
@@ -156,7 +163,17 @@ export function isControllerLayout(v: unknown): v is ControllerLayout {
 
 /** Checked cast for layout JSON imported by the layout index. */
 export function asControllerLayout(v: unknown): ControllerLayout {
-  if (!isControllerLayout(v)) throw new Error('Invalid controller layout JSON');
+  if (!isControllerLayout(v)) {
+    if (isObject(v) && Array.isArray(v.items))
+      for (const item of v.items) {
+        const message =
+          isObject(item) && typeof item.type === 'string'
+            ? retiredWidgetMessage(item.type)
+            : undefined;
+        if (message) throw new Error(message);
+      }
+    throw new Error('Invalid controller layout JSON');
+  }
   // Older files omit motion inputs added later; they are off.
   return { ...v, motion: { ...NO_MOTION, ...v.motion } };
 }

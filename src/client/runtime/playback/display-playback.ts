@@ -104,7 +104,7 @@ export class DisplayPlayback {
     const snapshot = wire as WireSnapshot<RoundSnapshot<object>>;
     if (
       snapshot?.patch?.schemaVersion !== undefined &&
-      snapshot.patch.schemaVersion !== 1
+      snapshot.patch.schemaVersion !== 2
     ) {
       this.displayProblem = RELOAD_DISPLAY_MESSAGE;
       this.events = [];
@@ -291,7 +291,8 @@ export class DisplayPlayback {
         const time =
           event.clock === 'authority' ? authorityTime : presentationTime;
         if (event.time > time) keep.push(event);
-        else if (time - event.time <= 1000) this.effects.playEvent(event);
+        else if (time - event.time <= 1000)
+          this.effects.playEvent(event, snapshot.gameId);
       }
       this.events = keep;
     } else if (['ended', 'unsupported', 'error', 'aborted'].includes(status))

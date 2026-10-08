@@ -1,4 +1,8 @@
 import { BrowserResources } from './browser/browser-resources.ts';
+import {
+  validFeedbackMessage,
+  type FeedbackState,
+} from '../engine/feedback.ts';
 import type { BrowserEnvironment } from './browser/contracts.ts';
 import { downloadSummary } from './browser/download.ts';
 import { Diagnostics } from './diagnostics/diagnostics.ts';
@@ -17,9 +21,9 @@ import type { ScreenPort, ScreenFrame } from '../game-screen/port.ts';
 import type { Progress, ReadonlyDeep, RoundSnapshot } from '../api/index.ts';
 import { SessionAuthority } from '../engine/session.ts';
 import { Motion } from '../controls/motion/provider.ts';
+import type { MotionControlPort } from '../controls/motion/contracts.ts';
 import type { MotionStatus } from '../controls/motion/contracts.ts';
 import type { ControlPort, ControllerConfig, Widget } from '../controls/api.ts';
-import { DEFAULT_GAIN } from '../controls/motion/pointer.ts';
 import { ControllerInput } from './controller-input/controller-input.ts';
 
 import type { Channel, Message } from '../engine/messages.ts';
@@ -39,6 +43,9 @@ export interface RuntimeView {
   roundId: string | null;
   roundError: string | null;
   config: ControllerConfig | null;
+  controllerRoundId: string | null;
+  controllerRole: string | null;
+  controllerFeedback: FeedbackState;
   phase: string;
   /** Local control lifetime, independent of the wire configuration generation. */
   inputEpoch: number;
@@ -46,9 +53,8 @@ export interface RuntimeView {
   limitingVenue: string | null;
   telemetry: Message | null;
   links: Record<string, LinkStats>;
-  /** The aim settings panel (sensitivity, recenter) is open. */
-  adjustingAim: boolean;
-  sensitivity: number;
+  /** The controls-owned settings panel is open. */
+  settingsOpen: boolean;
   motionEnabled: boolean;
   motionStatus: MotionStatus;
   sensorHz: number;
@@ -57,8 +63,7 @@ export interface RuntimeView {
   wakeLock: boolean;
   controllerPath: 'venue' | 'direct-to-session';
 }
-// Pointer sensitivity is a property of the player and phone, not the room.
-const POINTER_GAIN_KEY = 'controlla:pointer-gain';
+const CONTROL_SETTINGS_KEY = 'controlla:control-settings';
 export interface JoinOptions {
   role: Role;
   room?: string;
@@ -107,6 +112,8 @@ export class Runtime {
   private probeTimers = new Set<ReturnType<typeof setTimeout>>();
   private motionCapabilitiesKey = '';
   private bootId = runtimeBootId();
+  private feedbackRevision = 0;
+  private lastFeedbackPulse = -Infinity;
   view: RuntimeView = {
     identity: null,
     roster: { players: [], venues: [] },
@@ -120,14 +127,16 @@ export class Runtime {
     roundId: null,
     roundError: null,
     config: null,
+    controllerRoundId: null,
+    controllerRole: null,
+    controllerFeedback: { status: '', enabled: true },
     phase: 'lobby',
     inputEpoch: 0,
     D: 0,
     limitingVenue: null,
     telemetry: null,
     links: {},
-    adjustingAim: false,
-    sensitivity: DEFAULT_GAIN,
+    settingsOpen: false,
     motionEnabled: false,
     motionStatus: 'prompt',
     sensorHz: 0,
@@ -207,7 +216,8 @@ export class Runtime {
             this.notify();
           }
         },
-        playEvent: (event) => this.resources.playEvent(event),
+        playEvent: (event, gameId) =>
+          this.resources.playEvent(event, findGame(gameId)?.sounds),
       },
     );
     this.router = new SessionRouter(
@@ -249,7 +259,15 @@ export class Runtime {
       {
         frame: (data) => this.router.sendFrame(data),
         reliable: (message) => this.sendUp(message),
-        haptic: (ms) => navigator.vibrate?.(ms),
+        haptic: (ms) => this.resources.pulse(ms),
+        settingsChanged: (values) => {
+          try {
+            localStorage.setItem(CONTROL_SETTINGS_KEY, JSON.stringify(values));
+          } catch {
+            /* Preferences remain in memory when storage is unavailable. */
+          }
+          this.notify();
+        },
       },
     );
     this.motion = motion;
@@ -279,6 +297,7 @@ export class Runtime {
     this.network.onEnded = (reason) => {
       if (this.stopped || this.view.ended) return;
       this.view.ended = true;
+      this.clearControllerFeedback();
       this.stopScheduling();
       this.diagnostic.dispose();
       this.resources.dispose();
@@ -359,11 +378,8 @@ export class Runtime {
         `controlla:resume:${identity.role}:${identity.room}:${identity.venueId}`,
         JSON.stringify(identity),
       );
-      if (identity.role === 'controller') {
-        const stored = localStorage.getItem(POINTER_GAIN_KEY);
-        if (stored) this.input.setSensitivity(Number(stored));
-        this.view.sensitivity = this.input.getSnapshot().sensitivity;
-      }
+      if (identity.role === 'controller')
+        this.input.restoreSettings(localStorage.getItem(CONTROL_SETTINGS_KEY));
     } catch {
       /* Private browsing can disallow storage. */
     }
@@ -435,6 +451,7 @@ export class Runtime {
     this.notify();
   }
   private acceptPhase(msg: Message) {
+    const previousRoundId = this.view.roundId;
     const phase = this.playback.acceptPhase({
       phase: msg.phase,
       roundId: msg.roundId,
@@ -444,6 +461,16 @@ export class Runtime {
     });
     if (!phase) return;
     Object.assign(this.view, phase);
+    if (!['loading', 'countdown', 'running', 'settling'].includes(phase.phase))
+      this.clearControllerFeedback();
+    this.syncInput();
+    if (
+      previousRoundId !== phase.roundId &&
+      phase.roundId === this.view.controllerRoundId &&
+      this.view.identity?.role === 'controller' &&
+      this.view.config
+    )
+      this.sendUp({ type: 'ready', generation: this.view.config.generation });
     this.notify();
   }
   private displayMessage(channel: Channel, msg: Message) {
@@ -468,18 +495,72 @@ export class Runtime {
       this.notify();
     }
   }
+  private clearControllerFeedback(): void {
+    this.view.controllerFeedback = { status: '', enabled: true };
+    this.feedbackRevision = 0;
+    this.lastFeedbackPulse = -Infinity;
+  }
   private controllerMessage(msg: Message) {
     if (msg.type === 'clockReply') this.clockReply(msg);
     else if (msg.type === 'config') {
+      if (
+        !(
+          (msg.roundId === null && msg.role === null) ||
+          (typeof msg.roundId === 'string' &&
+            msg.roundId.length > 0 &&
+            msg.roundId.length <= 160 &&
+            typeof msg.role === 'string' &&
+            msg.role.trim().length > 0 &&
+            msg.role.length <= 64)
+        )
+      ) {
+        this.warn('Unsupported controller round assignment');
+        return;
+      }
       const config = msg.config as ControllerConfig;
       if (!this.input.configure(config)) {
         this.warn('Unsupported controller configuration');
         return;
       }
       this.view.config = this.input.getConfiguration();
+      if (this.view.controllerRoundId !== msg.roundId)
+        this.clearControllerFeedback();
+      this.view.controllerRoundId =
+        typeof msg.roundId === 'string' ? msg.roundId : null;
+      this.view.controllerRole = typeof msg.role === 'string' ? msg.role : null;
       this.syncInput();
       this.applySensorConfig();
       this.sendUp({ type: 'ready', generation: config.generation });
+      this.notify();
+    } else if (msg.type === 'feedback') {
+      if (
+        this.stopped ||
+        this.view.ended ||
+        !validFeedbackMessage(msg) ||
+        msg.roundId !== this.view.controllerRoundId ||
+        msg.generation !== this.view.config?.generation ||
+        msg.revision <= this.feedbackRevision ||
+        (this.view.roundId !== null && this.view.roundId !== msg.roundId) ||
+        (this.view.roundId === msg.roundId &&
+          !['loading', 'countdown', 'running', 'settling'].includes(
+            this.view.phase,
+          ))
+      )
+        return;
+      this.feedbackRevision = msg.revision;
+      this.view.controllerFeedback = {
+        status: msg.status,
+        enabled: msg.enabled,
+      };
+      this.syncInput();
+      if (
+        msg.hapticMs !== undefined &&
+        this.view.config.haptics.enabled &&
+        now() - this.lastFeedbackPulse >= 100
+      ) {
+        this.lastFeedbackPulse = now();
+        this.resources.pulse(msg.hapticMs);
+      }
       this.notify();
     } else if (msg.type === 'phase') this.acceptPhase(msg);
     else if (msg.type === 'progressBatch') this.acceptProgress(msg);
@@ -536,21 +617,21 @@ export class Runtime {
         !this.view.ended &&
         this.view.identity?.role === 'controller' &&
         this.view.status === 'Connected' &&
+        this.view.controllerFeedback.enabled &&
+        (!this.view.roundId ||
+          !['loading', 'countdown', 'running', 'settling'].includes(
+            this.view.phase,
+          ) ||
+          this.view.controllerRoundId === this.view.roundId) &&
         !this.resources.suspended,
     );
     const input = this.input.getSnapshot();
     this.view.inputEpoch = input.epoch;
-    this.view.adjustingAim = input.adjustingAim;
-    this.view.sensitivity = input.sensitivity;
+    this.view.settingsOpen = input.settingsOpen;
   }
-  previewPoint() {
-    return this.input.previewPoint();
-  }
-  chopCount() {
-    return this.input.getSnapshot().chops;
-  }
-  holdAim(down: boolean) {
-    this.input.holdAim(down);
+  motionPortFor(widget: Widget, generation: number): MotionControlPort {
+    this.syncInput();
+    return this.input.motionPortFor(widget, generation);
   }
   setPoint(point: Point) {
     this.input.setPoint(point);
@@ -571,33 +652,18 @@ export class Runtime {
     this.syncInput();
     this.input.haptic(ms);
   }
-  beginAdjustAim() {
+  openSettings() {
     if (!this.view.motionEnabled) {
-      this.warn('Tap Enable motion before adjusting your aim.');
+      this.warn('Tap Enable motion before opening controller settings.');
       return;
     }
     this.view.warning = '';
-    this.input.beginAdjustAim();
+    this.input.openSettings();
     this.motion.start();
     this.notify();
   }
-  finishAdjustAim() {
-    this.input.finishAdjustAim();
-    this.notify();
-  }
-  /** Screen widths per radian of turn; takes effect immediately. */
-  setSensitivity(gain: number) {
-    this.input.setSensitivity(gain);
-    this.view.sensitivity = this.input.getSnapshot().sensitivity;
-    try {
-      localStorage.setItem(POINTER_GAIN_KEY, String(this.view.sensitivity));
-    } catch {
-      /* Private browsing can disallow storage; the setting lasts this session. */
-    }
-    this.notify();
-  }
-  recenter() {
-    this.input.recenter();
+  closeSettings() {
+    this.input.closeSettings();
     this.notify();
   }
   startGame(id: string, mode: string) {
@@ -683,6 +749,7 @@ export class Runtime {
   close() {
     if (this.stopped) return;
     this.stopped = true;
+    this.clearControllerFeedback();
     this.playback.dispose();
     this.input.dispose();
     this.router.dispose();

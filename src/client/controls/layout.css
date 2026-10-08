@@ -50,8 +50,19 @@
   rotate: 270deg;
 }
 
-/* Legacy widgets (not yet in the library) fill their cell. */
-.ctl-cell__turn > .widget {
+.ctl-game-controls[aria-disabled='true'] {
+  opacity: 0.45;
+}
+.ctl-feedback {
   position: absolute;
-  inset: 0;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 80%;
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.6rem;
+  background: var(--ctl-surface-raised);
+  color: var(--ctl-ink);
+  pointer-events: none;
+  text-align: center;
 }

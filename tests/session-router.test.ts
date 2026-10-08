@@ -95,7 +95,7 @@ function fixture(role: Role = 'host') {
     });
   const config = (generation = 7): Message => ({
     type: 'config',
-    config: { schemaVersion: 1, generation },
+    config: { schemaVersion: 2, generation },
   });
   const local = role === 'host' ? 'local' : 'phone';
   const ready = () => {
@@ -384,4 +384,36 @@ void test('fallback waits eight seconds, recovers to venue and cannot reconnect 
   h.router.welcome(h.identity);
   h.router.updateControllerRoute();
   assert.equal(h.fallbacks(), 1);
+});
+
+void test('feedback routes directly from authority and phones reject venue or player spoofing', () => {
+  const host = fixture('host'),
+    phone = fixture('controller'),
+    venue = fixture('display');
+  const message = {
+    type: 'feedback',
+    roundId: 'round',
+    generation: 7,
+    revision: 1,
+    status: 'Your turn',
+    enabled: true,
+    hapticMs: 50,
+  };
+  host.router.toPlayer('phone', message);
+  assert.deepEqual(host.sent.at(-1), {
+    to: 'phone',
+    channel: 'ctrl',
+    data: message,
+  });
+  phone.router.receive('venue', 'ctrl', message);
+  phone.router.receive('local', 'ctrl', message);
+  phone.router.receive('host', 'events', message);
+  assert.deepEqual(phone.controller, []);
+  phone.router.receive('host', 'ctrl', message);
+  assert.deepEqual(phone.controller, [message]);
+  venue.router.toPlayer('phone', message);
+  assert.deepEqual(venue.sent, []);
+  phone.router.end();
+  phone.router.receive('host', 'ctrl', message);
+  assert.equal(phone.controller.length, 1);
 });

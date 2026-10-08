@@ -384,94 +384,6 @@ footer {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-/* Legacy widgets not yet ported to src/client/controls; styled to sit beside them. */
-.widget {
-  position: absolute;
-  border: 0;
-  border-radius: var(--ctl-radius-lg);
-  background: var(--ctl-surface);
-  box-shadow:
-    inset 0 1px 0 var(--ctl-specular),
-    inset 0 0 0 1px var(--ctl-line),
-    var(--ctl-shadow-1);
-  color: var(--ctl-ink);
-  text-align: center;
-  padding: var(--ctl-space-4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 15px;
-  touch-action: none;
-  font-size: 24px;
-  font-weight: 700;
-  overflow: hidden;
-}
-.widget small {
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--ctl-ink-muted);
-}
-.widget-glyph {
-  font-size: 56px;
-  color: var(--ctl-accent);
-}
-/* Swing-to-whack tile: the hammer slams each time a swing is recognised. */
-.chop-tile {
-  cursor: pointer;
-  font: inherit;
-}
-.chop-tile__hammer {
-  display: grid;
-  place-items: center;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: var(--ctl-accent-soft);
-  color: var(--ctl-accent);
-  transform: rotate(-28deg);
-  transform-origin: 70% 70%;
-}
-.chop-tile__hammer svg {
-  width: 60px;
-  height: 60px;
-}
-.chop-tile__hammer.is-hit {
-  animation: chop-slam 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
-}
-.chop-tile__title {
-  font-size: 26px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-.chop-tile {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-.chop-tile.is-held {
-  background: var(--ctl-accent-soft);
-  box-shadow:
-    inset 0 0 0 3px var(--ctl-accent),
-    0 0 28px var(--ctl-accent-glow);
-}
-.chop-tile.is-held .chop-tile__hammer {
-  background: var(--ctl-accent);
-  color: var(--ctl-accent-ink);
-}
-@keyframes chop-slam {
-  0% {
-    transform: rotate(-28deg);
-  }
-  18% {
-    transform: rotate(32deg) scale(1.08);
-    background: var(--ctl-accent);
-    color: var(--ctl-accent-ink);
-  }
-  100% {
-    transform: rotate(-28deg);
-  }
-}
 .calibrate {
   padding: 24px;
   display: flex;
@@ -488,19 +400,7 @@ footer {
   min-height: 90px;
   font-size: 24px !important;
 }
-.sensitivity {
-  display: grid;
-  gap: 12px;
-  text-align: left;
-  font-weight: 700;
-}
-.sensitivity-ends {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  font-weight: 400;
-  opacity: 0.75;
-}
+
 .results-list {
   display: grid;
   gap: 12px;
@@ -670,11 +570,6 @@ footer {
     display: block;
     margin-top: 12px;
   }
-}
-fieldset.widget {
-  margin: 0;
-  min-width: 0;
-  padding: 12px;
 }
 
 /* Arcade cabinet surfaces, ticket-like labels, and tactile controls. */
@@ -885,10 +780,6 @@ body {
   }
   .game-option {
     min-width: min(100%, 260px);
-  }
-  .controller .widget {
-    gap: 10px;
-    font-size: 20px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

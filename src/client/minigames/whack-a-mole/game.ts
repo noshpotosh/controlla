@@ -5,6 +5,7 @@ import type {
   Outcome,
   Point,
   PresentationEvent,
+  GameTickResult,
 } from '../../api/index.ts';
 import {
   WHACK,
@@ -82,7 +83,7 @@ export class WhackAMole implements GameInstance<WhackState> {
     this.roster = context.players.map((player) => player.id);
     this.nextMole = this.nextEffect = this.nextEvent = 0;
     this.lastPop = -Infinity;
-    const seed = (Math.floor(context.startAt) ^ 0x5bd1e995) >>> 0;
+    const seed = (context.seed ^ 0x5bd1e995) >>> 0;
     this.state.holes = holeLayout(
       holeCount(context.players.length),
       createRandom(seed ^ 0x9e3779b9),
@@ -256,7 +257,7 @@ export class WhackAMole implements GameInstance<WhackState> {
     events.push(this.event(gold ? 'gold' : 'bonk', time));
   }
 
-  tick(input: GameInput): readonly PresentationEvent[] {
+  tick(input: GameInput): GameTickResult {
     const context = this.context;
     if (
       !context ||
@@ -265,7 +266,7 @@ export class WhackAMole implements GameInstance<WhackState> {
       input.time < context.startAt ||
       (input.phase === 'running' && input.time > context.endAt)
     )
-      return [];
+      return { events: [] };
     const state = this.state,
       events: PresentationEvent[] = [];
     // Settling keeps the cutoff scene: no expiry or spawning, only final whacks.
@@ -319,7 +320,7 @@ export class WhackAMole implements GameInstance<WhackState> {
       );
     }
     state.effects = state.effects.slice(-WHACK.maxEffects);
-    return events;
+    return { events };
   }
 
   finalize(): Outcome[] {

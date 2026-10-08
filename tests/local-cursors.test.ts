@@ -320,7 +320,7 @@ void test('a local cursor carries on at its velocity between Wi-Fi bursts and re
   } as Roster);
   playback.configure('phone', {
     type: 'config',
-    config: { schemaVersion: 1, generation: 3 },
+    config: { schemaVersion: 2, generation: 3 },
   } as unknown as Message);
   playback.control(player, { type: 'ready', generation: 3 } as Message);
   const frame: InputFrame = {

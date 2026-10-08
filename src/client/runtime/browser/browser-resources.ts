@@ -1,4 +1,4 @@
-import type { PresentationEvent } from '../../api/index.ts';
+import type { PresentationEvent, SoundLayer } from '../../api/index.ts';
 import type {
   BrowserEffects,
   BrowserEnvironment,
@@ -14,6 +14,9 @@ const browserEnvironment: BrowserEnvironment = {
     return () => surface.removeEventListener(event, listener);
   },
   createAudio: () => new AudioContext(),
+  vibrate: (ms) => {
+    navigator.vibrate?.(ms);
+  },
   requestWake: () =>
     'wakeLock' in navigator ? navigator.wakeLock.request('screen') : null,
 };
@@ -104,13 +107,31 @@ export class BrowserResources implements BrowserResourcePort {
       this.wakePending = false;
     }
   }
-  playEvent(event: PresentationEvent) {
-    if (this.disposed || !isSound(event.kind)) return;
+  playEvent(
+    event: PresentationEvent,
+    sounds?: Readonly<Record<string, readonly SoundLayer[]>>,
+  ) {
+    if (this.disposed || !isSound(event.kind, sounds)) return;
     if (!this.audio || this.audio.state !== 'running') return;
     try {
-      playSound(this.audio, event.kind);
+      playSound(this.audio, event.kind, sounds);
     } catch {
       /* Closed audio context. */
+    }
+  }
+  pulse(ms: number) {
+    if (
+      this.disposed ||
+      this.suspended ||
+      !Number.isInteger(ms) ||
+      ms <= 0 ||
+      ms > 100
+    )
+      return;
+    try {
+      this.environment.vibrate?.(ms);
+    } catch {
+      /* Vibration is optional. */
     }
   }
   dispose() {

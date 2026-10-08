@@ -86,7 +86,7 @@ export function createPresenter(games: readonly GameDescriptor[]) {
       if (
         !descriptor ||
         !descriptor.modes.some((mode) => mode.id === snapshot.mode) ||
-        snapshot.schemaVersion !== 1
+        snapshot.schemaVersion !== 2
       ) {
         release();
         label(ctx, width, height, RELOAD_DISPLAY_MESSAGE);

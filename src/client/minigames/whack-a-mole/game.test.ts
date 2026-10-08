@@ -1,3 +1,4 @@
+import { whackAMole } from './index.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Action, GameInput, Player, Point } from '../../api/index.ts';
@@ -33,12 +34,20 @@ const players = (count = 1): Player[] =>
     color: '#ffffff',
     connected: true,
   }));
+const assignments = (roster: Player[]) =>
+  roster.map((player) => ({
+    playerId: player.id,
+    role: 'default',
+    controls: whackAMole.controls,
+  }));
 function fixture(count = 1, disableSpawn = true) {
   const game = new WhackAMole();
   game.load();
   game.start({
     mode: 'standard',
     players: players(count),
+    seed: START,
+    assignments: assignments(players(count)),
     startAt: START,
     endAt: END,
   });
@@ -58,7 +67,7 @@ function fixture(count = 1, disableSpawn = true) {
       presentationDelay: delay,
       values: {},
       actions,
-    });
+    }).events;
   return { game, state, tick };
 }
 const whack = (time: number, aim: Point, playerId = 'p0'): Action => ({
@@ -90,6 +99,8 @@ void test('Whack-a-Mole requires readiness, isolates snapshots and ties equal sc
     unloaded.start({
       mode: 'standard',
       players: players(),
+      seed: START,
+      assignments: assignments(players()),
       startAt: START,
       endAt: END,
     }),
@@ -173,6 +184,8 @@ void test('hole layouts are scattered, seeded, in bounds and never overlap', () 
   other.start({
     mode: 'standard',
     players: players(2),
+    seed: START + 1,
+    assignments: assignments(players(2)),
     startAt: START + 1,
     endAt: END + 1,
   });

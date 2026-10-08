@@ -1,3 +1,7 @@
+import { games } from '../src/client/minigames/catalog.ts';
+import { buttonProbe } from './fixtures/games.ts';
+import { controllerSpec } from '../src/client/engine/input.ts';
+import type { GameInput, GameDescriptor } from '../src/client/api/index.ts';
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 import { motionFixture } from './fixtures/motion-provider.ts';
@@ -6,7 +10,10 @@ import { SessionAuthority } from '../src/client/engine/session.ts';
 import type { Message } from '../src/client/engine/messages.ts';
 import { decodeInput, type InputFrame } from '../src/client/engine/protocol.ts';
 import type { ControllerConfig } from '../src/client/controls/api.ts';
-import { resolveConfig } from '../src/client/controls/resolve.ts';
+import {
+  resolveConfig,
+  defaultCapabilities,
+} from '../src/client/controls/resolve.ts';
 import { pointerSpec, steeringSpec } from './fixtures/games.ts';
 
 function setup(t: TestContext) {
@@ -24,6 +31,7 @@ function setup(t: TestContext) {
     });
   }
   const f = motionFixture();
+  f.advance(1000); // Provider and runtime share the same local monotonic clock.
   let clock = 1000;
   t.mock.method(performance, 'now', () => clock);
   const runtime = new Runtime(
@@ -68,7 +76,12 @@ function setup(t: TestContext) {
       f.advance(ms);
     },
     config(config: ControllerConfig) {
-      invoke('controllerMessage', { type: 'config', config });
+      invoke('controllerMessage', {
+        type: 'config',
+        roundId: null,
+        role: null,
+        config,
+      });
     },
   };
 }
@@ -111,12 +124,12 @@ void test('motion availability drives real host generations and delayed ACKs can
   deliver();
   p.f.emit();
   const active = deliver();
-  assert.equal(active.sensors.pointer.enabled, true);
+  assert.equal(!!active.motion.pointer, true);
   p.config(active);
   deliver();
   p.advance(2000);
   const fallback = deliver();
-  assert.equal(fallback.sensors.pointer.enabled, false);
+  assert.equal(!!fallback.motion.pointer, false);
   assert.notEqual(fallback.generation, active.generation);
   host.control('a', { type: 'ready', generation: active.generation });
   assert.equal((Reflect.get(host, 'ready') as Set<string>).has('a'), false);
@@ -125,7 +138,7 @@ void test('motion availability drives real host generations and delayed ACKs can
   assert.equal((Reflect.get(host, 'ready') as Set<string>).has('a'), true);
   p.f.emit();
   const recovered = deliver();
-  assert.equal(recovered.sensors.pointer.enabled, true);
+  assert.equal(!!recovered.motion.pointer, true);
   assert.notEqual(recovered.generation, fallback.generation);
   host.control('a', { type: 'ready', generation: fallback.generation });
   assert.equal((Reflect.get(host, 'ready') as Set<string>).has('a'), false);
@@ -166,9 +179,8 @@ void test('runtime neutralizes stale tilt and never repeats a stale shake', asyn
   await p.runtime.enableMotion();
   p.f.emit({ accelerationIncludingGravity: { x: 6, y: 0, z: 9.81 } });
   const config = resolveConfig(steeringSpec, p.f.motion.capabilities, 1);
-  config.sensors.tilt.enabled = true;
-  config.sensors.shake.enabled = true;
-  config.sensors.shake.thresholdG = 0.01;
+  config.motion.tilt = {};
+  config.motion.shake = { thresholdG: 0.01 };
   config.widgets.push({
     id: 'shake',
     type: 'shake',
@@ -203,7 +215,7 @@ void test('page suspension defeats config and diagnostics starts; pageshow resto
   p.invoke('pageHide');
   p.config(p.runtime.view.config!);
   p.f.motion.start();
-  p.runtime.beginAdjustAim();
+  p.runtime.openSettings();
   assert.equal(p.f.counts().starts, 1);
   p.advance(3000);
   const count = p.frames.length;
@@ -221,4 +233,179 @@ void test('page suspension defeats config and diagnostics starts; pageshow resto
   p.invoke('pageShow');
   p.f.motion.start();
   assert.equal(p.f.counts().starts, 2);
+});
+
+void test('directional jolt resolves without a touch substitute and traverses live phone emission and authority ingress', async (t) => {
+  const p = setup(t);
+  const observed: GameInput[] = [];
+  const descriptor: GameDescriptor = {
+    ...buttonProbe,
+    id: 'registered-jolt-probe',
+    name: 'Registered impulse probe',
+    controls: {
+      inputs: { strike: { required: true, prefer: 'jolt', fallback: null } },
+    },
+    create(options) {
+      const game = buttonProbe.create(options);
+      const tick = game.tick.bind(game);
+      game.tick = (input) => {
+        observed.push(structuredClone(input));
+        return tick(input);
+      };
+      return game;
+    },
+  };
+  assert.throws(
+    () => resolveConfig(controllerSpec(descriptor), defaultCapabilities(), 1),
+    /Motion access is off/,
+  );
+  (games as GameDescriptor[]).push(descriptor);
+  t.after(() =>
+    (games as GameDescriptor[]).splice(games.indexOf(descriptor), 1),
+  );
+  await p.runtime.enableMotion();
+  p.f.emit({ acceleration: { x: 0, y: 0, z: 0 } });
+  const configs: ControllerConfig[] = [];
+  const host = new SessionAuthority('host', {
+    toPlayer: (_id, message) => {
+      if (message.type === 'config') configs.push(message.config);
+    },
+    toVenue() {},
+    snapshot() {},
+    event() {},
+    warning() {},
+  });
+  t.after(() => host.dispose());
+  host.setRoster({
+    players: [
+      {
+        id: 'a',
+        name: 'Ada',
+        seat: 0,
+        venueId: 'host',
+        connected: true,
+        color: 'blue',
+      },
+    ],
+    venues: [{ id: 'host', name: 'Host', connected: true }],
+  });
+  for (const message of p.messages) host.control('a', message);
+  host.control('a', {
+    type: 'capabilities',
+    capabilities: p.f.motion.capabilities,
+  });
+  host.start(descriptor.id, descriptor.defaultMode);
+  const config = configs.at(-1)!;
+  assert.equal(config.schemaVersion, 2);
+  assert.deepEqual(
+    config.widgets.map((widget) => widget.type),
+    ['jolt'],
+  );
+  assert.ok(config.motion.jolt);
+  let delivered = p.messages.length;
+  p.config(config);
+  const deliver = () => {
+    for (let pass = 0; pass < 10; pass++) {
+      const pending = p.messages.slice(delivered);
+      delivered = p.messages.length;
+      for (const message of pending) host.control('a', message);
+      const latest = configs.at(-1)!;
+      if (latest.generation !== p.runtime.view.config?.generation) {
+        p.config(latest); // Recovery retires the unavailable generation and requires its replacement ACK.
+        continue;
+      }
+      if (delivered === p.messages.length) return;
+    }
+    assert.fail('configuration recovery did not settle');
+  };
+  deliver();
+  p.advance(20);
+  host.tick();
+  p.advance(3000);
+  host.tick();
+  p.f.emit({ acceleration: { x: 0, y: 0, z: 0 } });
+  p.invoke('tick');
+  deliver(); // Apply the fresh capability/configuration before accepting a new gesture.
+  p.advance(60);
+  p.f.emit({ acceleration: { x: 0, y: 0, z: 0 } });
+  p.invoke('tick');
+  p.advance(60);
+  p.f.emit({ acceleration: { x: 0, y: 0, z: 0 } });
+  p.invoke('tick');
+  p.advance(20);
+  p.f.emit({
+    acceleration: { x: 30, y: 0, z: 0 },
+    accelerationIncludingGravity: { x: 30, y: 0, z: 9.81 },
+  });
+  p.invoke('tick');
+  deliver();
+  const press = p.messages.find((message) => message.type === 'press');
+  assert.ok(press && press.type === 'press');
+  assert.deepEqual(press.press.value, {
+    kind: 'translation',
+    direction: 'right',
+    strength: 1,
+  });
+  const widget = p.messages.find(
+    (message) => message.type === 'widget' && message.action === 'strike',
+  );
+  assert.ok(widget && widget.type === 'widget');
+  assert.equal(widget.time, press.press.time);
+  host.tick();
+  p.advance(220);
+  host.tick();
+  const actions = observed.flatMap((input) => input.actions);
+  assert.equal(actions.length, 1);
+  assert.equal(actions[0].name, 'strike');
+  assert.deepEqual(actions[0].value, press.press.value);
+  host.control('a', press); // Reliable duplicate cannot activate again.
+  host.tick();
+  assert.equal(observed.flatMap((input) => input.actions).length, 1);
+});
+
+void test('disabled feedback cancels held motion without activation and retires its retained port', async (t) => {
+  const p = setup(t);
+  await p.runtime.enableMotion();
+  p.f.emit();
+  const config = resolveConfig(
+    controllerSpec(games.find((game) => game.id === 'whack-a-mole')!),
+    p.f.motion.capabilities,
+    1,
+  );
+  p.invoke('controllerMessage', {
+    type: 'config',
+    config,
+    roundId: 'turn',
+    role: 'leader',
+  });
+  const widget = config.widgets.find((w) => w.action === 'whack')!;
+  assert.equal(widget.type, 'chop');
+  const retained = p.runtime.motionPortFor(widget, 1);
+  retained.command({ type: 'press', down: true });
+  assert.equal(retained.getSnapshot().held, true);
+  p.invoke('controllerMessage', {
+    type: 'feedback',
+    roundId: 'turn',
+    generation: 1,
+    revision: 1,
+    status: 'Wait',
+    enabled: false,
+  });
+  assert.equal(retained.getSnapshot().held, false);
+  retained.command({ type: 'press', down: false });
+  p.advance(20);
+  p.f.emit({ rotationRate: { alpha: 0, beta: 400, gamma: 0 } });
+  p.invoke('tick');
+  assert.equal(p.messages.filter((m) => m.type === 'press').length, 0);
+  p.invoke('controllerMessage', {
+    type: 'feedback',
+    roundId: 'turn',
+    generation: 1,
+    revision: 2,
+    status: 'Your turn',
+    enabled: true,
+  });
+  retained.command({ type: 'press', down: true });
+  assert.equal(retained.getSnapshot().held, false);
+  assert.equal(p.runtime.motionPortFor(widget, 1).getSnapshot().held, false);
 });

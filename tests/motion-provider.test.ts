@@ -4,6 +4,28 @@ import { motionFixture as fixture } from './fixtures/motion-provider.ts';
 import { defaultCapabilities } from '../src/client/controls/resolve.ts';
 import type { Permission } from '../src/client/controls/api.ts';
 
+void test('gravity-removed acceleration is finite, detached and withdrawn on stale or retired sampling', async () => {
+  const f = fixture();
+  await f.motion.enable();
+  f.emit({ acceleration: { x: 2, y: -3, z: 4 } });
+  const projected = f.motion.getSnapshot();
+  assert.deepEqual(projected.linearAcceleration, [2, -3, 4]);
+  assert.ok(Object.isFrozen(projected.linearAcceleration));
+  assert.equal(Reflect.set(projected.linearAcceleration!, '0', 99), false);
+  f.advance(500);
+  assert.equal(f.motion.getSnapshot().linearAcceleration, null);
+  f.emit({ acceleration: { x: NaN, y: 2, z: 3 } });
+  assert.equal(f.motion.getSnapshot().linearAcceleration, null);
+  f.emit({ acceleration: { x: 5, y: 6, z: 7 } });
+  assert.deepEqual(f.motion.getSnapshot().linearAcceleration, [5, 6, 7]);
+  const stale = f.listener()!;
+  f.motion.suspend();
+  assert.equal(f.motion.getSnapshot().linearAcceleration, null);
+  stale({ timeStamp: 500, acceleration: { x: 99, y: 99, z: 99 } });
+  assert.equal(f.motion.getSnapshot().linearAcceleration, null);
+  f.motion.dispose();
+});
+
 void test('permission is single-flight; suspension wins over pending permission and diagnostics', async () => {
   let grant!: (value: Permission) => void;
   const f = fixture(

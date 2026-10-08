@@ -7,6 +7,9 @@ import type { Widget, ControlPort } from './api.ts';
 import { RotationContext } from './kit/rotation-context.ts';
 import { definitionFor } from './registry.ts';
 
+import { motionSurfaces } from './motion-views/registry.tsx';
+import type { MotionControlPort } from './motion/contracts.ts';
+import type { MotionInput } from './api.ts';
 import { views } from './views.ts';
 
 export function ControlView({
@@ -47,7 +50,10 @@ export interface ControllerSurfaceProps {
   widgets: Widget[];
   /** Player colour; tints every active state. */
   accent?: string;
+  enabled?: boolean;
+  status?: string;
   portFor: (widget: Widget) => ControlPort;
+  motionPortFor?: (widget: Widget) => MotionControlPort;
   /** Renders widget types the library doesn't provide yet. */
   fallback?: (widget: Widget) => ReactNode;
   /** Overlays drawn on top of the surface (menu button, designer handles). */
@@ -58,8 +64,11 @@ export interface ControllerSurfaceProps {
 export function ControllerSurface({
   widgets,
   accent,
+  enabled = true,
+  status = '',
   portFor,
   fallback,
+  motionPortFor,
   children,
   className,
 }: ControllerSurfaceProps) {
@@ -69,18 +78,30 @@ export function ControllerSurface({
       style={accent ? ({ '--ctl-accent': accent } as CSSProperties) : undefined}
     >
       <div className="ctl-surface">
-        {widgets.map((w) =>
-          // Motion inputs with no touch fallback have no footprint.
-          !w.rect ? null : (
-            <ControlCell key={w.id} rect={w.rect} rotation={w.rotation}>
-              {views[w.type] ? (
-                <ControlView widget={w} port={screenPort(w, portFor(w))} />
-              ) : (
-                fallback?.(w)
-              )}
-            </ControlCell>
-          ),
-        )}
+        <div
+          className="ctl-game-controls"
+          inert={!enabled}
+          aria-disabled={!enabled}
+        >
+          {widgets.map((w) =>
+            // Motion inputs with no touch fallback have no footprint.
+            !w.rect ? null : (
+              <ControlCell key={w.id} rect={w.rect} rotation={w.rotation}>
+                {views[w.type] ? (
+                  <ControlView widget={w} port={screenPort(w, portFor(w))} />
+                ) : (
+                  <MotionView
+                    widget={w}
+                    port={portFor(w)}
+                    motion={motionPortFor?.(w)}
+                    fallback={fallback?.(w)}
+                  />
+                )}
+              </ControlCell>
+            ),
+          )}
+        </div>
+        {status && <output className="ctl-feedback">{status}</output>}
         {children}
       </div>
     </div>
@@ -117,4 +138,19 @@ export function ControlCell({
       </div>
     </div>
   );
+}
+
+function MotionView({
+  widget,
+  port,
+  motion,
+  fallback,
+}: {
+  widget: Widget;
+  port: ControlPort;
+  motion?: MotionControlPort;
+  fallback?: ReactNode;
+}) {
+  const View = motionSurfaces[widget.type as MotionInput];
+  return View ? <View widget={widget} port={port} motion={motion} /> : fallback;
 }

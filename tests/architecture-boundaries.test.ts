@@ -668,7 +668,10 @@ void test('screen exposes detached, deeply frozen progress and no completion cap
   const authoritative = session.view();
   const compact = session.compact(['ada', 'bea']);
   const snapshot: RoundSnapshot<NeonHarvestState> = {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    seed: 3000,
+    assignments: [],
+    timing: neonHarvest.timing,
     mode: 'standard',
     roundId: 'presentation-probe',
     gameId: neonHarvest.id,
@@ -1237,6 +1240,21 @@ function assertControllerInputBoundary(overrides = new Map<string, string>()) {
     'src/client/controls/registry.ts',
     'src/client/controls/value.ts',
     'src/client/controls/layout/rotation.ts',
+    ...[
+      'jolt',
+      'jolt-definition',
+      'metadata-registry',
+      'pointer-definition',
+      'accelerometer-definition',
+      'chop-definition',
+      'registration',
+      'registry',
+      'configuration',
+      'composition',
+      'pointer-input',
+      'accelerometer-inputs',
+      'chop-input',
+    ].map((name) => `src/client/controls/motion/${name}.ts`),
     'src/client/controls/motion/contracts.ts',
     'src/client/controls/motion/pointer.ts',
     'src/client/controls/motion/anchor.ts',

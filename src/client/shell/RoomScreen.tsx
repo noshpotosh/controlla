@@ -209,7 +209,9 @@ export function RoomScreen({
                   <br />
                   <small>
                     {descriptor.players.min}–{descriptor.players.max} players ·{' '}
-                    {descriptor.durationMs / 1000} seconds
+                    {descriptor.timing.kind === 'timed'
+                      ? `${descriptor.timing.durationMs / 1000} seconds`
+                      : 'Untimed round'}
                   </small>
                 </span>
               </Button>
@@ -264,7 +266,10 @@ export function RoomScreen({
               </Button>
             )}
             <span className="note">
-              {selected.durationMs / 1000} seconds · {selected.name}
+              {selected.timing.kind === 'timed'
+                ? `${selected.timing.durationMs / 1000} seconds`
+                : 'Untimed round'}{' '}
+              · {selected.name}
             </span>
           </div>
         </>

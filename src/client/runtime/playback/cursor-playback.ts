@@ -52,7 +52,7 @@ export class CursorPlayback {
       this.terminal ||
       !message ||
       message.type !== 'config' ||
-      message.config?.schemaVersion !== 1 ||
+      message.config?.schemaVersion !== 2 ||
       !Number.isInteger(message.config.generation) ||
       message.config.generation < 0 ||
       message.config.generation > 65535 ||

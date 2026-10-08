@@ -1,3 +1,4 @@
+import { timingDuration } from '../src/client/engine/timing-policy.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ARBITRATION_MS } from '../src/client/engine/arbitration.ts';
@@ -79,7 +80,7 @@ function probe() {
     ...buttonProbe,
     id: 'clock-probe',
     interpolate: undefined,
-    durationMs: 30_005,
+    timing: { kind: 'timed', durationMs: 30_005 },
     isState: (value: unknown): value is ProbeState =>
       !!value &&
       typeof value === 'object' &&
@@ -97,7 +98,7 @@ function probe() {
         const aim = input.values.ada?.aim?.value as { x: number } | undefined;
         state.score += (aim?.x ?? 0) * input.dt;
         state.elapsed += input.dt;
-        return [];
+        return { events: [] };
       },
       finalize() {
         finalized++;
@@ -152,8 +153,8 @@ void test('cutoff clips the final continuous slice and freezes values throughout
   harness.advance(20, (h) => h.setValue('ada', 'aim', { x: 1000, y: 0 }));
   assert.equal(harness.phase, 'settling');
   assert.deepEqual(state, {
-    score: descriptor.durationMs,
-    elapsed: descriptor.durationMs,
+    score: timingDuration(descriptor.timing),
+    elapsed: timingDuration(descriptor.timing),
   });
   assert.equal(ticks.at(-1)!.dt, 5);
   const calls = ticks.length;
@@ -168,8 +169,8 @@ void test('cutoff clips the final continuous slice and freezes values throughout
   assert.deepEqual(ticks.at(-1)!.values, {});
   assert.deepEqual(ticks.at(-1)!.actions, []);
   assert.deepEqual(state, {
-    score: descriptor.durationMs,
-    elapsed: descriptor.durationMs,
+    score: timingDuration(descriptor.timing),
+    elapsed: timingDuration(descriptor.timing),
   });
   assert.equal(finalized(), 1);
   harness.dispose();
@@ -217,8 +218,8 @@ void test('disconnect after cutoff cannot erase the final active interval before
   harness.advance(33_000, (h) => h.setValue('ada', 'aim', { x: 1, y: 0 }));
   harness.advance(20, (h) => h.disconnect('ada'));
   assert.deepEqual(state, {
-    score: descriptor.durationMs,
-    elapsed: descriptor.durationMs,
+    score: timingDuration(descriptor.timing),
+    elapsed: timingDuration(descriptor.timing),
   });
   harness.dispose();
 });

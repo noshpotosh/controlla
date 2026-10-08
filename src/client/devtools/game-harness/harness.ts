@@ -1,6 +1,7 @@
+import { timingDuration } from '../../engine/timing-policy.ts';
 import { SnapshotEncoder, SnapshotTimeline } from '../../engine/replication.ts';
 import { channelOf, usesPressSlot } from '../../controls/registry.ts';
-import type { ControllerConfig } from '../../controls/api.ts';
+import type { Capabilities, ControllerConfig } from '../../controls/api.ts';
 import type { WireSnapshot } from '../../engine/replication.ts';
 import type {
   Action,
@@ -15,6 +16,7 @@ import { resolveController } from '../../engine/input.ts';
 import { capabilityProfile } from './input.ts';
 import { SessionProgress } from '../../engine/progress.ts';
 import { RoundRunner } from '../../engine/round.ts';
+import { prepareAssignments } from '../../engine/round-setup.ts';
 import { snapshotPolicy } from '../../engine/snapshots.ts';
 export { snapshotPolicy } from '../../engine/snapshots.ts';
 
@@ -45,10 +47,16 @@ export const simulatedPlayers: Player[] = [
   },
 ];
 export interface HarnessOptions {
+  /** Deterministic progress identity; incompatible with an externally owned ledger. */
+  sessionId?: string;
+  /** Initial authority milliseconds; advance owns the clock thereafter. */
+  initialTime?: number;
   players?: Player[];
   progress?: SessionProgress;
   motion?: boolean;
   mode?: string;
+  seed?: number;
+  capabilities?: Readonly<Record<string, Capabilities>>;
   presentationDelay?: number;
   remoteDelay?: number;
 }
@@ -81,6 +89,12 @@ export class GameHarness<S extends object = object> {
     readonly descriptor: GameDescriptor<S>,
     options: HarnessOptions = {},
   ) {
+    if (options.progress && options.sessionId !== undefined)
+      throw new Error('Supply progress or sessionId, not both.');
+    this.time = options.initialTime ?? 0;
+    if (!Number.isFinite(this.time) || this.time < 0)
+      throw new Error('Invalid harness clock.');
+    this.lastSnapshotAt = this.time - 40;
     this.initialPlayers = structuredClone(options.players ?? simulatedPlayers);
     if (
       this.initialPlayers.length < descriptor.players.min ||
@@ -100,17 +114,37 @@ export class GameHarness<S extends object = object> {
       throw new Error(
         'Presentation delay must cover the remote delay plus one snapshot interval.',
       );
+    this.progress =
+      options.progress ??
+      new SessionProgress(
+        options.sessionId === undefined ? undefined : () => options.sessionId!,
+      );
+    const seed = options.seed ?? 3000;
+    const assignments = prepareAssignments(
+      descriptor,
+      options.mode ?? descriptor.defaultMode,
+      this.initialPlayers,
+      seed,
+    );
     this.configs = Object.fromEntries(
       this.initialPlayers.map((player) => [
         player.id,
         resolveController(
           descriptor,
-          capabilityProfile(options.motion ?? false),
+          options.capabilities?.[player.id] ??
+            capabilityProfile(options.motion ?? false),
+          1,
+          assignments.find((a) => a.playerId === player.id)!.controls,
         ),
       ]),
     );
-    this.progress = options.progress ?? new SessionProgress();
     this.runner = new RoundRunner(descriptor, this.progress, options.mode);
+    try {
+      this.runner.prepare(this.initialPlayers, seed, assignments);
+    } catch (error) {
+      this.runner.dispose();
+      throw error;
+    }
     this.displays = {
       host: new SnapshotTimeline(snapshotPolicy(descriptor)),
       remote: new SnapshotTimeline(snapshotPolicy(descriptor)),
@@ -129,12 +163,12 @@ export class GameHarness<S extends object = object> {
     return this.runner.error;
   }
   get startAt() {
-    return this.runner.roundId ? this.runner.startAt : 3000;
+    return this.runner.startAt || this.time + 3000;
   }
   get endAt() {
-    return this.runner.roundId
+    return this.runner.endAt
       ? this.runner.endAt
-      : 3000 + this.descriptor.durationMs;
+      : this.startAt + timingDuration(this.descriptor.timing);
   }
   load(): Promise<void> {
     this.loading ??= Promise.resolve(this.runner.load()).then(() => {
@@ -149,12 +183,17 @@ export class GameHarness<S extends object = object> {
     });
     return this.loading;
   }
-  setValue(playerId: string, name: string, value: unknown) {
+  setValue(playerId: string, name: string, value: unknown, time = this.time) {
     if (
       this.disposed ||
       !this.runner.loaded ||
       !['countdown', 'running'].includes(this.phase) ||
       this.time >= this.endAt ||
+      !Number.isFinite(time) ||
+      time < 0 ||
+      time > this.time + 100 ||
+      this.time - time > 2000 ||
+      !this.runner.enabledFor(playerId, time) ||
       !this.players.some((p) => p.id === playerId && p.connected)
     )
       return;
@@ -164,7 +203,7 @@ export class GameHarness<S extends object = object> {
     if (!widget) return;
     (this.values[playerId] ??= {})[name] = {
       value: structuredClone(value),
-      time: this.time,
+      time,
     };
     if (
       widget.space === 'normalized' &&
@@ -194,7 +233,21 @@ export class GameHarness<S extends object = object> {
       const value = this.values[playerId]?.[name]?.value;
       if (value !== undefined) action.value = structuredClone(value);
     }
-    this.runner.input(action, this.time);
+    return this.input(action);
+  }
+  /** Inject a timestamped semantic activation at the current receipt clock. */
+  input(action: Action): boolean {
+    return this.runner.input(action, this.time);
+  }
+  /** Advance through the finite deadline and final drain; never force a result. */
+  finish(drive?: (harness: GameHarness<S>) => void): void {
+    if (!this.runner.loaded || this.disposed) return;
+    while (['countdown', 'running', 'settling'].includes(this.phase)) {
+      const remaining = this.endAt + 200 - this.time;
+      if (remaining <= 0)
+        throw new Error('Round did not complete at its deadline.');
+      this.advance(Math.min(20, remaining), drive);
+    }
   }
   advance(milliseconds: number, drive?: (harness: GameHarness<S>) => void) {
     if (!this.runner.loaded || this.disposed) return;
@@ -254,6 +307,11 @@ export class GameHarness<S extends object = object> {
   }
   display(id: 'host' | 'remote'): RoundSnapshot<S> | null {
     return this.displays[id].sample(this.time - this.presentationDelay);
+  }
+  /** Current authority data, detached from both engine state and display delay. */
+  authoritativeSnapshot(): RoundSnapshot<S> | null {
+    const snapshot = this.runner.snapshot(this.local);
+    return snapshot ? structuredClone(snapshot) : null;
   }
   localCursors(venueId: string): Record<string, Point> {
     return Object.fromEntries(

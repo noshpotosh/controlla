@@ -1,5 +1,6 @@
 /** Pure output validation shared by phone adapters and authoritative ingress. */
 import type { WidgetType, SwipeOutput, ControlValue } from './api.ts';
+import { motionDefinitionFor } from './motion/metadata-registry.ts';
 import { kindOf } from './registry.ts';
 
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -19,15 +20,13 @@ export function parseControlValue(
   } catch {
     return undefined;
   }
+  const motion = motionDefinitionFor(type);
+  if (motion) return motion.parseValue(value);
   switch (kindOf(type)) {
     case 'vector': {
       if (!record(value) || !finite(value.x) || !finite(value.y))
         return undefined;
-      // Pointer coordinates may legitimately lie beyond the display edges.
-      if (
-        type !== 'pointer' &&
-        (!between(value.x, -1, 1) || !between(value.y, -1, 1))
-      )
+      if (!between(value.x, -1, 1) || !between(value.y, -1, 1))
         return undefined;
       if (
         type === 'dpad' &&
@@ -59,26 +58,6 @@ export function parseControlValue(
         typeof value.released === 'boolean'
         ? { charge: value.charge, released: value.released }
         : undefined;
-    case 'press':
-      // A chop carries its swing strength; a shake is a bare event.
-      if (type === 'chop') return between(value, 0, 1) ? value : undefined;
-      return type === 'shake' && value === 1 ? 1 : undefined;
-    case 'scalar':
-      return between(value, 0, 1) ? value : undefined;
-    case 'angle':
-      return finite(value) ? value : undefined;
-    case 'text':
-      return typeof value === 'string' && value.length <= 120
-        ? value
-        : undefined;
-    case 'stroke':
-      return record(value) &&
-        between(value.x, 0, 1) &&
-        between(value.y, 0, 1) &&
-        between(value.pressure, 0, 1) &&
-        value.phase === 'move'
-        ? { x: value.x, y: value.y, pressure: value.pressure, phase: 'move' }
-        : undefined;
     default:
       return undefined;
   }
@@ -101,6 +80,11 @@ export function parseActivationValue(
   type: WidgetType,
   value: unknown,
 ): ControlValue | undefined {
+  const motion = motionDefinitionFor(type);
+  if (motion)
+    return valueFitsEnvelope(value)
+      ? motion.parseActivation(structuredClone(value))
+      : undefined;
   const parsed = parseControlValue(type, value);
   if (
     kindOf(type) === 'charge' &&

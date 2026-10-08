@@ -1,3 +1,4 @@
+import type { WidgetType } from '../src/client/controls/api.ts';
 import {
   pointerSpec,
   steeringSpec,
@@ -79,6 +80,8 @@ function phone(
   runtime.view.status = 'Connected';
   Reflect.get(runtime, 'controllerMessage').call(runtime, {
     type: 'config',
+    roundId: null,
+    role: null,
     config: config,
   });
   const sent: Message[] = [];
@@ -107,6 +110,54 @@ const players: Player[] = ['a', 'b'].map((id, seat) => ({
   connected: true,
   color: 'blue',
 }));
+
+void test('round scope cancels retained phone controls for late arrivals until assignment arrives', (t) => {
+  const { runtime, sent } = phone(t);
+  const config = runtime.view.config!;
+  const old = runtime.portFor(config.widgets[0], config.generation);
+  old.value({ x: 0.25, y: 0.5 });
+  assert.equal(sent.filter((m) => m.type === 'widget').length, 1);
+  const message = Reflect.get(runtime, 'controllerMessage');
+  message.call(runtime, {
+    type: 'phase',
+    phase: 'running',
+    roundId: 'round-1',
+    gameId: 'steering-probe',
+    mode: 'standard',
+  });
+  old.value({ x: 0.5, y: 0.5 });
+  runtime
+    .portFor(config.widgets[0], config.generation)
+    .value({ x: 0.5, y: 0.5 });
+  assert.equal(sent.filter((m) => m.type === 'widget').length, 1);
+  message.call(runtime, {
+    type: 'config',
+    roundId: 'round-1',
+    role: 'pilot',
+    config: resolveConfig(steeringSpec, defaultCapabilities(), 4),
+  });
+  assert.equal(runtime.view.controllerRole, 'pilot');
+  assert.equal(runtime.view.controllerRoundId, 'round-1');
+  old.value({ x: 0.5, y: 0.5 });
+  const current = runtime.portFor(runtime.view.config!.widgets[0], 4);
+  current.value({ x: 0.5, y: 0.5 });
+  assert.equal(sent.filter((m) => m.type === 'widget').length, 2);
+  message.call(runtime, {
+    type: 'phase',
+    phase: 'loading',
+    roundId: 'round-2',
+    gameId: 'steering-probe',
+    mode: 'standard',
+  });
+  current.value({ x: 0.5, y: 0.5 });
+  assert.equal(sent.filter((m) => m.type === 'widget').length, 2);
+  // Coordinated protocol: incomplete assignment metadata is rejected.
+  message.call(runtime, {
+    type: 'config',
+    config: resolveConfig(steeringSpec, defaultCapabilities(), 5),
+  });
+  assert.equal(runtime.view.config!.generation, 4);
+});
 
 function authority(t: TestContext, gameId = buttonProbe.id) {
   let clock = 0;
@@ -208,27 +259,8 @@ void test('output validators preserve supported values and reject malformed or n
     }),
     undefined,
   );
-  assert.equal(parseControlValue('text', 'x'.repeat(121)), undefined);
-  assert.equal(parseControlValue('slider', -1), undefined);
-  assert.equal(parseControlValue('dial', 100 * Math.PI), 100 * Math.PI);
-  assert.deepEqual(
-    parseControlValue('draw-canvas', {
-      x: 0.2,
-      y: 0.3,
-      pressure: 0.5,
-      phase: 'move',
-    }),
-    { x: 0.2, y: 0.3, pressure: 0.5, phase: 'move' },
-  );
-  assert.equal(
-    parseControlValue('draw-canvas', {
-      x: 0.2,
-      y: 0.3,
-      pressure: -1,
-      phase: 'move',
-    }),
-    undefined,
-  );
+  for (const type of ['text', 'slider', 'dial', 'draw-canvas'])
+    assert.equal(parseControlValue(type as WidgetType, 1), undefined);
   const cyclic: Record<string, unknown> = {};
   cyclic.self = cyclic;
   assert.equal(valueFitsEnvelope(cyclic), false);
@@ -274,6 +306,8 @@ void test('reconfiguration clears pending values and old view callbacks cannot a
   old.value({ x: 0.9, y: 0 });
   runtime.network.onMessage('host', 'ctrl', {
     type: 'config',
+    roundId: null,
+    role: null,
     config: { ...config, generation: 4 },
   });
   sent.length = 0;
@@ -851,4 +885,142 @@ void test('Neon aim pad preserves square corners, sample times and held aim thro
   at(5820);
   session.tick();
   assert.equal(frames.mock.calls.at(-1)!.arguments[0].values.a.aim, undefined);
+});
+
+void test('phone feedback retires pending gestures, rejects stale scope and restores state without haptic replay', async (t) => {
+  const p = phone(t),
+    runtime = p.runtime;
+  const vibrations: number[] = [];
+  Object.defineProperty(navigator, 'vibrate', {
+    configurable: true,
+    value: (ms: number) => vibrations.push(ms),
+  });
+  const config = { ...runtime.view.config!, haptics: { enabled: true } };
+  const receive = (message: Message) =>
+    runtime.network.onMessage('host', 'ctrl', message);
+  receive({ type: 'config', config, roundId: 'turn', role: 'leader' });
+  receive({
+    type: 'phase',
+    phase: 'running',
+    roundId: 'turn',
+    gameId: 'steering-probe',
+    mode: 'standard',
+  });
+  const old = runtime.portFor(config.widgets[0], config.generation);
+  old.value({ x: 0.1, y: 0.2 });
+  old.value({ x: 0.2, y: 0.3 });
+  const before = p.sent.filter((m) => m.type === 'widget').length;
+  const feedback = {
+    type: 'feedback',
+    roundId: 'turn',
+    generation: config.generation,
+    revision: 1,
+    status: 'Wait',
+    enabled: false,
+    hapticMs: 30,
+  };
+  receive(feedback);
+  old.value({ x: 0.5, y: 0.5 });
+  old.press(true);
+  old.press(false);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.equal(p.sent.filter((m) => m.type === 'widget').length, before);
+  assert.equal(p.sent.filter((m) => m.type === 'press').length, 0);
+  assert.deepEqual(runtime.view.controllerFeedback, {
+    status: 'Wait',
+    enabled: false,
+  });
+  assert.deepEqual(vibrations, [30]);
+  for (const patch of [
+    { revision: 1 },
+    { roundId: 'other', revision: 2 },
+    { generation: config.generation - 1, revision: 2 },
+    { status: 'x'.repeat(121), revision: 2 },
+    { hapticMs: 101, revision: 2 },
+  ])
+    receive({ ...feedback, enabled: true, ...patch });
+  assert.equal(runtime.view.controllerFeedback.enabled, false);
+  assert.equal(vibrations.length, 1);
+  receive({
+    type: 'config',
+    config: { ...config, generation: 4 },
+    roundId: 'turn',
+    role: 'leader',
+  });
+  assert.equal(runtime.view.controllerFeedback.enabled, false);
+  receive({ ...feedback, generation: 3, revision: 2 });
+  receive({
+    ...feedback,
+    generation: 4,
+    revision: 2,
+    status: 'Restored',
+    hapticMs: undefined,
+  });
+  // Wire JSON omits absent fields.
+  assert.equal(runtime.view.controllerFeedback.status, 'Wait');
+  receive({
+    type: 'feedback',
+    roundId: 'turn',
+    generation: 4,
+    revision: 2,
+    status: 'Restored',
+    enabled: false,
+  });
+  assert.equal(runtime.view.controllerFeedback.status, 'Restored');
+  assert.equal(vibrations.length, 1);
+  p.at(1200);
+  receive({
+    type: 'feedback',
+    roundId: 'turn',
+    generation: 4,
+    revision: 3,
+    status: 'Your turn',
+    enabled: true,
+  });
+  old.value({ x: 0.1, y: 0.1 });
+  runtime.portFor(runtime.view.config!.widgets[0], 4).value({ x: 0.4, y: 0.3 });
+  assert.equal(p.sent.filter((m) => m.type === 'widget').length, before + 1);
+  receive({
+    type: 'phase',
+    phase: 'results',
+    roundId: 'turn',
+    gameId: 'steering-probe',
+    mode: 'standard',
+  });
+  assert.deepEqual(runtime.view.controllerFeedback, {
+    status: '',
+    enabled: true,
+  });
+  receive({ ...feedback, generation: 4, revision: 4 });
+  assert.equal(vibrations.length, 1);
+  runtime.close();
+  receive({ ...feedback, generation: 4, revision: 5 });
+  assert.deepEqual(runtime.view.controllerFeedback, {
+    status: '',
+    enabled: true,
+  });
+});
+
+void test('feedback on a phone without vibration still applies status and enabled state', (t) => {
+  const { runtime } = phone(t),
+    config = runtime.view.config!;
+  runtime.network.onMessage('host', 'ctrl', {
+    type: 'config',
+    config,
+    roundId: 'round',
+    role: 'default',
+  });
+  runtime.network.onMessage('host', 'ctrl', {
+    type: 'feedback',
+    roundId: 'round',
+    generation: config.generation,
+    revision: 1,
+    status: 'Ready',
+    enabled: true,
+    hapticMs: 100,
+  });
+  assert.deepEqual(runtime.view.controllerFeedback, {
+    status: 'Ready',
+    enabled: true,
+  });
 });

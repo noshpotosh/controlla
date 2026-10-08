@@ -15,11 +15,33 @@ export type {
   SwipeDirection,
   SwipeOutput,
   HoldOutput,
-  StrokeOutput,
 } from '../controls/api.ts';
 export type ReadonlyDeep<T> = T extends object
   ? { readonly [K in keyof T]: ReadonlyDeep<T[K]> }
   : T;
+
+export type SoundLayer = {
+  from: number;
+  to?: number;
+  /** Seconds after the cue starts. */
+  at?: number;
+  length: number;
+  gain: number;
+} & (
+  | { wave: 'sine' | 'square' | 'sawtooth' | 'triangle' }
+  | {
+      noise: true;
+      filter:
+        | 'lowpass'
+        | 'highpass'
+        | 'bandpass'
+        | 'lowshelf'
+        | 'highshelf'
+        | 'peaking'
+        | 'notch'
+        | 'allpass';
+    }
+);
 
 export interface Outcome {
   playerId: string;
@@ -47,9 +69,18 @@ export interface Progress {
 
 export type Completion = 'accepted' | 'duplicate' | 'closed' | 'invalid';
 
-export interface GameContext {
+export interface RoundSetupContext {
   readonly mode: string;
   readonly players: ReadonlyDeep<Player[]>;
+  readonly seed: number;
+}
+export interface ParticipantAssignment {
+  playerId: string;
+  role: string;
+  controls: ControllerRequirements;
+}
+export interface GameContext extends RoundSetupContext {
+  readonly assignments: ReadonlyDeep<ParticipantAssignment[]>;
   readonly startAt: number;
   readonly endAt: number;
 }
@@ -90,11 +121,26 @@ export interface PresentationEvent {
   playerId?: string;
 }
 
+export type RoundTiming =
+  | { kind: 'timed'; durationMs: number }
+  | { kind: 'untimed'; safetyDurationMs: number };
+export interface GameTickResult {
+  events: readonly PresentationEvent[];
+  feedback?: readonly PlayerFeedback[];
+  complete?: true;
+}
+export interface PlayerFeedback {
+  playerId: string;
+  status?: string;
+  enabled?: boolean;
+  hapticMs?: number;
+}
+
 export interface GameInstance<S extends object> {
   load(): void | Promise<void>;
   ready(): boolean;
   start(context: GameContext): void;
-  tick(input: GameInput): readonly PresentationEvent[];
+  tick(input: GameInput): GameTickResult;
   /** Called once by the framework after its final input drain. */
   finalize(): Outcome[];
   snapshot(): S;
@@ -112,7 +158,10 @@ export interface RoundProgress {
 export type CompactProgress = RoundProgress;
 
 export interface RoundSnapshot<S extends object = object> {
-  schemaVersion: 1;
+  schemaVersion: 2;
+  timing: RoundTiming;
+  seed: number;
+  assignments: ParticipantAssignment[];
   mode: string;
   roundId: string;
   gameId: string;
@@ -155,12 +204,14 @@ export interface GameDescriptor<S extends object = object> {
   id: string;
   name: string;
   players: { min: number; max: number };
-  durationMs: number;
+  timing: RoundTiming;
   modes: readonly { id: string; name: string }[];
   defaultMode: string;
   instructions?: readonly string[];
   controls: ControllerRequirements;
-  presentation: { cursors: boolean };
+  setup?(context: RoundSetupContext): readonly ParticipantAssignment[];
+  presentation: { cursors: boolean; phoneFeedback?: boolean };
+  sounds?: Readonly<Record<string, readonly SoundLayer[]>>;
   /**
    * Optional. How long presses wait (ms) so presses from different phones reach
    * `tick` ordered by timestamp. Default and maximum 200; shorter feels more

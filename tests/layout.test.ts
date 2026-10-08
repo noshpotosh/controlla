@@ -234,12 +234,18 @@ void test('resolveConfig: motion when on and available, else the same-named touc
     aimed.widgets[0].rect,
     layoutWidgets(layouts['aim-and-fire'])[0].rect,
   );
-  assert.equal(aimed.sensors.pointer.enabled, true);
+  assert.equal(!!aimed.motion.pointer, true);
   // A layout with motion off keeps the touch control even when the phone has a gyro.
   layouts['aim-touch'] = {
     ...layouts['aim-and-fire'],
     id: 'aim-touch',
-    motion: { pointer: false, tilt: false, shake: false, chop: false },
+    motion: {
+      pointer: false,
+      tilt: false,
+      shake: false,
+      chop: false,
+      jolt: false,
+    },
   };
   try {
     const touch = resolveConfig(
@@ -248,7 +254,7 @@ void test('resolveConfig: motion when on and available, else the same-named touc
       1,
     );
     assert.equal(touch.widgets[0].type, 'stick');
-    assert.equal(touch.sensors.pointer.enabled, false);
+    assert.equal(!!touch.motion.pointer, false);
   } finally {
     delete layouts['aim-touch'];
   }
@@ -305,6 +311,7 @@ void test('templates and game defaults are valid in both orientations', () => {
     tilt: false,
     shake: false,
     chop: false,
+    jolt: false,
   });
   assert.deepEqual(
     fallback.items.map((i) => [i.name, i.type]),
@@ -508,7 +515,7 @@ void test('layouts saved before chop existed still load, with chop off', () => {
   };
   delete older.motion.chop;
   assert.ok(isControllerLayout(older));
-  assert.equal(asControllerLayout(older).motion.chop, false);
+  assert.equal(!!asControllerLayout(older).motion.chop, false);
   // A present chop must still be a boolean, and older inputs stay required.
   assert.equal(
     isControllerLayout({ ...older, motion: { ...older.motion, chop: 'yes' } }),
@@ -516,5 +523,34 @@ void test('layouts saved before chop existed still load, with chop off', () => {
   );
   const { shake: _shake, ...withoutShake } = older.motion;
   assert.equal(isControllerLayout({ ...older, motion: withoutShake }), false);
-  assert.equal(layouts['aim-and-whack'].motion.chop, true);
+  assert.equal(!!layouts['aim-and-whack'].motion.chop, true);
+});
+
+void test('obsolete widget layouts fail parsing and validation with an explicit retirement message', () => {
+  for (const type of ['slider', 'dial', 'text', 'draw-canvas']) {
+    const obsolete = {
+      ...emptyLayout('obsolete-probe', 'Obsolete probe', 'portrait'),
+      items: [
+        { name: 'old', type, rotation: 0, rect: { x: 0, y: 4, w: 4, h: 4 } },
+      ],
+    };
+    assert.equal(isControllerLayout(obsolete), false);
+    assert.throws(
+      () => asControllerLayout(obsolete),
+      new RegExp(`"${type}" widget is retired`),
+    );
+    assert.ok(
+      validateLayout(obsolete as ControllerLayout).some((issue) =>
+        issue.message.includes('widget is retired'),
+      ),
+    );
+    const requirements = {
+      inputs: { old: { prefer: type, required: true } },
+    } as unknown as ControllerSpec;
+    assert.ok(
+      checkAssignment(requirements, obsolete as ControllerLayout).some(
+        (issue) => issue.message.includes('widget is retired'),
+      ),
+    );
+  }
 });

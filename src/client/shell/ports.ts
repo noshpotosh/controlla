@@ -1,3 +1,4 @@
+import type { MotionControlPort } from '../controls/motion/contracts.ts';
 import type { MotionStatus } from '../controls/motion/contracts.ts';
 /** Application UI contracts; no runtime, transport, React or game implementation. */
 import type {
@@ -6,7 +7,6 @@ import type {
   Widget,
   Permission,
 } from '../controls/api.ts';
-import type { Point } from '../../core/types.ts';
 import type { Identity, Role, Player, Venue } from '../../shared/room.ts';
 import type { RawMotionSample } from '../controls/motion/trace.ts';
 import type { ScreenPort } from '../game-screen/port.ts';
@@ -24,7 +24,9 @@ export interface GameChoice {
   readonly id: string;
   readonly name: string;
   readonly players: Readonly<{ min: number; max: number }>;
-  readonly durationMs: number;
+  readonly timing:
+    | Readonly<{ kind: 'timed'; durationMs: number }>
+    | Readonly<{ kind: 'untimed'; safetyDurationMs: number }>;
   readonly modes: readonly Readonly<{ id: string; name: string }>[];
   readonly defaultMode: string;
   readonly instructions?: readonly string[];
@@ -89,13 +91,15 @@ export interface ShellView {
   readonly warning: string;
   readonly ended: boolean;
   readonly phase: string;
+  readonly roundId: string | null;
   readonly config: ControllerConfig | null;
+  readonly controllerRoundId: string | null;
+  readonly controllerRole: string | null;
+  readonly controllerFeedback: Readonly<{ status: string; enabled: boolean }>;
   readonly inputEpoch: number;
   readonly D: number;
   readonly limitingVenue: string | null;
-  readonly adjustingAim: boolean;
-  readonly sensitivity: number;
-  readonly sensitivityRange: Readonly<{ min: number; max: number }>;
+  readonly settingsOpen: boolean;
   readonly motionEnabled: boolean;
   readonly motionStatus: MotionStatus;
   readonly sensorHz: number;
@@ -118,15 +122,13 @@ export interface HostActions {
 }
 export interface PhoneActions {
   enableMotion(this: void): Promise<void>;
-  beginAdjustAim(this: void): void;
-  finishAdjustAim(this: void): void;
-  setSensitivity(this: void, value: number): void;
-  recenter(this: void): void;
-  previewPoint(this: void): Point;
-  /** Swings recognised so far, for on-phone feedback. */
-  chopCount(this: void): number;
-  /** Holds or releases the swing button, which freezes the aim while held. */
-  holdAim(this: void, down: boolean): void;
+  openSettings(this: void): void;
+  closeSettings(this: void): void;
+  motionPortFor(
+    this: void,
+    widget: Widget,
+    generation: number,
+  ): MotionControlPort;
   portFor(this: void, widget: Widget, generation: number): ControlPort;
 }
 /** Observation only; samples are detached and subscriptions retire with the session. */

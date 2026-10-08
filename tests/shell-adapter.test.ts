@@ -54,6 +54,8 @@ function fixture(t: TestContext, role: Role = 'host') {
   };
   Reflect.get(runtime, 'controllerMessage').call(runtime, {
     type: 'config',
+    roundId: null,
+    role: null,
     config: resolveConfig(pointerSpec, defaultCapabilities(), 1),
   });
   // No live transport, audio, or timers are started by these adapter tests.
@@ -162,6 +164,8 @@ void test('phone ports retain configuration generation and local epoch, and stop
   assert.equal(values().length, 1);
   Reflect.get(runtime, 'controllerMessage').call(runtime, {
     type: 'config',
+    roundId: null,
+    role: null,
     config: resolveConfig(pointerSpec, defaultCapabilities(), 2),
   });
   old.value({ x: 0.9, y: 0.9 });
@@ -281,4 +285,32 @@ void test('joining validates before creation, starts once, and cleans up failed 
     ).mock.callCount(),
     1,
   );
+});
+
+void test('closing the shell adapter retires retained generic motion commands and observation', (t) => {
+  const runtime = fixture(t, 'controller');
+  const command = t.mock.fn();
+  const getSnapshot = t.mock.fn(() =>
+    Object.freeze({
+      held: true,
+      activations: 7,
+      point: Object.freeze({ x: 0.2, y: 0.3 }),
+    }),
+  );
+  t.mock.method(runtime, 'motionPortFor', () => ({ command, getSnapshot }));
+  const session = adaptRuntime(runtime);
+  const widget = runtime.view.config!.widgets[0];
+  const port = session.phone.motionPortFor(widget, 1);
+  assert.equal(port.getSnapshot().activations, 7);
+  port.command({ type: 'cancel' });
+  assert.equal(command.mock.callCount(), 1);
+  session.close();
+  port.command({ type: 'press', down: true });
+  assert.equal(command.mock.callCount(), 1);
+  assert.deepEqual(port.getSnapshot(), {
+    held: false,
+    activations: 0,
+    point: { x: 0.5, y: 0.5 },
+  });
+  assert.equal(getSnapshot.mock.callCount(), 1);
 });

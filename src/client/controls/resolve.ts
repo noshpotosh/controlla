@@ -14,18 +14,10 @@ import {
   validateLayout,
 } from './layout/validate.ts';
 import { layouts } from './layouts/index.ts';
+import { motionDefinitionFor } from './motion/metadata-registry.ts';
 import { PRESS_SLOTS, usesPressSlot } from './registry.ts';
 export function available(type: WidgetType, c: Capabilities) {
-  if (type === 'pointer' || type === 'chop')
-    return (
-      c.sensors.gyro.present &&
-      c.sensors.gyro.permission === 'granted' &&
-      c.sensors.accel.present &&
-      c.sensors.accel.permission === 'granted'
-    );
-  if (['tilt', 'shake'].includes(type))
-    return c.sensors.accel.present && c.sensors.accel.permission === 'granted';
-  return true;
+  return motionDefinitionFor(type)?.availability(c).available ?? true;
 }
 /** Select the named controller layout, or generate one from requirements. */
 export function gameLayout(spec: ControllerSpec) {
@@ -88,42 +80,43 @@ export function resolveConfig(
   // The unchanged binary frame carries one motion vector. Check resolved
   // actions, including repeated uses of one sensor, rather than layout flags.
   const motionWidgets = widgets.filter(
-    (widget) => widget.type === 'pointer' || widget.type === 'tilt',
+    (widget) => motionDefinitionFor(widget.type)?.transport.motionVector,
   );
   if (motionWidgets.length > 1)
     throw new Error(
       `${spec.name}: only one binary motion vector is supported; conflicting actions: ${motionWidgets.map((widget) => `${widget.action} (${widget.type})`).join(', ')}.`,
     );
   const types = widgets.map((w) => w.type);
-  const pointer = motionWidgets.find((widget) => widget.type === 'pointer')
-    ? spec.inputs[motionWidgets[0].action]
-    : undefined;
-  const bounds = pointer?.bounds;
+  const motion: ControllerConfig['motion'] = {};
+  for (const widget of widgets) {
+    const definition = motionDefinitionFor(widget.type);
+    if (!definition) continue;
+    const validated = definition.validateConfig(
+      spec.inputs[widget.action].motion ?? {},
+    );
+    if (!validated.ok)
+      throw new Error(`${spec.name}: ${widget.action}: ${validated.reason}`);
+    const settings = { ...validated.value };
+    if (
+      motion[definition.type] &&
+      JSON.stringify(motion[definition.type]) !== JSON.stringify(settings)
+    )
+      throw new Error(
+        `${spec.name}: conflicting settings for repeated ${definition.type} inputs.`,
+      );
+    motion[definition.type] = settings;
+  }
   if (types.filter(usesPressSlot).length > PRESS_SLOTS)
     throw new Error(
       `${spec.name} needs more than ${PRESS_SLOTS} press controls.`,
     );
   return {
-    schemaVersion: 1,
-    configId: spec.id + '-v1',
+    schemaVersion: 2,
+    configId: spec.id + '-v2',
     generation,
     orientation: layout.orientation,
     menu: layout.menu,
-    sensors: {
-      pointer: {
-        enabled: types.includes('pointer'),
-        rateHz: 60,
-        ...(bounds ? { bounds: { ...bounds } } : {}),
-        ...(pointer?.anchor === false ? { anchor: false as const } : {}),
-      },
-      tilt: { enabled: types.includes('tilt') },
-      shake: {
-        enabled: types.includes('shake'),
-        thresholdG: 1.8,
-      },
-      chop: { enabled: types.includes('chop') },
-      accel: { enabled: false },
-    },
+    motion,
     haptics: { enabled: c.vibration },
     substitutions,
     widgets,

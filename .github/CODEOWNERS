@@ -1,0 +1,20 @@
+# Foundation, Inputs and Game kit: requesting user / repository owner.
+# Verified account: https://api.github.com/repos/noshpotosh/controlla (2026-10-07).
+# Ownership does not establish enforced review; see docs/acceptance/MILESTONE-1.md.
+/AGENTS.md @noshpotosh
+/.github/CODEOWNERS @noshpotosh
+/.github/workflows/ @noshpotosh
+/src/client/api/ @noshpotosh
+/src/client/controls/ @noshpotosh
+/src/client/engine/ @noshpotosh
+/src/client/runtime/ @noshpotosh
+/src/client/runtime.ts @noshpotosh
+/src/client/network.ts @noshpotosh
+/src/client/shell/ @noshpotosh
+/src/client/game-screen/ @noshpotosh
+/src/client/devtools/game-harness/ @noshpotosh
+/src/client/minigames/ @noshpotosh
+/src/shared/ @noshpotosh
+/scripts/ @noshpotosh
+/tests/ @noshpotosh
+/docs/ @noshpotosh

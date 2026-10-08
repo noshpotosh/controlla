@@ -1,3 +1,4 @@
+import { sounds } from './sounds.ts';
 import type { GameDescriptor } from '../../api/index.ts';
 import { WhackAMole, isWhackState } from './game.ts';
 import { AIM_BOUNDS, WHACK, type WhackState } from './model.ts';
@@ -14,7 +15,7 @@ export const whackAMole: GameDescriptor<WhackState> = {
     'Score double in the final ten-second frenzy.',
   ],
   players: { min: 1, max: 8 },
-  durationMs: WHACK.duration,
+  timing: { kind: 'timed', durationMs: WHACK.duration },
   modes: [{ id: 'standard', name: 'Standard' }],
   defaultMode: 'standard',
   controls: {
@@ -24,7 +25,7 @@ export const whackAMole: GameDescriptor<WhackState> = {
         prefer: 'pointer',
         fallback: 'aim-pad',
         label: 'Aim',
-        bounds: AIM_BOUNDS,
+        motion: { bounds: AIM_BOUNDS },
       },
       whack: {
         required: true,
@@ -36,6 +37,7 @@ export const whackAMole: GameDescriptor<WhackState> = {
     controller: { layout: 'aim-and-whack' },
   },
   presentation: { cursors: false },
+  sounds,
   // A whack is dated to the start of the swing; a short window keeps it snappy
   // while still ordering near-simultaneous whacks on the same mole.
   arbitrationMs: 40,

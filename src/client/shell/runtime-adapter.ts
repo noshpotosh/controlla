@@ -1,7 +1,6 @@
 import { Runtime, type JoinOptions } from '../runtime/runtime.ts';
 import type { Motion } from '../controls/motion/provider.ts';
 import type { Identity } from '../../shared/room.ts';
-import { MAX_GAIN, MIN_GAIN } from '../controls/motion/pointer.ts';
 import { standingsForPresentation } from './standings.ts';
 import type {
   JoinRequest,
@@ -104,13 +103,15 @@ function project(runtime: Runtime): ShellView {
     warning: v.warning,
     ended: v.ended,
     phase: v.phase,
+    roundId: v.roundId,
     config: v.config ? structuredClone(v.config) : null,
+    controllerRoundId: v.controllerRoundId,
+    controllerRole: v.controllerRole,
+    controllerFeedback: { ...v.controllerFeedback },
     inputEpoch: v.inputEpoch,
     D: v.D,
     limitingVenue: v.limitingVenue,
-    adjustingAim: v.adjustingAim,
-    sensitivity: v.sensitivity,
-    sensitivityRange: { min: MIN_GAIN, max: MAX_GAIN },
+    settingsOpen: v.settingsOpen,
     motionEnabled: v.motionEnabled,
     motionStatus: v.motionStatus,
     sensorHz: v.sensorHz,
@@ -200,14 +201,22 @@ export function adaptRuntime(runtime: Runtime): ShellSession {
       enableMotion: async () => {
         if (!closed) await runtime.enableMotion();
       },
-      beginAdjustAim: () => active(() => runtime.beginAdjustAim()),
-      finishAdjustAim: () => active(() => runtime.finishAdjustAim()),
-      setSensitivity: (value) => active(() => runtime.setSensitivity(value)),
-      recenter: () => active(() => runtime.recenter()),
-      previewPoint: () =>
-        closed ? { x: 0.5, y: 0.5 } : runtime.previewPoint(),
-      chopCount: () => (closed ? 0 : runtime.chopCount()),
-      holdAim: (down) => active(() => runtime.holdAim(down)),
+      openSettings: () => active(() => runtime.openSettings()),
+      closeSettings: () => active(() => runtime.closeSettings()),
+      motionPortFor(widget, generation) {
+        const port = runtime.motionPortFor(widget, generation);
+        return {
+          getSnapshot: () =>
+            closed
+              ? Object.freeze({
+                  held: false,
+                  activations: 0,
+                  point: Object.freeze({ x: 0.5, y: 0.5 }),
+                })
+              : port.getSnapshot(),
+          command: (command) => active(() => port.command(command)),
+        };
+      },
       portFor(widget, generation) {
         const port = runtime.portFor(widget, generation);
         return {

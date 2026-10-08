@@ -1,0 +1,146 @@
+/* Registered motion presentation fills its controller cell. */
+.ctl-motion {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: var(--ctl-radius-lg);
+  background: var(--ctl-surface);
+  box-shadow:
+    inset 0 1px 0 var(--ctl-specular),
+    inset 0 0 0 1px var(--ctl-line),
+    var(--ctl-shadow-1);
+  color: var(--ctl-ink);
+  text-align: center;
+  padding: var(--ctl-space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 15px;
+  touch-action: none;
+  font-size: 24px;
+  font-weight: 700;
+  overflow: hidden;
+}
+.ctl-motion small {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ctl-ink-muted);
+}
+.ctl-motion__glyph {
+  font-size: 56px;
+  color: var(--ctl-accent);
+}
+/* Swing-to-whack tile: the hammer slams each time a swing is recognised. */
+.ctl-chop {
+  cursor: pointer;
+  font: inherit;
+}
+.ctl-chop__hammer {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--ctl-accent-soft);
+  color: var(--ctl-accent);
+  transform: rotate(-28deg);
+  transform-origin: 70% 70%;
+}
+.ctl-chop__hammer svg {
+  width: 60px;
+  height: 60px;
+}
+.ctl-chop__hammer.is-hit {
+  animation: ctl-chop-slam 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.ctl-chop__title {
+  font-size: 26px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.ctl-chop {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.ctl-chop.is-held {
+  background: var(--ctl-accent-soft);
+  box-shadow:
+    inset 0 0 0 3px var(--ctl-accent),
+    0 0 28px var(--ctl-accent-glow);
+}
+.ctl-chop.is-held .ctl-chop__hammer {
+  background: var(--ctl-accent);
+  color: var(--ctl-accent-ink);
+}
+@keyframes ctl-chop-slam {
+  0% {
+    transform: rotate(-28deg);
+  }
+  18% {
+    transform: rotate(32deg) scale(1.08);
+    background: var(--ctl-accent);
+    color: var(--ctl-accent-ink);
+  }
+  100% {
+    transform: rotate(-28deg);
+  }
+}
+
+@container ctl-root (max-width: 600px) {
+  .ctl-motion {
+    gap: 10px;
+    font-size: 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ctl-chop__hammer.is-hit {
+    animation: none;
+  }
+}
+
+.ctl-settings-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--ctl-space-4);
+  padding: var(--ctl-space-4);
+  overflow: auto;
+}
+.ctl-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ctl-space-4);
+  text-align: center;
+}
+.ctl-settings h1 {
+  font-size: 32px;
+}
+.ctl-settings__range {
+  display: grid;
+  gap: 12px;
+  text-align: left;
+  font-weight: 700;
+}
+.ctl-settings__range input {
+  width: 100%;
+  accent-color: var(--ctl-accent);
+  touch-action: pan-x;
+}
+.ctl-settings__ends {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ctl-ink-muted);
+}
+.ctl-settings button,
+.ctl-settings__done {
+  padding: var(--ctl-space-4);
+  border: 1px solid var(--ctl-line);
+  border-radius: var(--ctl-radius-lg);
+}
+.ctl-settings__done {
+  min-height: 90px;
+  font-size: 24px;
+}

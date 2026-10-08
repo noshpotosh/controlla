@@ -86,7 +86,14 @@ function snapshot(): RoundSnapshot<NeonHarvestState> {
     pulseReadyAt: 3000,
   };
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    timing: neonHarvest.timing,
+    seed: 3000,
+    assignments: ['a', 'b', 'offline'].map((playerId) => ({
+      playerId,
+      role: 'default',
+      controls: neonHarvest.controls,
+    })),
     roundId: 'round-a',
     gameId: 'neon-harvest',
     mode: 'standard',

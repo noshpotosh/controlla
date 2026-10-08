@@ -4,9 +4,11 @@ import type {
   ControllerConfig,
   Widget,
 } from '../../controls/api.ts';
+import type { MotionControlPort } from '../../controls/motion/contracts.ts';
 import type { MotionSnapshot } from '../../controls/motion/contracts.ts';
 import {
   channelOf,
+  kindOf,
   PRESS_SLOTS,
   usesPressSlot,
 } from '../../controls/registry.ts';
@@ -15,54 +17,34 @@ import {
   parseControlValue,
   valueFitsEnvelope,
 } from '../../controls/value.ts';
-import {
-  clampGain,
-  GyroPointer,
-  pointerBounds,
-  PointerSmoother,
-} from '../../controls/motion/pointer.ts';
-import { CHOP, ChopDetector } from '../../controls/motion/chop.ts';
+import { MotionControls } from '../../controls/motion/composition.ts';
+import { motionBindings } from '../../controls/motion/configuration.ts';
+import { motionDefinitionFor } from '../../controls/motion/registry.ts';
 import { encodeInput, type InputFrame } from '../../engine/protocol.ts';
 import type { WidgetValueMessage } from '../../engine/reliable-input.ts';
 import type { Point } from '../../../core/types.ts';
 
 const WIDGET_THROTTLE_MS = 30;
+const MAX_BACKDATE_MS = 400;
 
 /** Phone-side input processing. Transport and browser resource ownership stay outside. */
 export class ControllerInput {
   private config: ControllerConfig | null = null;
   private active = false;
-  private adjustingAim = false;
+  private settingsOpen = false;
   private terminal = false;
   private epoch = 0;
   private lastSend = 0;
   private nextSend = 0;
-  private pointerSmoother = new PointerSmoother();
   private seq = 0;
   private latestPoint: Point = { x: 0.5, y: 0.5 };
   private velocity: Point = { x: 0, y: 0 };
   private buttonState = 0;
   private edges = [0, 0, 0, 0];
   private edgeTimes = [0, 0, 0, 0];
-  private gyroPointer = new GyroPointer();
-  private lastPointerSample: number | null = null;
-  private motionEpoch = -1;
-  private lastShakeSample = -1;
-  private chopDetector = new ChopDetector();
-  private lastChopSample = -1;
-  /** The swing button is held: aim is frozen and swings whack. */
-  private aimHeld = false;
-  /** When the swing button was last let go, and the aim it had locked. */
-  private releasedAt: number | null = null;
-  private lockedAim: Point = { x: 0.5, y: 0.5 };
-  private chops = 0;
-  private pointerPoint: Point = { x: 0.5, y: 0.5 };
+  private motionControls: MotionControls;
   private recenters = 0;
-  /** Tilt that reads as level: the grip the player last recentered at. */
-  private tiltZero: Point = { x: 0, y: 0 };
-  private lastTilt: Point = { x: 0, y: 0 };
   private sendRate = 60;
-  private lastShake = 0;
   private widgetLastSent = new Map<string, number>();
   private widgetPending = new Map<
     string,
@@ -74,62 +56,72 @@ export class ControllerInput {
   constructor(
     private readonly environment: InputEnvironment,
     private readonly effects: InputEffects,
-  ) {}
+  ) {
+    this.motionControls = new MotionControls(
+      {
+        localTime: () => environment.localTime(),
+        authorityTime: (at) =>
+          environment.authorityTime() - (environment.localTime() - at),
+      },
+      {
+        activation: (action, value, capture) =>
+          this.action(action, value, this.config?.generation, capture),
+        haptic: (ms) => this.haptic(ms),
+        settingsChanged: (values) => this.effects.settingsChanged?.(values),
+      },
+    );
+  }
 
   getSnapshot() {
     return Object.freeze({
       epoch: this.epoch,
-      adjustingAim: this.adjustingAim,
+      settingsOpen: this.settingsOpen,
       point: Object.freeze(this.previewPoint()),
-      sensitivity: this.gyroPointer.gain,
+      sensitivity: this.motionControls.getSettings().sensitivity,
       recenters: this.recenters,
-      chops: this.chops,
-      aimHeld: this.aimHeld,
+      motion: this.motionControls.getSnapshot(),
     });
   }
 
   getConfiguration() {
     return this.config ? structuredClone(this.config) : null;
   }
-  beginAdjustAim() {
-    if (!this.terminal) this.adjustingAim = true;
+  openSettings() {
+    if (!this.terminal) this.settingsOpen = true;
   }
-  finishAdjustAim() {
-    if (!this.terminal) this.adjustingAim = false;
+  closeSettings() {
+    if (!this.terminal) this.settingsOpen = false;
   }
   configure(config: ControllerConfig) {
     if (
       this.terminal ||
       !config ||
-      config.schemaVersion !== 1 ||
+      config.schemaVersion !== 2 ||
       !Array.isArray(config.widgets) ||
-      config.widgets.length > 24
+      config.widgets.length > 24 ||
+      config.widgets.some((widget) => !widget || !kindOf(widget.type))
     )
       return false;
     const changed =
       this.config?.generation !== config.generation ||
       this.config?.configId !== config.configId;
+    const bindings = motionBindings(config);
+    if (
+      !bindings ||
+      ((changed || JSON.stringify(this.config) !== JSON.stringify(config)) &&
+        !this.motionControls.configure(bindings))
+    )
+      return false;
     this.config = structuredClone(config);
-    // The game may keep the cursor inside its play field.
-    const bounds = pointerBounds(config.sensors.pointer.bounds);
-    this.gyroPointer.setBounds(bounds);
-    this.gyroPointer.anchoring = config.sensors.pointer.anchor !== false;
-    this.pointerPoint = {
-      x: Math.min(bounds.right, Math.max(bounds.left, this.pointerPoint.x)),
-      y: Math.min(bounds.bottom, Math.max(bounds.top, this.pointerPoint.y)),
-    };
     if (changed) {
-      this.letGoOfAim();
       this.clearWidgetInput(true);
       this.edges = [0, 0, 0, 0];
       this.edgeTimes = [0, 0, 0, 0];
       this.buttonState = 0;
       this.seq = 0;
       this.nextSend = 0;
-      this.pointerSmoother.reset();
-      this.lastPointerSample = null;
-      this.latestPoint = config.sensors.pointer.enabled
-        ? { ...this.pointerPoint }
+      this.latestPoint = this.motionControls.getSnapshot().vector
+        ? { ...this.motionControls.getSnapshot().point }
         : config.widgets.some((w) => w.space === 'normalized')
           ? { x: 0.5, y: 0.5 }
           : { x: 0, y: 0 };
@@ -138,9 +130,7 @@ export class ControllerInput {
   }
   setRefreshRate(refreshRate: number) {
     if (this.terminal) return;
-    this.sendRate = this.config?.sensors.pointer.enabled
-      ? Math.min(this.config.sensors.pointer.rateHz, refreshRate)
-      : 60;
+    this.sendRate = this.motionControls.frameRate(refreshRate);
   }
   setActive(active: boolean) {
     if (this.terminal || active === this.active) return;
@@ -151,7 +141,7 @@ export class ControllerInput {
     if (this.terminal) return;
     this.clearWidgetInput();
     this.buttonState = 0;
-    this.letGoOfAim();
+    this.motionControls.cancel();
   }
   end() {
     this.dispose();
@@ -161,153 +151,75 @@ export class ControllerInput {
     this.active = false;
     this.clearWidgetInput(true);
     this.buttonState = 0;
+    this.motionControls.dispose();
     this.terminal = true;
   }
-  setSensitivity(gain: number) {
-    if (!this.terminal) this.gyroPointer.gain = clampGain(gain);
+  restoreSettings(json: string | null) {
+    this.motionControls.restoreSettings(json);
   }
-  /**
-   * The swing button. Holding it locks the aim where the big screen showed
-   * the cursor as the thumb touched down; while held, a sharp swing whacks.
-   * Releasing lets aiming move the cursor on from there at once, while the
-   * swing's rebound never does.
-   */
-  holdAim(down: boolean) {
-    const config = this.config;
-    if (this.terminal || !this.active || !config?.sensors.chop?.enabled) return;
-    const local = this.environment.localTime();
-    if (down && !this.aimHeld) {
-      this.aimHeld = true;
-      this.releasedAt = null;
-      this.chopDetector.reset();
-      this.freezeAim(local - CHOP.touchLookbackMs);
-    } else if (!down && this.aimHeld) {
-      this.aimHeld = false;
-      this.releasedAt = local;
-      this.lockedAim = { ...this.latestPoint };
-      if (config.sensors.pointer.enabled) {
-        this.pointerPoint = this.latestPoint = this.gyroPointer.unlock(local);
-        this.pointerSmoother.reset();
-      }
-    }
-  }
-  private freezeAim(captureAt: number) {
-    if (!this.config?.sensors.pointer.enabled) return;
-    this.pointerPoint = this.latestPoint = this.gyroPointer.lockAt(
-      captureAt,
-      CHOP.swing,
-    );
-    this.pointerSmoother.reset();
-  }
-  private letGoOfAim() {
-    if (!this.aimHeld && this.releasedAt === null) return;
-    this.aimHeld = false;
-    this.releasedAt = null;
-    this.gyroPointer.release(this.environment.localTime());
-  }
-  recenter() {
-    if (this.terminal) return;
-    this.gyroPointer.recenter();
-    if (this.aimHeld) this.freezeAim(this.environment.localTime());
-    this.pointerSmoother.reset();
-    this.pointerPoint = this.latestPoint = this.gyroPointer.current;
-    // Tilt is absolute, so recentering makes the current grip level.
-    this.tiltZero = { ...this.lastTilt };
-    this.recenters++;
+  /** Commands and observation belong to one named action, configuration and epoch. */
+  motionPortFor(widget: Widget, generation: number): MotionControlPort {
+    const epoch = this.epoch,
+      configId = this.config?.configId,
+      action = widget.action,
+      id = widget.id,
+      type = widget.type;
+    const valid = () =>
+      !this.terminal &&
+      this.active &&
+      epoch === this.epoch &&
+      this.config?.generation === generation &&
+      this.config.configId === configId &&
+      this.config.widgets.some(
+        (candidate) =>
+          candidate.id === id &&
+          candidate.action === action &&
+          candidate.type === type,
+      ) &&
+      this.motionControls.has(action);
+    const retired = Object.freeze({
+      held: false,
+      activations: 0,
+      point: Object.freeze({ x: 0.5, y: 0.5 }),
+    });
+    return {
+      getSnapshot: () => {
+        if (!valid()) return retired;
+        const snapshot = this.motionControls.getSnapshot();
+        return Object.freeze({
+          ...snapshot.inputs[action],
+          point: snapshot.point,
+          settings: this.motionControls.getSettings(action),
+        });
+      },
+      command: (command) => {
+        if (!valid()) return;
+        if (command.type === 'recenter') this.recenters++;
+        this.motionControls.command(action, {
+          ...command,
+          at: this.environment.localTime(),
+        });
+        if (this.motionControls.getSnapshot().vector)
+          this.latestPoint = { ...this.motionControls.getSnapshot().point };
+      },
+    };
   }
   tick(motion: MotionSnapshot) {
     if (!this.active || this.terminal || !this.config) return;
     const config = this.config;
     const local = this.environment.localTime(),
       time = this.environment.authorityTime();
-    let point = this.latestPoint;
-    if (motion.epoch !== this.motionEpoch) {
-      this.motionEpoch = motion.epoch;
-      this.lastPointerSample = null;
-      this.gyroPointer.resumeAt(this.pointerPoint);
-      this.pointerSmoother.reset();
-      this.chopDetector.reset();
-      this.releasedAt = null;
-      if (this.aimHeld) this.freezeAim(local);
-    }
-    if (
-      config.sensors.shake.enabled &&
-      motion.accelFresh &&
-      motion.sequence !== this.lastShakeSample &&
-      Math.abs(Math.hypot(...motion.gravity) - 9.81) >
-        config.sensors.shake.thresholdG * 9.81 &&
-      local - this.lastShake > 600
-    ) {
-      this.lastShake = local;
-      const shake = config.widgets.find((w) => w.type === 'shake');
-      if (shake) this.action(shake.action, 1, config.generation);
-    }
-    this.lastShakeSample = motion.sequence;
-    // Swings only whack while the button holds the aim still, or when one
-    // already under way is recognised just after the button is let go.
-    if (
-      config.sensors.chop?.enabled &&
-      motion.sequence !== this.lastChopSample
-    ) {
-      this.lastChopSample = motion.sequence;
-      const sampleAt = motion.at!;
-      const chop = motion.pointerFresh
-        ? this.chopDetector.sample(
-            motion.rate,
-            motion.accelFresh ? motion.gravity : null,
-            sampleAt,
-          )
-        : null;
-      const widget = config.widgets.find((w) => w.type === 'chop'),
-        releasedAt = this.releasedAt;
-      if (
-        chop &&
-        widget &&
-        (this.aimHeld ||
-          (releasedAt !== null &&
-            sampleAt - releasedAt <= CHOP.releaseGraceMs &&
-            chop.onsetAt <= releasedAt))
-      ) {
-        this.chops++;
-        this.haptic(20);
-        // Always the locked aim, even once letting go has moved the cursor on.
-        this.action(widget.action, chop.strength, config.generation, {
-          at: chop.onsetAt,
-          aim: this.aimHeld ? { ...this.latestPoint } : { ...this.lockedAim },
-        });
-      }
-    }
-    if (config.sensors.pointer.enabled && motion.pointerFresh) {
-      // Integrate once per motion sample so a stalled sensor never replays
-      // its last rate.
-      const sampleAt = motion.at!;
-      if (sampleAt !== this.lastPointerSample) {
-        const dt =
-          this.lastPointerSample !== null
-            ? Math.min(0.05, (sampleAt - this.lastPointerSample) / 1000)
-            : 0;
-        this.lastPointerSample = sampleAt;
-        this.pointerPoint = this.pointerSmoother.sample(
-          this.gyroPointer.update(
-            [...motion.rate],
-            [...motion.up],
-            dt,
-            sampleAt,
-            motion.aim,
-          ),
-          sampleAt,
-        );
-      }
-      point = this.pointerPoint;
-    } else if (config.sensors.tilt.enabled) {
-      if (motion.accelFresh) this.lastTilt = { ...motion.tilt };
-      point = motion.accelFresh
-        ? {
-            x: clampUnit(motion.tilt.x - this.tiltZero.x),
-            y: clampUnit(motion.tilt.y - this.tiltZero.y),
-          }
-        : { x: 0, y: 0 };
-    }
+    this.motionControls.process({
+      ...motion,
+      linearAcceleration:
+        'linearAcceleration' in motion
+          ? (motion.linearAcceleration as
+              | import('../../controls/motion/registration.ts').Vec3
+              | null)
+          : null,
+    });
+    const state = this.motionControls.getSnapshot();
+    const point = state.vector ? { ...state.point } : this.latestPoint;
     if (local >= this.nextSend) {
       const interval = 1000 / this.sendRate;
       // Keep the deadline anchored instead of accumulating timer overshoot.
@@ -330,14 +242,10 @@ export class ControllerInput {
         ...point,
         vx: this.velocity.x,
         vy: this.velocity.y,
-        buttons: this.buttonState | this.aimHeldMask(),
+        buttons: this.buttonState | this.motionHeldMask(),
         edges: this.edges,
         edgeTimes: this.edgeTimes,
-        confidence: config.sensors.pointer.enabled
-          ? motion.confidence
-          : config.sensors.tilt.enabled
-            ? Number(motion.accelFresh)
-            : 1,
+        confidence: state.vector ? state.confidence : 1,
       };
       this.effects.frame(encodeInput(frame));
     }
@@ -345,13 +253,18 @@ export class ControllerInput {
   previewPoint() {
     return { ...this.latestPoint };
   }
-  /** Frames show the swing's press slot held while the aim is locked. */
-  private aimHeldMask() {
-    if (!this.aimHeld || !this.config) return 0;
-    const slot = this.config.widgets
+  private motionHeldMask() {
+    if (!this.config) return 0;
+    const inputs = this.motionControls.getSnapshot().inputs;
+    return this.config.widgets
       .filter((widget) => usesPressSlot(widget.type))
-      .findIndex((widget) => widget.type === 'chop');
-    return slot >= 0 && slot < PRESS_SLOTS ? 1 << slot : 0;
+      .reduce(
+        (mask, widget, slot) =>
+          slot < PRESS_SLOTS && inputs[widget.action]?.held
+            ? mask | (1 << slot)
+            : mask,
+        0,
+      );
   }
   setPoint(point: Point) {
     if (!this.terminal) this.latestPoint = { ...point };
@@ -385,7 +298,7 @@ export class ControllerInput {
     action: string,
     raw: unknown,
     generation = this.config?.generation,
-    capture?: { at: number; aim?: Point },
+    capture?: { at: number; aim?: Point; time?: number },
   ) {
     const config = this.config;
     if (
@@ -400,12 +313,22 @@ export class ControllerInput {
     if (!widget || channelOf(widget.type).channel === 'press') return;
     const value = parseControlValue(widget.type, raw);
     if (value === undefined) return;
+    if (capture)
+      capture = {
+        ...capture,
+        time:
+          this.environment.authorityTime() -
+          Math.min(
+            MAX_BACKDATE_MS,
+            Math.max(0, this.environment.localTime() - capture.at),
+          ),
+      };
     const sample: WidgetValueMessage = {
       type: 'widget',
       action,
       generation: config.generation,
       seq: (this.widgetSequences.get(action) ?? -1) + 1,
-      time: this.environment.authorityTime(),
+      time: capture?.time ?? this.environment.authorityTime(),
       value,
     };
     this.widgetSequences.set(action, sample.seq);
@@ -443,7 +366,7 @@ export class ControllerInput {
           ? { x: (point.x + 1) / 2, y: (point.y + 1) / 2 }
           : { ...point },
       );
-    } else if (widget.type === 'shake' || widget.type === 'chop') {
+    } else if (motionDefinitionFor(widget.type)?.transport.pressSlots === 1) {
       this.press(action, true, generation, capture);
       this.press(action, false, generation);
     }
@@ -474,7 +397,7 @@ export class ControllerInput {
     // Retiring a held touch control also retires its legacy continuous frame.
     // Its old unmount callback is deliberately inert and cannot send a release.
     const config = this.config;
-    if (!config?.sensors.pointer.enabled && !config?.sensors.tilt.enabled) {
+    if (!this.motionControls.getSnapshot().vector) {
       this.latestPoint = config?.widgets.some(
         (widget) => widget.space === 'normalized',
       )
@@ -488,7 +411,7 @@ export class ControllerInput {
     action: string,
     down: boolean,
     generation = this.config?.generation,
-    capture?: { at: number; aim?: Point },
+    capture?: { at: number; aim?: Point; time?: number },
   ) {
     const config = this.config;
     if (
@@ -519,18 +442,18 @@ export class ControllerInput {
       this.flushWidget(action);
       const local = this.environment.localTime();
       // A gesture that captured its own aim leaves the cursor alone.
-      if (config.sensors.pointer.enabled && !capture?.aim) {
-        this.pointerPoint = this.latestPoint =
-          this.gyroPointer.holdForPress(local);
-        this.pointerSmoother.reset();
+      if (!capture?.aim) {
+        const point = this.motionControls.capturePress(local);
+        if (point) this.latestPoint = point;
       }
       this.edges[button] = (this.edges[button] + 1) % 256;
       // A gesture's press is dated to when it began, matching its captured aim.
       this.edgeTimes[button] =
+        capture?.time ??
         this.environment.authorityTime() -
-        (capture
-          ? Math.min(CHOP.maxBackdateMs, Math.max(0, local - capture.at))
-          : 0);
+          (capture
+            ? Math.min(MAX_BACKDATE_MS, Math.max(0, local - capture.at))
+            : 0);
       this.effects.reliable({
         type: 'press',
         press: {
@@ -552,5 +475,3 @@ export class ControllerInput {
       this.effects.haptic(ms);
   }
 }
-
-const clampUnit = (v: number) => Math.max(-1, Math.min(1, v));

@@ -1,3 +1,7 @@
+import { isJsonValue } from './json.ts';
+export { isJsonValue } from './json.ts';
+import { validAssignments, validSeed } from './round-setup.ts';
+import { validRoundTiming, timingDuration } from './timing-policy.ts';
 import type { SnapshotPolicy } from './replication.ts';
 import type { GameDescriptor, RoundSnapshot } from '../api/index.ts';
 
@@ -25,50 +29,6 @@ const counters = (value: unknown) =>
     (n) => finite(n) && Number.isSafeInteger(n) && n >= 0,
   );
 
-/** JSON is the live wire boundary: structured-clone-only values are not valid state. */
-export function isJsonValue(
-  value: unknown,
-  byteLimit = MAX_ROUND_SNAPSHOT_BYTES,
-): boolean {
-  let nodes = 0;
-  const active = new Set<object>();
-  const visit = (item: unknown, depth: number): boolean => {
-    if (++nodes > 24000 || depth > 32) return false;
-    if (item === null || typeof item === 'string' || typeof item === 'boolean')
-      return true;
-    if (typeof item === 'number') return Number.isFinite(item);
-    if (typeof item !== 'object' || active.has(item)) return false;
-    if (
-      !Array.isArray(item) &&
-      Object.getPrototypeOf(item) !== Object.prototype &&
-      Object.getPrototypeOf(item) !== null
-    )
-      return false;
-    active.add(item);
-    const valid = Array.isArray(item)
-      ? item.length <= 24000 &&
-        Array.from(
-          { length: item.length },
-          (_, i) => Object.hasOwn(item, i) && visit(item[i], depth + 1),
-        ).every(Boolean)
-      : Reflect.ownKeys(item).every(
-          (key) =>
-            typeof key === 'string' &&
-            visit((item as Record<string, unknown>)[key], depth + 1),
-        );
-    active.delete(item);
-    return valid;
-  };
-  try {
-    return (
-      visit(value, 0) &&
-      new TextEncoder().encode(JSON.stringify(value)).byteLength <= byteLimit
-    );
-  } catch {
-    return false;
-  }
-}
-
 /** Known schema envelopes can be retained even when this display lacks the game. */
 export function validRoundSnapshot(value: unknown): value is RoundSnapshot {
   if (!record(value) || !isJsonValue(value)) return false;
@@ -77,7 +37,13 @@ export function validRoundSnapshot(value: unknown): value is RoundSnapshot {
   const players = s.players as unknown[];
   const playerIds = new Set(players.filter(record).map((p) => p.id));
   if (
-    s.schemaVersion !== 1 ||
+    s.schemaVersion !== 2 ||
+    !validRoundTiming(s.timing) ||
+    !validSeed(s.seed) ||
+    !validAssignments(
+      s.assignments,
+      players.filter(record) as { id: string }[],
+    ) ||
     !text(s.gameId) ||
     !text(s.roundId) ||
     !text(s.mode) ||
@@ -85,6 +51,9 @@ export function validRoundSnapshot(value: unknown): value is RoundSnapshot {
     !finite(s.startAt) ||
     !finite(s.endAt) ||
     s.endAt < s.startAt ||
+    s.endAt >
+      s.startAt +
+        timingDuration(s.timing as import('../api/index.ts').RoundTiming) ||
     !Array.isArray(s.players) ||
     s.players.length < 1 ||
     s.players.length > 8 ||
@@ -165,6 +134,9 @@ export function snapshotPolicy<S extends object>(
       if (
         !validRoundSnapshot(value) ||
         value.gameId !== game.id ||
+        !validRoundTiming(game.timing) ||
+        value.timing.kind !== game.timing.kind ||
+        timingDuration(value.timing) !== timingDuration(game.timing) ||
         !game.modes.some((mode) => mode.id === value.mode) ||
         value.players.length < game.players.min ||
         value.players.length > game.players.max

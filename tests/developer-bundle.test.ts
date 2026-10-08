@@ -10,6 +10,7 @@ import {
   type Artifact,
   type BundleReport,
 } from '../scripts/production-boundary.ts';
+import { catalogEntries } from '../scripts/catalog-registration.ts';
 import { toolRequest } from '../src/client/devtools/routing.ts';
 import { motionDiagnostics } from '../src/client/shell/runtime-adapter.ts';
 import {
@@ -116,13 +117,14 @@ const modules = [
   'src/client/engine/round.ts',
   'src/client/engine/progress.ts',
   'src/client/minigames/catalog.ts',
-  'src/client/minigames/neon-harvest/index.ts',
-  'src/client/minigames/neon-harvest/game.ts',
-  'src/client/minigames/neon-harvest/renderer.ts',
-  'src/client/minigames/whack-a-mole/index.ts',
-  'src/client/minigames/whack-a-mole/game.ts',
-  'src/client/minigames/whack-a-mole/renderer.ts',
   'src/client/controls/aim-pad/AimPad.tsx',
+  ...catalogEntries(
+    readFileSync('src/client/minigames/catalog.ts', 'utf8'),
+  ).flatMap((entry) =>
+    ['index.ts', 'game.ts', 'renderer.ts'].map(
+      (file) => `src/client/minigames/${entry.path.slice(2, -9)}/${file}`,
+    ),
+  ),
 ];
 function evidence(): { reports: BundleReport[]; artifacts: Artifact[] } {
   return {
@@ -230,4 +232,67 @@ void test('motion extension observes cloned samples without exposing runtime or 
     'start',
     'subscribe',
   ]);
+});
+
+void test('catalog-derived bundle checks cover new games while independent inventory catches missing originals', () => {
+  const { reports, artifacts } = evidence();
+  const catalog = readFileSync('src/client/minigames/catalog.ts', 'utf8');
+  const registered = catalogEntries(catalog);
+  const sourceFor = (entries: typeof registered) =>
+    entries
+      .map((entry) => `import { ${entry.name} } from '${entry.path}';`)
+      .join('\n') +
+    `\nexport const games = [${entries.map((entry) => entry.name).join(', ')}];`;
+  const extended = sourceFor([
+    ...registered,
+    { name: 'proofGame', path: './proof-game/index.ts' },
+  ]);
+  assert.throws(
+    () => assertProductionEvidence(reports, artifacts, extended),
+    /Catalog game module missing.*proof-game/,
+  );
+  const proofModules = ['index.ts', 'game.ts', 'renderer.ts'].map(
+    (file) => `src/client/minigames/proof-game/${file}`,
+  );
+  assert.doesNotThrow(() =>
+    assertProductionEvidence(
+      reports.map((r) => ({
+        ...r,
+        moduleIds: [...r.moduleIds, ...proofModules],
+      })),
+      artifacts,
+      extended,
+    ),
+  );
+  for (const path of ['neon-harvest', 'whack-a-mole']) {
+    assert.throws(
+      () =>
+        assertProductionEvidence(
+          reports.map((r) => ({
+            ...r,
+            moduleIds: r.moduleIds.filter((id) => !id.includes(`/${path}/`)),
+          })),
+          artifacts,
+          catalog,
+        ),
+      /Catalog game module missing/,
+    );
+    const removed = sourceFor(
+      registered.filter((entry) => entry.path !== `./${path}/index.ts`),
+    );
+    assert.throws(
+      () => assertProductionEvidence(reports, artifacts, removed),
+      /Production game missing from catalog/,
+    );
+  }
+  for (const fixturePath of [
+    'tests/fixtures/games.ts',
+    'src/client/minigames/proof/game.test.ts',
+    'scripts/templates/game/renderer.ts.tpl',
+  ])
+    assert.throws(
+      () =>
+        assertProductionModules({ environment: 'client', moduleIds: [fixturePath] }),
+      /development implementation/,
+    );
 });

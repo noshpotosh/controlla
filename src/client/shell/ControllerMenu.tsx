@@ -4,9 +4,12 @@
 // corner, plus short status toasts. Aimed motion adds an always-visible
 // Recenter button beside it.
 import { useEffect, useState } from 'react';
-import { Crosshair, Menu, RotateCcw, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import type { MenuCorner } from '../controls/api.ts';
-import { RecenterButton } from '../controls/kit/RecenterButton.tsx';
+import {
+  ControllerCalibration,
+  hasControllerSettings,
+} from '../controls/motion-views/Settings.tsx';
 import type { ShellView, PhoneActions } from './ports.ts';
 
 export function ControllerMenu({
@@ -28,11 +31,9 @@ export function ControllerMenu({
   const [open, setOpen] = useState(false),
     me = v.identity,
     player = v.roster.players.find((p) => p.id === me?.id),
-    pointer = v.config?.sensors.pointer.enabled,
-    aimed = !!(pointer || v.config?.sensors.tilt.enabled),
+    settings = hasControllerSettings(v.config),
     needsMotion =
-      !v.motionEnabled &&
-      !!(v.config?.sensors.pointer.enabled || v.config?.sensors.tilt.enabled);
+      !v.motionEnabled && !!v.config && Object.keys(v.config.motion).length > 0;
   return (
     <>
       <button
@@ -45,13 +46,12 @@ export function ControllerMenu({
       >
         <Menu />
       </button>
-      {aimed && v.config && (
-        <RecenterButton
-          corner={corner}
-          orientation={v.config.orientation}
-          onRecenter={phone.recenter}
-        />
-      )}
+      <ControllerCalibration
+        config={v.config}
+        motionPortFor={(widget) =>
+          phone.motionPortFor(widget, v.config!.generation)
+        }
+      />
       {needsMotion && !open && (
         <button
           type="button"
@@ -82,6 +82,7 @@ export function ControllerMenu({
             </button>
           </div>
           <p className="ctl-sheet__status">{statusText(v)}</p>
+          {v.controllerRole && <p>Role: {v.controllerRole}</p>}
           {v.warning && <p className="ctl-sheet__warning">{v.warning}</p>}
           {!globalThis.isSecureContext && (
             <p className="ctl-sheet__warning">
@@ -93,23 +94,18 @@ export function ControllerMenu({
             <button type="button" onClick={() => void phone.enableMotion()}>
               {v.motionEnabled ? 'Motion permission granted' : 'Enable motion'}
             </button>
-            {pointer && (
+            {settings && (
               <>
                 <button
                   type="button"
                   onClick={() => {
                     setOpen(false);
-                    phone.beginAdjustAim();
+                    phone.openSettings();
                   }}
                 >
-                  <Crosshair /> Aim settings
+                  Controller settings
                 </button>
               </>
-            )}
-            {aimed && (
-              <button type="button" onClick={() => phone.recenter()}>
-                <RotateCcw /> Recenter
-              </button>
             )}
             {extraAction && (
               <button

@@ -4,7 +4,7 @@ import type {
   GameInstance,
   Outcome,
   Point,
-  PresentationEvent,
+  GameTickResult,
 } from '../../api/index.ts';
 import {
   HARVEST,
@@ -83,7 +83,7 @@ export class NeonHarvest implements GameInstance<NeonHarvestState> {
     this.lastPulse.clear();
     this.nextWave = context.startAt;
     this.nextNode = this.nextEffect = this.nextEvent = 0;
-    this.seed = (Math.floor(context.startAt) ^ 0x7f4a7c15) >>> 0;
+    this.seed = (context.seed ^ 0x7f4a7c15) >>> 0;
     // Defining entries preserves valid IDs such as "__proto__" as own keys.
     this.state.scores = Object.fromEntries(
       context.players.map((player) => [player.id, 0]),
@@ -193,7 +193,7 @@ export class NeonHarvest implements GameInstance<NeonHarvestState> {
     this.state.scores[id] += points;
     this.effect('pickup', id, position, presentationTime, points);
   }
-  tick(input: GameInput): readonly PresentationEvent[] {
+  tick(input: GameInput): GameTickResult {
     const context = this.context;
     if (
       !context ||
@@ -202,7 +202,7 @@ export class NeonHarvest implements GameInstance<NeonHarvestState> {
       input.time < context.startAt ||
       (input.phase === 'running' && input.time > context.endAt)
     )
-      return [];
+      return { events: [] };
     const state = this.state,
       sounded = new Set<string>();
     // Preserve the cutoff scene for the final accepted action batch, including nodes
@@ -363,12 +363,14 @@ export class NeonHarvest implements GameInstance<NeonHarvestState> {
     state.effects = state.effects.slice(-HARVEST.maxEffects);
     // Hit audio has no player-specific behavior. Keep attribution in game-owned
     // effects instead of repeating potentially long IDs in retained audio history.
-    return [...sounded].map(() => ({
-      id: `harvest-hit-${++this.nextEvent}`,
-      kind: 'hit',
-      clock: 'presentation' as const,
-      time: input.time,
-    }));
+    return {
+      events: [...sounded].map(() => ({
+        id: `harvest-hit-${++this.nextEvent}`,
+        kind: 'hit',
+        clock: 'presentation' as const,
+        time: input.time,
+      })),
+    };
   }
   finalize(): Outcome[] {
     if (!this.context) throw new Error('Neon Harvest has no active round.');

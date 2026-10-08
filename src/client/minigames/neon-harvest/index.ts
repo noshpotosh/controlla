@@ -1,3 +1,4 @@
+import { sounds } from './sounds.ts';
 import type { GameDescriptor } from '../../api/index.ts';
 import { NeonHarvest, isNeonHarvestState } from './game.ts';
 import { HARVEST, type NeonHarvestState } from './model.ts';
@@ -14,7 +15,7 @@ export const neonHarvest: GameDescriptor<NeonHarvestState> = {
     'Score double points in the final ten seconds.',
   ],
   players: { min: 1, max: 8 },
-  durationMs: HARVEST.duration,
+  timing: { kind: 'timed', durationMs: HARVEST.duration },
   modes: [{ id: 'standard', name: 'Standard' }],
   defaultMode: 'standard',
   controls: {
@@ -30,6 +31,7 @@ export const neonHarvest: GameDescriptor<NeonHarvestState> = {
     controller: { layout: 'aim-and-pulse' },
   },
   presentation: { cursors: false },
+  sounds,
   create: () => new NeonHarvest(),
   createRenderer: () => new NeonHarvestRenderer(),
   isState: isNeonHarvestState,

@@ -20,5 +20,5 @@ export interface PlaybackEffects {
   venueStats(delay: number): void;
   presented(roundId: string, eventId: string, at: number): void;
   recoveryWarning(active: boolean): void;
-  playEvent(event: PresentationEvent): void;
+  playEvent(event: PresentationEvent, gameId: string): void;
 }

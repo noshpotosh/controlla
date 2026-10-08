@@ -1,5 +1,7 @@
 # Validation and acceptance ledger
 
+Current milestone-1 commands, recoverable checkpoints, extension proofs and remaining browser/device evidence are in [the milestone acceptance record](acceptance/MILESTONE-1.md). `npm test` and `npm run game:test` include deterministic direct discovery and catalog-wide conformance; typecheck, lint and production build are separate gates.
+
 ## Anchored aim by default — 2026-09-29
 
 On `feature/compass-anchor` after `0e11284`. After on-device play in

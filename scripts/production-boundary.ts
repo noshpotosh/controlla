@@ -8,6 +8,7 @@ import {
 } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import type { Plugin } from 'vite';
+import { catalogEntries } from './catalog-registration.ts';
 
 export interface BundleReport {
   environment: string;
@@ -25,6 +26,8 @@ const forbiddenCss =
   /\.(?:architecture-harness|ctl-gallery|ctl-preview-pick|ctl-rotate|motion-lab|tool-links|dz)(?=[_-]|[^\w-]|$)/;
 const forbiddenArtifact =
   /\/dev\/game-harness|HarnessPreview|Controller playground|Motion lab|__controlla\/(?:layouts|motion-trace)/;
+const fixtureModule =
+  /(?:^|\/)(?:tests\/|scripts\/templates\/)|\.test\.[cm]?[jt]sx?(?:\?|$)/;
 const gameplayModules = [
   'src/client/shell/App.tsx',
   'src/client/shell/runtime-adapter.ts',
@@ -48,19 +51,14 @@ const gameplayModules = [
   'src/client/engine/round.ts',
   'src/client/engine/progress.ts',
   'src/client/minigames/catalog.ts',
-  'src/client/minigames/neon-harvest/index.ts',
-  'src/client/minigames/neon-harvest/game.ts',
-  'src/client/minigames/neon-harvest/renderer.ts',
-  'src/client/minigames/whack-a-mole/index.ts',
-  'src/client/minigames/whack-a-mole/game.ts',
-  'src/client/minigames/whack-a-mole/renderer.ts',
   'src/client/controls/aim-pad/AimPad.tsx',
 ];
 
 export function assertProductionModules(report: BundleReport): void {
   for (const id of report.moduleIds) {
     assert.ok(
-      !forbiddenModule.test(id.replaceAll('\\', '/')),
+      !forbiddenModule.test(id.replaceAll('\\', '/')) &&
+        !fixtureModule.test(id.replaceAll('\\', '/')),
       `${report.environment} imports development implementation: ${id}`,
     );
   }
@@ -70,7 +68,16 @@ export function assertProductionModules(report: BundleReport): void {
 export function assertProductionEvidence(
   reports: BundleReport[],
   artifacts: Artifact[],
+  catalog = readFileSync('src/client/minigames/catalog.ts', 'utf8'),
 ): void {
+  const entries = catalogEntries(catalog);
+  // Independent product inventory: deriving checks from a missing catalog entry
+  // must never make deletion of an existing production game look valid.
+  for (const path of ['./neon-harvest/index.ts', './whack-a-mole/index.ts'])
+    assert.ok(
+      entries.some((entry) => entry.path === path),
+      `Production game missing from catalog: ${path}`,
+    );
   for (const environment of environments) {
     assert.ok(
       reports.some(
@@ -86,6 +93,13 @@ export function assertProductionEvidence(
   );
   for (const path of gameplayModules) {
     assert.ok(ids.has(path), `Gameplay positive control missing: ${path}`);
+  }
+  for (const entry of entries) {
+    const directory = `src/client/minigames/${entry.path.slice(2, -9)}`;
+    for (const file of ['index.ts', 'game.ts', 'renderer.ts']) {
+      const path = `${directory}/${file}`;
+      assert.ok(ids.has(path), `Catalog game module missing: ${path}`);
+    }
   }
   for (const artifact of artifacts) {
     assert.ok(
@@ -181,5 +195,9 @@ export function verifyProductionBuild(root: string): void {
       path: relative(directory, path).replaceAll('\\', '/'),
       content: readFileSync(path, 'utf8'),
     }));
-  assertProductionEvidence(reports, artifacts);
+  assertProductionEvidence(
+    reports,
+    artifacts,
+    readFileSync(join(root, 'src/client/minigames/catalog.ts'), 'utf8'),
+  );
 }

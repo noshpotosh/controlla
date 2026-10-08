@@ -66,18 +66,12 @@ void test('Neon controller projection and motion/touch resolution preserve the s
   ]);
   const touch = resolveController(neonHarvest, defaultCapabilities(), 65535);
   assert.deepEqual(touch, {
-    schemaVersion: 1,
-    configId: 'neon-harvest-v1',
+    schemaVersion: 2,
+    configId: 'neon-harvest-v2',
     generation: 65535,
     orientation: 'portrait',
     menu: 'top-right',
-    sensors: {
-      pointer: { enabled: false, rateHz: 60 },
-      tilt: { enabled: false },
-      shake: { enabled: false, thresholdG: 1.8 },
-      chop: { enabled: false },
-      accel: { enabled: false },
-    },
+    motion: {},
     haptics: { enabled: false },
     substitutions: ['aim: pointer → aim-pad'],
     widgets: [
@@ -105,7 +99,11 @@ void test('Neon controller projection and motion/touch resolution preserve the s
   const aimed = resolveController(neonHarvest, granted(), 0);
   const expected = structuredClone(touch);
   expected.generation = 0;
-  expected.sensors.pointer.enabled = true;
+  expected.motion.pointer = {
+    rateHz: 60,
+    anchor: true,
+    bounds: { left: 0, top: 0, right: 1, bottom: 1 },
+  };
   expected.substitutions = [];
   expected.widgets[0].type = 'pointer';
   assert.deepEqual(aimed, expected);
@@ -178,7 +176,13 @@ void test('denied permissions resolve independent touch fallbacks; a partial gra
 
 void test('unused layout motion toggles do not consume vector capacity', (t) => {
   const layout = emptyLayout('unused-motion-test', 'Unused motion', 'portrait');
-  layout.motion = { pointer: true, tilt: true, shake: false, chop: false };
+  layout.motion = {
+    pointer: true,
+    tilt: true,
+    shake: false,
+    chop: false,
+    jolt: false,
+  };
   const input = {
     ...spec({ look: motion('pointer') }),
     controller: registerLayout(t, layout),
@@ -239,7 +243,7 @@ void test('generated layouts preserve long descriptor identity without applying 
     name: 'N'.repeat(60),
   };
   const config = resolveConfig(input, defaultCapabilities(), 21);
-  assert.equal(config.configId, input.id + '-v1');
+  assert.equal(config.configId, input.id + '-v2');
   assert.equal(gameLayout(input).id, input.id + '-default');
   assert.equal(config.generation, 21);
 });
@@ -336,10 +340,10 @@ void test('Whack-a-Mole swings to whack with motion and falls back to a touch bu
       ['whack', 'chop'],
     ],
   );
-  assert.equal(swing.sensors.chop?.enabled, true);
-  assert.equal(swing.sensors.pointer.enabled, true);
-  // Anchored aim is the default: only an opt-out is sent.
-  assert.equal(swing.sensors.pointer.anchor, undefined);
+  assert.equal(!!swing.motion.chop, true);
+  assert.equal(!!swing.motion.pointer, true);
+  // Registered defaults explicitly preserve anchored aim.
+  assert.equal(swing.motion.pointer?.anchor, true);
   // The chop tile takes the whack button's place and drops its touch props.
   assert.deepEqual(swing.widgets[1].rect, [0, 15 / 24, 1, 9 / 24]);
   assert.equal(swing.widgets[1].props, undefined);
@@ -351,8 +355,8 @@ void test('Whack-a-Mole swings to whack with motion and falls back to a touch bu
       ['whack', 'button'],
     ],
   );
-  assert.equal(touch.sensors.chop?.enabled, false);
-  assert.equal(touch.sensors.pointer.anchor, undefined);
+  assert.equal(!!touch.motion.chop, false);
+  assert.equal(touch.motion.pointer?.anchor, undefined);
   assert.deepEqual(touch.substitutions, [
     'aim: pointer → aim-pad',
     'whack: chop → button',
@@ -449,10 +453,11 @@ void test('live capability upgrades use the controller error channel without pub
   });
   const restored = r.sent.filter((m) => m.type === 'config').at(-1)!.config;
   assert.deepEqual(
-    restored,
-    before,
-    'failed resolution did not replace or advance the configuration',
+    { ...restored, generation: 0 },
+    { ...before, generation: 0 },
+    'recovery preserves requirements but retires the failed generation',
   );
+  assert.notEqual(restored.generation, before.generation);
 });
 
 void test('live preflight rejects conflicts before loading/reconfiguration and exposes the existing host warning', (t) => {
@@ -494,21 +499,21 @@ void test('a game can opt its pointer out of anchored aim', () => {
     ...neonHarvest,
     controls: {
       ...neonHarvest.controls,
-      inputs: { ...inputs, aim: { ...inputs.aim, anchor: false } },
+      inputs: { ...inputs, aim: { ...inputs.aim, motion: { anchor: false } } },
     },
   };
   assert.equal(
-    resolveController(optOut, granted(), 1).sensors.pointer.anchor,
+    resolveController(optOut, granted(), 1).motion.pointer?.anchor,
     false,
   );
   for (const game of [neonHarvest, whackAMole])
     assert.equal(
-      resolveController(game, granted(), 1).sensors.pointer.anchor,
-      undefined,
+      resolveController(game, granted(), 1).motion.pointer?.anchor,
+      true,
     );
   // Without a motion pointer there is nothing to opt out of.
   assert.equal(
-    resolveController(optOut, defaultCapabilities(), 1).sensors.pointer.anchor,
+    resolveController(optOut, defaultCapabilities(), 1).motion.pointer?.anchor,
     undefined,
   );
 });
