@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "profile": "realtime-game",
+  "integrationBranch": "develop",
+  "agent": "codex",
+  "thresholds": {
+    "warnLines": 400,
+    "warnFiles": 20,
+    "exceptionLines": 800
+  },
+  "paths": {
+    "generated": [
+      "dist/**",
+      "build/**",
+      "**/package-lock.json",
+      "**/uv.lock",
+      "**/Cargo.lock",
+      ".next/**",
+      ".vinext/**"
+    ],
+    "vendor": [
+      "vendor/**",
+      "node_modules/**"
+    ],
+    "captures": [
+      "output/**",
+      "outputs/**",
+      "tests/fixtures/motion/**"
+    ],
+    "ui": [
+      "**/*.html",
+      "**/*.css",
+      "**/*.scss",
+      "**/*.jsx",
+      "**/*.tsx",
+      "**/*.svg"
+    ],
+    "realtime-systems": [
+      "src/**",
+      "server/**",
+      "tests/**"
+    ],
+    "asset-pipeline": [
+      "assets/**",
+      "exports/**",
+      "renders/**",
+      "cad/**",
+      "kicad/**",
+      "tools/**"
+    ],
+    "hardware-validation": [
+      "cad/**",
+      "kicad/**",
+      "firmware/**",
+      "docs/**"
+    ]
+  },
+  "validationCommands": [
+    "npm run typecheck",
+    "npm run lint",
+    "npm test",
+    "npm run build"
+  ],
+  "disabledSkills": [],
+  "requireVisualEvidence": true,
+  "sections": {
+    "Problem": "Problem",
+    "Behavior": "Behavior",
+    "Validation": "Validation",
+    "Risks": "Risks",
+    "visual": "Visual evidence",
+    "size": "Size exception"
+  }
+}
