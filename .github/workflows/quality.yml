@@ -1,0 +1,34 @@
+name: Quality
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  schedule:
+    - cron: "0 14 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: noshpotosh/qa/.github/workflows/quality-review.yml@df7ae0f6ab4fa27ca8189449cff496caaaab56a9
+    with:
+      qa_ref: df7ae0f6ab4fa27ca8189449cff496caaaab56a9
+      agent: codex
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  audit:
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      issues: write
+    uses: noshpotosh/qa/.github/workflows/quality-audit.yml@df7ae0f6ab4fa27ca8189449cff496caaaab56a9
+    with:
+      qa_ref: df7ae0f6ab4fa27ca8189449cff496caaaab56a9
+      agent: codex
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

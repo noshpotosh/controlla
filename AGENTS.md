@@ -48,3 +48,9 @@ Keep work recoverable and make collaboration easy. Apply this policy to all repo
 ## Never read docs from the docs/retired directory
 
 - Do not read or use the .md files in docs/retired/ to make decisions about code changes or planning unless explicitly asked.
+<!-- qa:standards -->
+## Shared QA
+
+Follow the pinned noshpotosh/qa skills for plans, staged changes, PRs and audits. Read `.qa/skills/quality-review/SKILL.md` when installed locally. Machine settings live in `.qa.json`; existing repository policy takes precedence for agent behavior. Report configuration conflicts. Agents review and prepare recommendations; they do not merge or rewrite published history.
+
+QA pilot override: the adoption PR and QA audits target `develop`, as explicitly selected by the owner. The existing main integration/release policy and merge authorization remain in effect for other work.
